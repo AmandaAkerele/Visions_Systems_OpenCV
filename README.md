@@ -48,12 +48,7 @@ Each code example is self-contained and can be run independently. To use the cod
 Feel free to experiment with the code, modify parameters, and use your own images for testing.
 
 ## Contributing
-
 Contributions to this repository are welcome! If you have additional code examples, improvements, or suggestions, please submit a pull request.
-
-## License
-
-This repository and its code examples are provided under the [MIT License](LICENSE). You are free to use and modify the code for your own projects.
 
 ---
 
