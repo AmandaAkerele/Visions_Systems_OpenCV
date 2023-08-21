@@ -2,7 +2,7 @@
 
 # Computer Vision Code Examples Readme
 
-Welcome to the Computer Vision Code Examples repository! This readme provides an overview of the code snippets and descriptions related to various computer vision tasks. Each section demonstrates the implementation of different computer vision algorithms using OpenCV, a popular computer vision library in Python.
+Welcome to the Computer Vision Code Examples repository! This readme provides an overview of the notebook and descriptions related to various computer vision tasks. Each section demonstrates the implementation of different computer vision algorithms using OpenCV, a popular computer vision library in Python.
 
 ## Table of Contents
 
