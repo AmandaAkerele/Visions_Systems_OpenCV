@@ -82,3 +82,30 @@ display(hsp_ind_organization_fact_los)
 test=hsp_ind_organization_fact_los[hsp_ind_organization_fact_los['ORGANIZATION_ID'].isin([81118,5049,5085])]
 display(test)
 
+
+python rab 
+import pandas as pd
+
+# Merge DataFrames and display los_org_com_trd_a
+los_org_com_trd_a = pd.merge(
+    pd.merge(los_corp[['CORP_ID']], los_org_cmp_a[['CORP_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']], on='CORP_ID', how='left')[
+        ['CORP_ID', 'PERCENTILE_90', 'COMPARE_IND_CODE']], los_org_trend_b[['CORP_ID', 'IMPROVEMENT_IND_CODE']],
+    on='CORP_ID', how='left')
+display(los_org_com_trd_a)
+
+# Merge DataFrames and filter rows
+merged_df = pd.merge(los_org_com_trd_a, ed_nacrs_flg_1, on='CORP_ID', how='left', indicator=True)
+los_org_com_trd = merged_df[merged_df['_merge'] == 'left_only'].drop(columns=['_merge', 'SUBMISSION_FISCAL_YEAR', 'NACRS_ED_FLG'])
+display(los_org_com_trd)
+
+# Load the SAS dataset and process it
+sas.saslib('hsp_last', path=r"M:\Groups\eReporting\OurHealthSystem\Data Submission\17. Archive - Fall 2022")
+hsp_ind_organization_fact_los = sas.sasdata(table='hsp_ind_organization_fact33', libref='hsp_last').to_df() \
+    .rename(columns=str.upper)[lambda x: x['FISCAL_YEAR_WH_ID'] != 17]
+
+# Replace values in the 'ORGANIZATION_ID' column
+hsp_ind_organization_fact_los['ORGANIZATION_ID'] = hsp_ind_organization_fact_los['ORGANIZATION_ID'].replace(5085, 81180)
+
+# Display the final hsp_ind_organization_fact_los DataFrame
+display(hsp_ind_organization_fact_los)
+
