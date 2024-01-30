@@ -57,76 +57,82 @@ Thank you for exploring the Computer Vision Code Examples repository! I hope the
 
 /////////////////////////////////////////////////////////////////
 
-# Merge the DataFrames on a common identifier 
-merged_df = df_sas.merge(los_org_trend_b, on='CORP_ID', suffixes=('_df_sas', '_los_org'))
- 
-# Compare specific columns
-merged_df['match_code'] = np.where(merged_df['IMPROVEMENT_IND_E_DESC_df_sas'] == merged_df['IMPROVEMENT_IND_E_DESC_los_org'], 'True', 'False')
- 
-# Display the result
-display(merged_df[['CORP_ID', 'IMPROVEMENT_IND_E_DESC_df_sas', 'IMPROVEMENT_IND_E_DESC_los_org', 'match_code']])
 
+import pandas as pd
 
+# Define constant values
+constants = {
+    "INDICATOR_CODE": "033",
+    "FISCAL_YEAR_WH_ID": 22,
+    "SEX_WH_ID": 3,
+    "INDICATOR_SUPPRESSION_CODE": '007',
+    "TOP_PERFORMER_IND_CODE": '999',
+    "IMPROVEMENT_IND_CODE": '999',
+    "COMPARE_IND_CODE": '999',
+    "DATA_PERIOD_CODE": "033",
+    "DATA_PERIOD_TYPE_CODE": 'FY'
+}
 
-df_nomatch=merged_df[merged_df['match_code'] =='False']
-display(df_nomatch)
+# Merge and filter for los_organization_comparative_trend
+los_org_comparative_trend_av1 = pd.merge(los_corp['CORP_ID'], los_org_compare_a[['CORP_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']], on=['CORP_ID'], how='left')
+los_org_comparative_trend_a = pd.merge(los_org_comparative_trend_av1[['CORP_ID', 'PERCENTILE_90', 'COMPARE_IND_CODE']], los_org_trend_b[['CORP_ID', 'IMPROVEMENT_IND_CODE']], on=['CORP_ID'], how='left')
+merged_df = pd.merge(los_org_comparative_trend_a, ed_nacrs_flag_1, on='CORP_ID', how='left', indicator=True)
+los_org_comparative_trend = merged_df[merged_df['_merge'] == 'left_only']
+los_org_comparative_trend = los_org_comparative_trend.drop(columns=['_merge', 'SUBMISSION_FISCAL_YEAR', 'NACRS_ED_FLAG'])
+display(los_org_comparative_trend)
 
-los_org_com_trd_av1=pd.merge(los_corp['CORP_ID'], los_org_cmp_a[['CORP_ID','COMPARE_IND_CODE','PERCENTILE_90']],on=['CORP_ID'],how='left')
-los_org_com_trd_a=pd.merge(los_org_com_trd_av1[['CORP_ID','PERCENTILE_90','COMPARE_IND_CODE']], los_org_trend_b[['CORP_ID','IMPROVEMENT_IND_CODE']],on=['CORP_ID'],how='left')
-merged_df=pd.merge(los_org_com_trd_a, ed_nacrs_flg_1, on='CORP_ID', how='left', indicator=True)
-los_org_com_trd=merged_df[merged_df['_merge']=='left_only']
-los_org_com_trd=los_org_com_trd.drop(columns=['_merge','SUBMISSION_FISCAL_YEAR','NACRS_ED_FLG'])
-display(los_org_com_trd)
+# Merge and filter for tpia_organization_comparative_trend
+tpia_org_comparative_trend_av1 = pd.merge(tpia_corp['CORP_ID'], tpia_org_compare_a[['CORP_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']], on=['CORP_ID'], how='left')
+tpia_org_comparative_trend_a = pd.merge(tpia_org_comparative_trend_av1[['CORP_ID', 'PERCENTILE_90', 'COMPARE_IND_CODE']], tpia_org_trend_b[['CORP_ID', 'IMPROVEMENT_IND_CODE']], on=['CORP_ID'], how='left')
+merged_df = pd.merge(tpia_org_comparative_trend_a, ed_nacrs_flag_1, on='CORP_ID', how='left', indicator=True)
+tpia_org_comparative_trend = merged_df[merged_df['_merge'] == 'left_only']
+tpia_org_comparative_trend = tpia_org_comparative_trend.drop(columns=['_merge', 'SUBMISSION_FISCAL_YEAR', 'NACRS_ED_FLAG'])
+display(tpia_org_comparative_trend)
 
-tpia_org_com_trd_av1=pd.merge(tpia_corp['CORP_ID'], tpia_org_cmp_a[['CORP_ID','COMPARE_IND_CODE','PERCENTILE_90']],on=['CORP_ID'],how='left')
-tpia_org_com_trd_a=pd.merge(tpia_org_com_trd_av1[['CORP_ID','PERCENTILE_90','COMPARE_IND_CODE']], tpia_org_trend_b[['CORP_ID','IMPROVEMENT_IND_CODE']],on=['CORP_ID'],how='left')
-merged_df=pd.merge(tpia_org_com_trd_a, ed_nacrs_flg_1, on='CORP_ID', how='left', indicator=True)
-tpia_org_com_trd=merged_df[merged_df['_merge']=='left_only']
-tpia_org_com_trd=tpia_org_com_trd.drop(columns=['_merge','SUBMISSION_FISCAL_YEAR','NACRS_ED_FLG'])
-display(tpia_org_com_trd)
+# Rename columns for los_region and tpia_region
+los_region_renamed = los_region.rename(columns={'NEW_REGION_ID': 'REGION_ID'})
+tpia_region_renamed = tpia_region.rename(columns={'NEW_REGION_ID': 'REGION_ID'})
 
-los_reg_a=los_reg.rename(columns={'NEW_REGION_ID' : 'REGION_ID'})
-los_reg_com_trd_av1=pd.merge(los_reg_a['REGION_ID'], los_reg_cmp_a[['REGION_ID','COMPARE_IND_CODE','PERCENTILE_90']],on=['REGION_ID'],how='left')
-los_reg_com_trd=pd.merge(los_reg_com_trd_av1[['REGION_ID','PERCENTILE_90','COMPARE_IND_CODE']], los_reg_trend_b[['REGION_ID','IMPROVEMENT_IND_CODE']],on=['REGION_ID'],how='left')
-display(los_reg_com_trd)
+# Merge and filter for los_region_comparative_trend
+los_region_comparative_trend_av1 = pd.merge(los_region_renamed['REGION_ID'], los_region_compare_a[['REGION_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']], on=['REGION_ID'], how='left')
+los_region_comparative_trend = pd.merge(los_region_comparative_trend_av1[['REGION_ID', 'PERCENTILE_90', 'COMPARE_IND_CODE']], los_region_trend_b[['REGION_ID', 'IMPROVEMENT_IND_CODE']], on=['REGION_ID'], how='left')
+display(los_region_comparative_trend)
 
-tpia_reg_a=tpia_reg.rename(columns={'NEW_REGION_ID' : 'REGION_ID'})
-tpia_reg_com_trd_av1=pd.merge(tpia_reg_a['REGION_ID'], tpia_reg_cmp_a[['REGION_ID','COMPARE_IND_CODE','PERCENTILE_90']],on=['REGION_ID'],how='left')
-tpia_reg_com_trd=pd.merge(tpia_reg_com_trd_av1[['REGION_ID','PERCENTILE_90','COMPARE_IND_CODE']], tpia_reg_trend_b[['REGION_ID','IMPROVEMENT_IND_CODE']],on=['REGION_ID'],how='left')
-display(tpia_reg_com_trd)
+# Merge and filter for tpia_region_comparative_trend
+tpia_region_comparative_trend_av1 = pd.merge(tpia_region_renamed['REGION_ID'], tpia_region_compare_a[['REGION_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']], on=['REGION_ID'], how='left')
+tpia_region_comparative_trend = pd.merge(tpia_region_comparative_trend_av1[['REGION_ID', 'PERCENTILE_90', 'COMPARE_IND_CODE']], tpia_region_trend_b[['REGION_ID', 'IMPROVEMENT_IND_CODE']], on=['REGION_ID'], how='left')
+display(tpia_region_comparative_trend)
 
+# Load and process hsp_last_organization_fact_los
 sas.saslib('hsp_last', path=r"M:\Groups\eReporting\OurHealthSystem\Data Submission\17. Archive - Fall 2022")
-hsp_ind_organization_fact_los_a = sas.sasdata(table='hsp_ind_organization_fact33', libref='hsp_last') 
-hsp_ind_organization_fact_los=hsp_ind_organization_fact_los_a.to_df()
-hsp_ind_organization_fact_los=hsp_ind_organization_fact_los.rename(columns=lambda x: x.upper())
-hsp_ind_organization_fact_los=hsp_ind_organization_fact_los[hsp_ind_organization_fact_los.FISCAL_YEAR_WH_ID !=17]
-display(hsp_ind_organization_fact_los)
+hsp_last_organization_fact_los_a = sas.sasdata(table='hsp_last_organization_fact33', libref='hsp_last') 
+hsp_last_organization_fact_los = hsp_last_organization_fact_los_a.to_df()
+hsp_last_organization_fact_los = hsp_last_organization_fact_los.rename(columns=lambda x: x.upper())
+hsp_last_organization_fact_los = hsp_last_organization_fact_los[hsp_last_organization_fact_los.FISCAL_YEAR_WH_ID != 17]
+display(hsp_last_organization_fact_los)
 
+# Load and process hsp_last_organization_fact_tpia
+hsp_last_organization_fact_tpia_a = sas.sasdata(table='hsp_last_organization_fact34', libref='hsp_last') 
+hsp_last_organization_fact_tpia = hsp_last_organization_fact_tpia_a.to_df()
+hsp_last_organization_fact_tpia = hsp_last_organization_fact_tpia.rename(columns=lambda x: x.upper())
+hsp_last_organization_fact_tpia = hsp_last_organization_fact_tpia[hsp_last_organization_fact_tpia.FISCAL_YEAR_WH_ID != 17]
+display(hsp_last_organization_fact_tpia)
 
-hsp_ind_organization_fact_tpia_a = sas.sasdata(table='hsp_ind_organization_fact34', libref='hsp_last') 
-hsp_ind_organization_fact_tpia=hsp_ind_organization_fact_tpia_a.to_df()
-hsp_ind_organization_fact_tpia=hsp_ind_organization_fact_tpia.rename(columns=lambda x: x.upper())
-hsp_ind_organization_fact_tpia=hsp_ind_organization_fact_tpia[hsp_ind_organization_fact_tpia.FISCAL_YEAR_WH_ID !=17]
-display(hsp_ind_organization_fact_tpia)
+# Update organization IDs
+hsp_last_organization_fact_los['ORGANIZATION_ID'] = hsp_last_organization_fact_los['ORGANIZATION_ID'].apply(lambda x: 81180 if x == 5085 else (81263 if x == 5049 else x))
+hsp_last_organization_fact_tpia['ORGANIZATION_ID'] = hsp_last_organization_fact_tpia['ORGANIZATION_ID'].apply(lambda x: 81180 if x == 5085 else (81263 if x == 5049 else x))
+display(hsp_last_organization_fact_los)
+display(hsp_last_organization_fact_tpia)
 
+# Filter test dataframes
+test_los = hsp_last_organization_fact_los[hsp_last_organization_fact_los['ORGANIZATION_ID'].isin([81118, 5049, 5085, 81180, 81263])]
+display(test_los)
 
-hsp_ind_organization_fact_los['ORGANIZATION_ID']=hsp_ind_organization_fact_los['ORGANIZATION_ID'].apply(lambda x: 81180 if x==5085 else x)
-hsp_ind_organization_fact_los['ORGANIZATION_ID']=hsp_ind_organization_fact_los['ORGANIZATION_ID'].apply(lambda x: 81263 if x==5049 else x)
-display(hsp_ind_organization_fact_los)
+test_tpia = hsp_last_organization_fact_tpia[hsp_last_organization_fact_tpia['ORGANIZATION_ID'].isin([81118, 5049, 5085, 81180, 81263])]
+display(test_tpia)
 
-hsp_ind_organization_fact_tpia['ORGANIZATION_ID']=hsp_ind_organization_fact_tpia['ORGANIZATION_ID'].apply(lambda x: 81180 if x==5085 else x)
-hsp_ind_organization_fact_tpia['ORGANIZATION_ID']=hsp_ind_organization_fact_tpia['ORGANIZATION_ID'].apply(lambda x: 81263 if x==5049 else x)
-display(hsp_ind_organization_fact_tpia)
-
-test=hsp_ind_organization_fact_los[hsp_ind_organization_fact_los['ORGANIZATION_ID'].isin([81118,5049,5085,81180,81263])]
-display(test)
-
-test2=hsp_ind_organization_fact_tpia[hsp_ind_organization_fact_tpia['ORGANIZATION_ID'].isin([81118,5049,5085,81180,81263])]
-display(test2)
-
-
-# Constant values for org, reg
-constant_org_reg = {
+# Define a common constant dictionary for preparation
+constant_common = {
     "INDICATOR_CODE": "033",
     "FISCAL_YEAR_WH_ID": 22,
     "SEX_WH_ID": 3,
@@ -136,75 +142,30 @@ constant_org_reg = {
     "DATA_PERIOD_TYPE_CODE": 'FY'
 }
 
-# Function to prepare DataFrame
-def prepare_org_reg(df, id_col):
-    df = df.rename(columns={id_col: 'ORGANIZATION_ID', 'PERCENTILE_90': 'INDICATOR_VALUE'})
-    for col, value in constant_org_reg.items():
-        df[col] = value
-    df = df.reindex(columns=hsp_ind_organization_fact_los.columns)
-    return df
+# Function to prepare dataframes
+def prepare_dataframe(df, id_col, indicator_value_col):
+    df_updated = df.rename(columns={id_col: 'ORGANIZATION_ID', indicator_value_col: 'INDICATOR_VALUE'})
+    for col, value in constant_common.items():
+        df_updated[col] = value
+    df_updated = df_updated.reindex(columns=hsp_last_organization_fact_los.columns)
+    return df_updated
 
-# Prepare data
-los_org_prepared = prepare_org_reg(los_org_com_trd, 'CORP_ID')
-los_reg_prepared = prepare_org_reg(los_reg_com_trd, 'REGION_ID')
-tpia_org_prepared = prepare_org_reg(tpia_org_com_trd, 'CORP_ID')
-tpia_reg_prepared = prepare_org_reg(tpia_reg_com_trd, 'REGION_ID')
-
-constant_prov = {
-    "INDICATOR_CODE": "033",
-    "FISCAL_YEAR_WH_ID": 22,
-    "SEX_WH_ID": 3,
-    "INDICATOR_SUPPRESSION_CODE": '007',
-    "TOP_PERFORMER_IND_CODE": '999',
-    "IMPROVEMENT_IND_CODE": '999',
-    "COMPARE_IND_CODE": '999',
-    "DATA_PERIOD_CODE": "033",
-    "DATA_PERIOD_TYPE_CODE": 'FY'
-}
-
-def prepare_prov(df, id_col):
-    df = df.rename(columns={id_col: 'ORGANIZATION_ID', 'PERCENTILE_90': 'INDICATOR_VALUE'})
-    for col, value in constant_prov.items():
-        df[col] = value
-    df = df.reindex(columns=hsp_ind_organization_fact_los.columns)
-    return df
-
-los_prov_prepared = prepare_prov(los_prov, 'PROVINCE_ID')
-tpia_prov_prepared = prepare_prov(tpia_prov, 'PROVINCE_ID')
-
-constant_peer_nat = {
-    "INDICATOR_CODE": "033",
-    "FISCAL_YEAR_WH_ID": 22,
-    "SEX_WH_ID": 3,
-    "INDICATOR_SUPPRESSION_CODE": '007',
-    "TOP_PERFORMER_IND_CODE": '999',
-    "IMPROVEMENT_IND_CODE": '999',
-    "COMPARE_IND_CODE": '999',
-    "DATA_PERIOD_CODE": "033",
-    "DATA_PERIOD_TYPE_CODE": 'FY'
-}
-
-def prepare_peer_nat(df, id_col):
-    df = df.rename(columns={id_col: 'ORGANIZATION_ID', 'PERCENTILE_90': 'INDICATOR_VALUE'})
-    for col, value in constant_prov.items():
-        df[col] = value
-    df = df.reindex(columns=hsp_ind_organization_fact_los.columns)
-    return df
-los_peer_prepared = prepare_peer_nat(los_peer, 'peer_id')
-tpia_peer_prepared = prepare_peer_nat(tpia_peer, 'peer_id')
-los_nat_prepared = prepare_peer_nat(LOS_nt, 'NATIONAL_ID')
-tpia_nat_prepared = prepare_peer_nat(TPIA_nt, 'NATIONAL_ID')
-
-
+# Prepare dataframes without "prepared" in their names
+los_org_comparative_trend_v2 = prepare_dataframe(los_org_comparative_trend, 'CORP_ID', 'PERCENTILE_90')
+los_region_comparative_trend_v2 = prepare_dataframe(los_region_comparative_trend, 'REGION_ID', 'PERCENTILE_90')
+tpia_org_comparative_trend_v2 = prepare_dataframe(tpia_org_comparative_trend, 'CORP_ID', 'PERCENTILE_90')
+tpia_region_comparative_trend_v2 = prepare_dataframe(tpia_region_comparative_trend, 'REGION_ID', 'PERCENTILE_90')
+los_prov_v2 = prepare_dataframe(los_prov, 'PROVINCE_ID', 'PERCENTILE_90')
+tpia_prov_v2 = prepare_dataframe(tpia_prov, 'PROVINCE_ID', 'PERCENTILE_90')
+los_peer_v2 = prepare_dataframe(los_peer, 'peer_id', 'PERCENTILE_90')
+tpia_peer_v2 = prepare_dataframe(tpia_peer, 'peer_id', 'PERCENTILE_90')
+LOS_nt_v2 = prepare_dataframe(LOS_nt, 'NATIONAL_ID', 'PERCENTILE_90')
+TPIA_nt_v2 = prepare_dataframe(TPIA_nt, 'NATIONAL_ID', 'PERCENTILE_90')
 
 # Concatenate all DataFrames
-final_dfv3 = pd.concat([hsp_ind_organization_fact_los, los_org_prepared,los_reg_prepared ], ignore_index=True)
-final_dfv3=final_dfv3.sort_values(['ORGANIZATION_ID','FISCAL_YEAR_WH_ID'])
-display(final_dfv3)
+final_df_v2 = pd.concat([hsp_last_organization_fact_los, los_org_comparative_trend_v2, los_region_comparative_trend_v2,
+                      tpia_org_comparative_trend_v2, tpia_region_comparative_trend_v2, los_prov_v2,
+                      tpia_prov_v2, los_peer_v2, tpia_peer_v2, LOS_nt_v2, TPIA_nt_v2], ignore_index=True)
+final_df_v2 = final_df_v2.sort_values(['ORGANIZATION_ID', 'FISCAL_YEAR_WH_ID'])
+display(final_df_v2)
 
-final_dfv3 = pd.concat([hsp_ind_organization_fact_tpia, los_org_prepared,los_reg_prepared ], ignore_index=True)
-final_dfv3=final_dfv3.sort_values(['ORGANIZATION_ID','FISCAL_YEAR_WH_ID'])
-display(final_dfv3)
-# final_df now contains the merged data
-#testC_prepared = prepare_df(tpia_org_com_trd, 'CORP_ID')
-#testE_prepared = prepare_df(tpia_reg_com_trd, 'REGION_ID')
