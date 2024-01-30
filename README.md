@@ -204,30 +204,63 @@ display(tpia_reg_com_trd)
 
 ///
 
-import pandas as pd
+checking if code is working 
 
-# Filter and process los_org_com_trd
-los_org_com_trd_filtered = los_corp[['CORP_ID']].merge(los_org_cmp_a[['CORP_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']], on=['CORP_ID'], how='left', indicator=True)
-los_org_com_trd_filtered = los_org_com_trd_filtered[los_org_com_trd_filtered['_merge'] == 'left_only'].drop(columns=['_merge', 'SUBMISSION_FISCAL_YEAR', 'NACRS_ED_FLG'])
-display(los_org_com_trd_filtered)
+# los_org_com_trd_av1
+los_corp_subset = los_corp[['CORP_ID']]
+los_org_cmp_subset = los_org_cmp_a[['CORP_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']]
+los_org_com_trd_av1 = pd.merge(los_corp_subset, los_org_cmp_subset, on=['CORP_ID'], how='left')
 
-# Filter and process tpia_org_com_trd
-tpia_org_com_trd_filtered = tpia_corp[['CORP_ID']].merge(tpia_org_cmp_a[['CORP_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']], on=['CORP_ID'], how='left', indicator=True)
-tpia_org_com_trd_filtered = tpia_org_com_trd_filtered[tpia_org_com_trd_filtered['_merge'] == 'left_only'].drop(columns=['_merge', 'SUBMISSION_FISCAL_YEAR', 'NACRS_ED_FLG'])
-display(tpia_org_com_trd_filtered)
+# los_org_com_trd_a
+los_org_com_trd_a = pd.merge(los_org_com_trd_av1[['CORP_ID', 'PERCENTILE_90', 'COMPARE_IND_CODE']],
+                              los_org_trend_b[['CORP_ID', 'IMPROVEMENT_IND_CODE']],
+                              on=['CORP_ID'], how='left')
 
-# Rename columns for los_reg and tpia_reg
-los_reg_renamed = los_reg.rename(columns={'NEW_REGION_ID': 'REGION_ID'})
-tpia_reg_renamed = tpia_reg.rename(columns={'NEW_REGION_ID': 'REGION_ID'})
+# los_org_com_trd
+merged_df = pd.merge(los_org_com_trd_a, ed_nacrs_flg_1, on='CORP_ID', how='left', indicator=True)
+los_org_com_trd = merged_df[merged_df['_merge'] == 'left_only']
+los_org_com_trd = los_org_com_trd.drop(columns=['_merge', 'SUBMISSION_FISCAL_YEAR', 'NACRS_ED_FLG'])
+display(los_org_com_trd)
 
-# Filter and process los_reg_com_trd
-los_reg_com_trd_filtered = los_reg_renamed[['REGION_ID']].merge(los_reg_cmp_a[['REGION_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']], on=['REGION_ID'], how='left', indicator=True)
-los_reg_com_trd_filtered = los_reg_com_trd_filtered[los_reg_com_trd_filtered['_merge'] == 'left_only'].drop(columns=['_merge', 'SUBMISSION_FISCAL_YEAR', 'NACRS_ED_FLG'])
-display(los_reg_com_trd_filtered)
+# tpia_org_com_trd_av1
+tpia_corp_subset = tpia_corp[['CORP_ID']]
+tpia_org_cmp_subset = tpia_org_cmp_a[['CORP_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']]
+tpia_org_com_trd_av1 = pd.merge(tpia_corp_subset, tpia_org_cmp_subset, on=['CORP_ID'], how='left')
 
-# Filter and process tpia_reg_com_trd
-tpia_reg_com_trd_filtered = tpia_reg_renamed[['REGION_ID']].merge(tpia_reg_cmp_a[['REGION_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']], on=['REGION_ID'], how='left', indicator=True)
-tpia_reg_com_trd_filtered = tpia_reg_com_trd_filtered[tpia_reg_com_trd_filtered['_merge'] == 'left_only'].drop(columns=['_merge', 'SUBMISSION_FISCAL_YEAR', 'NACRS_ED_FLG'])
-display(tpia_reg_com_trd_filtered)
+# tpia_org_com_trd_a
+tpia_org_com_trd_a = pd.merge(tpia_org_com_trd_av1[['CORP_ID', 'PERCENTILE_90', 'COMPARE_IND_CODE']],
+                              tpia_org_trend_b[['CORP_ID', 'IMPROVEMENT_IND_CODE']],
+                              on=['CORP_ID'], how='left')
+
+# tpia_org_com_trd
+merged_df = pd.merge(tpia_org_com_trd_a, ed_nacrs_flg_1, on='CORP_ID', how='left', indicator=True)
+tpia_org_com_trd = merged_df[merged_df['_merge'] == 'left_only']
+tpia_org_com_trd = tpia_org_com_trd.drop(columns=['_merge', 'SUBMISSION_FISCAL_YEAR', 'NACRS_ED_FLG'])
+display(tpia_org_com_trd)
+
+# los_reg_com_trd_av1
+los_reg_a = los_reg.rename(columns={'NEW_REGION_ID': 'REGION_ID'})
+los_reg_com_trd_av1 = pd.merge(los_reg_a['REGION_ID'],
+                                los_reg_cmp_a[['REGION_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']],
+                                on=['REGION_ID'], how='left')
+
+# los_reg_com_trd
+los_reg_com_trd = pd.merge(los_reg_com_trd_av1[['REGION_ID', 'PERCENTILE_90', 'COMPARE_IND_CODE']],
+                           los_reg_trend_b[['REGION_ID', 'IMPROVEMENT_IND_CODE']],
+                           on=['REGION_ID'], how='left')
+display(los_reg_com_trd)
+
+# tpia_reg_com_trd_av1
+tpia_reg_a = tpia_reg.rename(columns={'NEW_REGION_ID': 'REGION_ID'})
+tpia_reg_com_trd_av1 = pd.merge(tpia_reg_a['REGION_ID'],
+                                tpia_reg_cmp_a[['REGION_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']],
+                                on=['REGION_ID'], how='left')
+
+# tpia_reg_com_trd
+tpia_reg_com_trd = pd.merge(tpia_reg_com_trd_av1[['REGION_ID', 'PERCENTILE_90', 'COMPARE_IND_CODE']],
+                           tpia_reg_trend_b[['REGION_ID', 'IMPROVEMENT_IND_CODE']],
+                           on=['REGION_ID'], how='left')
+display(tpia_reg_com_trd)
+
 
 
