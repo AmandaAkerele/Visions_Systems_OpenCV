@@ -202,4 +202,32 @@ tpia_reg_com_trd = tpia_reg_com_trd[tpia_reg_com_trd['_merge'] == 'left_only'].d
 display(tpia_reg_com_trd)
 
 
+///
+
+import pandas as pd
+
+# Filter and process los_org_com_trd
+los_org_com_trd_filtered = los_corp[['CORP_ID']].merge(los_org_cmp_a[['CORP_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']], on=['CORP_ID'], how='left', indicator=True)
+los_org_com_trd_filtered = los_org_com_trd_filtered[los_org_com_trd_filtered['_merge'] == 'left_only'].drop(columns=['_merge', 'SUBMISSION_FISCAL_YEAR', 'NACRS_ED_FLG'])
+display(los_org_com_trd_filtered)
+
+# Filter and process tpia_org_com_trd
+tpia_org_com_trd_filtered = tpia_corp[['CORP_ID']].merge(tpia_org_cmp_a[['CORP_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']], on=['CORP_ID'], how='left', indicator=True)
+tpia_org_com_trd_filtered = tpia_org_com_trd_filtered[tpia_org_com_trd_filtered['_merge'] == 'left_only'].drop(columns=['_merge', 'SUBMISSION_FISCAL_YEAR', 'NACRS_ED_FLG'])
+display(tpia_org_com_trd_filtered)
+
+# Rename columns for los_reg and tpia_reg
+los_reg_renamed = los_reg.rename(columns={'NEW_REGION_ID': 'REGION_ID'})
+tpia_reg_renamed = tpia_reg.rename(columns={'NEW_REGION_ID': 'REGION_ID'})
+
+# Filter and process los_reg_com_trd
+los_reg_com_trd_filtered = los_reg_renamed[['REGION_ID']].merge(los_reg_cmp_a[['REGION_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']], on=['REGION_ID'], how='left', indicator=True)
+los_reg_com_trd_filtered = los_reg_com_trd_filtered[los_reg_com_trd_filtered['_merge'] == 'left_only'].drop(columns=['_merge', 'SUBMISSION_FISCAL_YEAR', 'NACRS_ED_FLG'])
+display(los_reg_com_trd_filtered)
+
+# Filter and process tpia_reg_com_trd
+tpia_reg_com_trd_filtered = tpia_reg_renamed[['REGION_ID']].merge(tpia_reg_cmp_a[['REGION_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']], on=['REGION_ID'], how='left', indicator=True)
+tpia_reg_com_trd_filtered = tpia_reg_com_trd_filtered[tpia_reg_com_trd_filtered['_merge'] == 'left_only'].drop(columns=['_merge', 'SUBMISSION_FISCAL_YEAR', 'NACRS_ED_FLG'])
+display(tpia_reg_com_trd_filtered)
+
 
