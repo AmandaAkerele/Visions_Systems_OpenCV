@@ -124,11 +124,33 @@ display(test)
 test2=hsp_ind_organization_fact_tpia[hsp_ind_organization_fact_tpia['ORGANIZATION_ID'].isin([81118,5049,5085,81180,81263])]
 display(test2)
 
-import pandas as pd
 
+# Constant values for org, reg
+constant_org_reg = {
+    "INDICATOR_CODE": "033",
+    "FISCAL_YEAR_WH_ID": 22,
+    "SEX_WH_ID": 3,
+    "INDICATOR_SUPPRESSION_CODE": '007',
+    "TOP_PERFORMER_IND_CODE": '999',
+    "DATA_PERIOD_CODE": "033",
+    "DATA_PERIOD_TYPE_CODE": 'FY'
+}
 
-# Constant values
-constant_values = {
+# Function to prepare DataFrame
+def prepare_org_reg(df, id_col):
+    df = df.rename(columns={id_col: 'ORGANIZATION_ID', 'PERCENTILE_90': 'INDICATOR_VALUE'})
+    for col, value in constant_org_reg.items():
+        df[col] = value
+    df = df.reindex(columns=hsp_ind_organization_fact_los.columns)
+    return df
+
+# Prepare data
+los_org_prepared = prepare_org_reg(los_org_com_trd, 'CORP_ID')
+los_reg_prepared = prepare_org_reg(los_reg_com_trd, 'REGION_ID')
+tpia_org_prepared = prepare_org_reg(tpia_org_com_trd, 'CORP_ID')
+tpia_reg_prepared = prepare_org_reg(tpia_reg_com_trd, 'REGION_ID')
+
+constant_prov = {
     "INDICATOR_CODE": "033",
     "FISCAL_YEAR_WH_ID": 22,
     "SEX_WH_ID": 3,
@@ -140,24 +162,49 @@ constant_values = {
     "DATA_PERIOD_TYPE_CODE": 'FY'
 }
 
-# Function to prepare DataFrame
-def prepare_df(df, id_col):
+def prepare_prov(df, id_col):
     df = df.rename(columns={id_col: 'ORGANIZATION_ID', 'PERCENTILE_90': 'INDICATOR_VALUE'})
-    for col, value in constant_values.items():
+    for col, value in constant_prov.items():
         df[col] = value
     df = df.reindex(columns=hsp_ind_organization_fact_los.columns)
     return df
 
-# Prepare and append data
-los_org_prepared = prepare_df(los_org_com_trd, 'CORP_ID')
-los_reg_prepared = prepare_df(los_reg_com_trd, 'REGION_ID')
-los_peer_prepared = prepare_df(los_reg_com_trd, 'REGION_ID')
-los_prov_prepared = prepare_df(los_reg_com_trd, 'REGION_ID')
+los_prov_prepared = prepare_prov(los_prov, 'PROVINCE_ID')
+tpia_prov_prepared = prepare_prov(tpia_prov, 'PROVINCE_ID')
+
+constant_peer_nat = {
+    "INDICATOR_CODE": "033",
+    "FISCAL_YEAR_WH_ID": 22,
+    "SEX_WH_ID": 3,
+    "INDICATOR_SUPPRESSION_CODE": '007',
+    "TOP_PERFORMER_IND_CODE": '999',
+    "IMPROVEMENT_IND_CODE": '999',
+    "COMPARE_IND_CODE": '999',
+    "DATA_PERIOD_CODE": "033",
+    "DATA_PERIOD_TYPE_CODE": 'FY'
+}
+
+def prepare_peer_nat(df, id_col):
+    df = df.rename(columns={id_col: 'ORGANIZATION_ID', 'PERCENTILE_90': 'INDICATOR_VALUE'})
+    for col, value in constant_prov.items():
+        df[col] = value
+    df = df.reindex(columns=hsp_ind_organization_fact_los.columns)
+    return df
+los_peer_prepared = prepare_peer_nat(los_peer, 'peer_id')
+tpia_peer_prepared = prepare_peer_nat(tpia_peer, 'peer_id')
+los_nat_prepared = prepare_peer_nat(LOS_nt, 'NATIONAL_ID')
+tpia_nat_prepared = prepare_peer_nat(TPIA_nt, 'NATIONAL_ID')
+
+
 
 # Concatenate all DataFrames
-final_dfv3 = pd.concat([hsp_ind_organization_fact_los, testB_prepared,testC_prepared ,testD_prepared ,testE_prepared ], ignore_index=True)
+final_dfv3 = pd.concat([hsp_ind_organization_fact_los, los_org_prepared,los_reg_prepared ], ignore_index=True)
+final_dfv3=final_dfv3.sort_values(['ORGANIZATION_ID','FISCAL_YEAR_WH_ID'])
+display(final_dfv3)
+
+final_dfv3 = pd.concat([hsp_ind_organization_fact_tpia, los_org_prepared,los_reg_prepared ], ignore_index=True)
 final_dfv3=final_dfv3.sort_values(['ORGANIZATION_ID','FISCAL_YEAR_WH_ID'])
 display(final_dfv3)
 # final_df now contains the merged data
-testC_prepared = prepare_df(tpia_org_com_trd, 'CORP_ID')
-testE_prepared = prepare_df(tpia_reg_com_trd, 'REGION_ID')
+#testC_prepared = prepare_df(tpia_org_com_trd, 'CORP_ID')
+#testE_prepared = prepare_df(tpia_reg_com_trd, 'REGION_ID')
