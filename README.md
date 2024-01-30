@@ -174,23 +174,17 @@ display(final_df_v2)
 ////////////////////////
 NEW
 
+
 import pandas as pd
 
-# Define a function to filter and process the data
-def filter_and_process_data(left_df, right_df, left_columns, right_columns, additional_columns_to_drop):
-    merged_df = left_df[left_columns].merge(right_df[right_columns], on=left_columns, how='left', indicator=True)
-    result_df = merged_df[merged_df['_merge'] == 'left_only'].drop(columns=['_merge'] + additional_columns_to_drop)
-    return result_df
-
-# Define the common columns to drop from the final result
-common_columns_to_drop = ['SUBMISSION_FISCAL_YEAR', 'NACRS_ED_FLG']
-
 # Filter and process los_org_com_trd
-los_org_com_trd = filter_and_process_data(los_corp, los_org_cmp_a, ['CORP_ID'], ['CORP_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90'], common_columns_to_drop)
+los_org_com_trd = los_corp[['CORP_ID']].merge(los_org_cmp_a[['CORP_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']], on=['CORP_ID'], how='left', indicator=True)
+los_org_com_trd = los_org_com_trd[los_org_com_trd['_merge'] == 'left_only'].drop(columns=['_merge', 'SUBMISSION_FISCAL_YEAR', 'NACRS_ED_FLG'])
 display(los_org_com_trd)
 
 # Filter and process tpia_org_com_trd
-tpia_org_com_trd = filter_and_process_data(tpia_corp, tpia_org_cmp_a, ['CORP_ID'], ['CORP_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90'], common_columns_to_drop)
+tpia_org_com_trd = tpia_corp[['CORP_ID']].merge(tpia_org_cmp_a[['CORP_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']], on=['CORP_ID'], how='left', indicator=True)
+tpia_org_com_trd = tpia_org_com_trd[tpia_org_com_trd['_merge'] == 'left_only'].drop(columns=['_merge', 'SUBMISSION_FISCAL_YEAR', 'NACRS_ED_FLG'])
 display(tpia_org_com_trd)
 
 # Rename columns for los_reg and tpia_reg
@@ -198,11 +192,14 @@ los_reg_a = los_reg.rename(columns={'NEW_REGION_ID': 'REGION_ID'})
 tpia_reg_a = tpia_reg.rename(columns={'NEW_REGION_ID': 'REGION_ID'})
 
 # Filter and process los_reg_com_trd
-los_reg_com_trd = filter_and_process_data(los_reg_a, los_reg_cmp_a, ['REGION_ID'], ['REGION_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90'], common_columns_to_drop)
+los_reg_com_trd = los_reg_a[['REGION_ID']].merge(los_reg_cmp_a[['REGION_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']], on=['REGION_ID'], how='left', indicator=True)
+los_reg_com_trd = los_reg_com_trd[los_reg_com_trd['_merge'] == 'left_only'].drop(columns=['_merge', 'SUBMISSION_FISCAL_YEAR', 'NACRS_ED_FLG'])
 display(los_reg_com_trd)
 
 # Filter and process tpia_reg_com_trd
-tpia_reg_com_trd = filter_and_process_data(tpia_reg_a, tpia_reg_cmp_a, ['REGION_ID'], ['REGION_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90'], common_columns_to_drop)
+tpia_reg_com_trd = tpia_reg_a[['REGION_ID']].merge(tpia_reg_cmp_a[['REGION_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']], on=['REGION_ID'], how='left', indicator=True)
+tpia_reg_com_trd = tpia_reg_com_trd[tpia_reg_com_trd['_merge'] == 'left_only'].drop(columns=['_merge', 'SUBMISSION_FISCAL_YEAR', 'NACRS_ED_FLG'])
 display(tpia_reg_com_trd)
+
 
 
