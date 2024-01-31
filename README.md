@@ -1076,3 +1076,141 @@ filtered_data_tpia = hsp_ind_organization_fact_tpia_final[hsp_ind_organization_f
 display(filtered_data_tpia)
 
 
+
+
+MINEEEEEEEEEEEEE FULL TO SUPPRESSION 
+
+import pandas as pd
+
+# Define your data directory path
+data_dir = '/path/to/your/data/directory/'
+
+# Load your data into DataFrames (if not already loaded)
+hsp_ind_organization_fact33 = pd.read_csv(data_dir + 'hsp_ind_organization_fact33_final.csv')
+hsp_ind_organization_fact34 = pd.read_csv(data_dir + 'hsp_ind_organization_fact34_final.csv')
+
+def add_dummy(yr, ind_id):
+    # Create DataFrames for organizations with less than five years of data
+    less_than_five_yrs_df = hsp_ind_organization_fact33[hsp_ind_organization_fact33.groupby('ORGANIZATION_ID')['FISCAL_YEAR_WH_ID'].transform('count') < 5]
+
+    four_yrs_df = hsp_ind_organization_fact33[hsp_ind_organization_fact33.groupby('ORGANIZATION_ID')['FISCAL_YEAR_WH_ID'].transform('count') == 4]
+
+    new_yr_df = hsp_ind_organization_fact33[hsp_ind_organization_fact33.groupby('ORGANIZATION_ID')['FISCAL_YEAR_WH_ID'].transform('count') == 1]
+
+    # Add dummy data for organizations with less than five years of data
+    dummy_data = []
+    for organization_id in four_yrs_df['ORGANIZATION_ID'].unique():
+        for i in range(1, 5):
+            dummy_data.append({
+                'ORGANIZATION_ID': organization_id,
+                'INDICATOR_CODE': f'0{ind_id}',
+                'FISCAL_YEAR_WH_ID': yr - i,
+                'SEX_WH_ID': 3,
+                'INDICATOR_SUPPRESSION_CODE': '999',
+                'TOP_PERFORMER_IND_CODE': '999',
+                'IMPROVEMENT_IND_CODE': '999',
+                'COMPARE_IND_CODE': '999',
+                'INDICATOR_VALUE': None,
+                'DATA_PERIOD_CODE': f'0{yr - i}',
+                'DATA_PERIOD_TYPE_CODE': 'FY'
+            })
+    
+    # Append the dummy data to the DataFrame
+    hsp_ind_organization_fact33 = hsp_ind_organization_fact33.append(pd.DataFrame(dummy_data), ignore_index=True)
+    
+    # Save the updated DataFrame
+    hsp_ind_organization_fact33.to_csv(data_dir + f'hsp_ind_organization_fact{ind_id}_final.csv', index=False)
+
+add_dummy(yr=2024, ind_id=33)  # Add dummy data for LOS indicator (change yr and ind_id as needed)
+
+
+Now let's implement the apply_suppression macro:
+
+def apply_suppression(yr, ind_id):
+    # Define suppression lists for different levels (corp, reg, prov)
+    corp_suppression_list = pd.read_csv(data_dir + f'supp_{ind_id}_supp_org_{yr}.csv')
+    reg_suppression_list = pd.read_csv(data_dir + f'supp_{ind_id}_supp_reg_{yr}.csv')
+
+    # Create a DataFrame to store all suppression data
+    supp_all_level = pd.concat([
+        corp_suppression_list.assign(supp_level='Corp'),
+        reg_suppression_list.assign(supp_level='Reg')
+    ], ignore_index=True)
+
+    # Update suppression codes for corresponding organizations
+    hsp_ind_organization_fact33.loc[
+        (hsp_ind_organization_fact33['FISCAL_YEAR_WH_ID'] == yr) &
+        (hsp_ind_organization_fact33['ORGANIZATION_ID'].isin(supp_all_level['organization_id'])),
+        ['INDICATOR_SUPPRESSION_CODE', 'TOP_PERFORMER_IND_CODE', 'IMPROVEMENT_IND_CODE', 'COMPARE_IND_CODE', 'INDICATOR_VALUE']
+    ] = '002', '999', '999', '999', None
+
+    # Save the updated DataFrame
+    hsp_ind_organization_fact33.to_csv(data_dir + f'hsp_ind_organization_fact{ind_id}_final.csv', index=False)
+
+apply_suppression(yr=2024, ind_id=33)  # Apply suppression for LOS indicator (change yr and ind_id as needed)
+
+
+def final_submit(ind_id, yr):
+    # Update IMPROVEMENT_IND_CODE and COMPARE_IND_CODE for the previous fiscal year
+    prev_yr = yr - 1
+    hsp_ind_organization_fact33.loc[
+        (hsp_ind_organization_fact33['FISCAL_YEAR_WH_ID'] == prev_yr) &
+        (hsp_ind_organization_fact33['IMPROVEMENT_IND_CODE'].isin(['001', '002', '003'])),
+        'IMPROVEMENT_IND_CODE'
+    ] = '999'
+
+    hsp_ind_organization_fact33.loc[
+        (hsp_ind_organization_fact33['FISCAL_YEAR_WH_ID'] == prev_yr) &
+        (hsp_ind_organization_fact33['COMPARE_IND_CODE'].isin(['001', '002', '003'])),
+        'COMPARE_IND_CODE'
+    ] = '999'
+
+    # Save the updated DataFrame
+    hsp_ind_organization_fact33.to_csv(data_dir + f'hsp_ind_organization_fact{ind_id}_final.csv', index=False)
+
+final_submit(ind_id=33, yr=2024)  # Final submit for LOS indicator (change ind_id and yr as needed)
+
+
+def check_organization_changes(ind_id):
+    # Load the original and updated data
+    original_data = pd.read_csv(data_dir + f'hsp_ind_organization_fact{ind_id}.csv')
+    updated_data = pd.read_csv(data_dir + f'hsp_ind_organization_fact{ind_id}_final.csv')
+
+    # Identify changes in IMPROVEMENT_IND_CODE and COMPARE_IND_CODE
+    changed_orgs = updated_data[
+        (updated_data['IMPROVEMENT_IND_CODE'] != original_data['IMPROVEMENT_IND_CODE']) |
+        (updated_data['COMPARE_IND_CODE'] != original_data['COMPARE_IND_CODE'])
+    ]
+
+    # Print the list of organizations with changes
+    print(f"Organizations with changes in IMPROVEMENT_IND_CODE or COMPARE_IND_CODE for indicator {ind_id}:")
+    print(changed_orgs[['organization_id', 'IMPROVEMENT_IND_CODE', 'COMPARE_IND_CODE']])
+
+def check_organization_suppression(ind_id):
+    # Load the original and updated data
+    original_data = pd.read_csv(data_dir + f'hsp_ind_organization_fact{ind_id}.csv')
+    updated_data = pd.read_csv(data_dir + f'hsp_ind_organization_fact{ind_id}_final.csv')
+
+    # Identify organizations with SUPPRESSED status
+    suppressed_orgs = updated_data[updated_data['INDICATOR_SUPPRESSION_CODE'] == '001']
+
+    # Print the list of suppressed organizations
+    print(f"Suppressed organizations for indicator {ind_id}:")
+    print(suppressed_orgs[['organization_id', 'INDICATOR_SUPPRESSION_CODE']])
+
+# Check changes for the LOS indicator
+check_organization_changes(ind_id=33)
+
+# Check suppression status for the LOS indicator
+check_organization_suppression(ind_id=33)
+
+# Check changes for the TPIA indicator
+check_organization_changes(ind_id=34)
+
+# Check suppression status for the TPIA indicator
+check_organization_suppression(ind_id=34)
+
+
+
+
+
