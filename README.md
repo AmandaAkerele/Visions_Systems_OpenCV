@@ -262,5 +262,291 @@ tpia_reg_com_trd = pd.merge(tpia_reg_com_trd_av1[['REGION_ID', 'PERCENTILE_90', 
                            on=['REGION_ID'], how='left')
 display(tpia_reg_com_trd)
 
+//////rabs rowwww
+
+los_org_com_trd_av1=pd.merge(los_corp['CORP_ID'], los_org_cmp_a[['CORP_ID','COMPARE_IND_CODE','PERCENTILE_90']],on=['CORP_ID'],how='left')
+los_org_com_trd_a=pd.merge(los_org_com_trd_av1[['CORP_ID','PERCENTILE_90','COMPARE_IND_CODE']], los_org_trend_b[['CORP_ID','IMPROVEMENT_IND_CODE']],on=['CORP_ID'],how='left')
+merged_df=pd.merge(los_org_com_trd_a, ed_nacrs_flg_1, on='CORP_ID', how='left', indicator=True)
+los_org_com_trd=merged_df[merged_df['_merge']=='left_only']
+los_org_com_trd=los_org_com_trd.drop(columns=['_merge','SUBMISSION_FISCAL_YEAR','NACRS_ED_FLG'])
+display(los_org_com_trd)
+
+tpia_org_com_trd_av1=pd.merge(tpia_corp['CORP_ID'], tpia_org_cmp_a[['CORP_ID','COMPARE_IND_CODE','PERCENTILE_90']],on=['CORP_ID'],how='left')
+tpia_org_com_trd_a=pd.merge(tpia_org_com_trd_av1[['CORP_ID','PERCENTILE_90','COMPARE_IND_CODE']], tpia_org_trend_b[['CORP_ID','IMPROVEMENT_IND_CODE']],on=['CORP_ID'],how='left')
+merged_df=pd.merge(tpia_org_com_trd_a, ed_nacrs_flg_1, on='CORP_ID', how='left', indicator=True)
+tpia_org_com_trd=merged_df[merged_df['_merge']=='left_only']
+tpia_org_com_trd=tpia_org_com_trd.drop(columns=['_merge','SUBMISSION_FISCAL_YEAR','NACRS_ED_FLG'])
+display(tpia_org_com_trd)
+
+los_reg_a=los_reg.rename(columns={'NEW_REGION_ID' : 'REGION_ID'})
+los_reg_com_trd_av1=pd.merge(los_reg_a['REGION_ID'], los_reg_cmp_a[['REGION_ID','COMPARE_IND_CODE','PERCENTILE_90']],on=['REGION_ID'],how='left')
+los_reg_com_trd=pd.merge(los_reg_com_trd_av1[['REGION_ID','PERCENTILE_90','COMPARE_IND_CODE']], los_reg_trend_b[['REGION_ID','IMPROVEMENT_IND_CODE']],on=['REGION_ID'],how='left')
+display(los_reg_com_trd)
+
+tpia_reg_a=tpia_reg.rename(columns={'NEW_REGION_ID' : 'REGION_ID'})
+tpia_reg_com_trd_av1=pd.merge(tpia_reg_a['REGION_ID'], tpia_reg_cmp_a[['REGION_ID','COMPARE_IND_CODE','PERCENTILE_90']],on=['REGION_ID'],how='left')
+tpia_reg_com_trd=pd.merge(tpia_reg_com_trd_av1[['REGION_ID','PERCENTILE_90','COMPARE_IND_CODE']], tpia_reg_trend_b[['REGION_ID','IMPROVEMENT_IND_CODE']],on=['REGION_ID'],how='left')
+display(tpia_reg_com_trd)
+
+sas.saslib('hsp_last', path=r"M:\Groups\eReporting\OurHealthSystem\Data Submission\17. Archive - Fall 2022")
+hsp_ind_organization_fact_los_a = sas.sasdata(table='hsp_ind_organization_fact33', libref='hsp_last') 
+hsp_ind_organization_fact_los=hsp_ind_organization_fact_los_a.to_df()
+hsp_ind_organization_fact_los=hsp_ind_organization_fact_los.rename(columns=lambda x: x.upper())
+hsp_ind_organization_fact_los=hsp_ind_organization_fact_los[hsp_ind_organization_fact_los.FISCAL_YEAR_WH_ID !=17]
+display(hsp_ind_organization_fact_los)
+
+
+hsp_ind_organization_fact_tpia_a = sas.sasdata(table='hsp_ind_organization_fact34', libref='hsp_last') 
+hsp_ind_organization_fact_tpia=hsp_ind_organization_fact_tpia_a.to_df()
+hsp_ind_organization_fact_tpia=hsp_ind_organization_fact_tpia.rename(columns=lambda x: x.upper())
+hsp_ind_organization_fact_tpia=hsp_ind_organization_fact_tpia[hsp_ind_organization_fact_tpia.FISCAL_YEAR_WH_ID !=17]
+display(hsp_ind_organization_fact_tpia)
+
+sas.saslib('hsp_org', path=r"M:\Groups\eReporting\OurHealthSystem\Lookup Tables")
+hsp_organization_ext_a = sas.sasdata(table='hsp_organization_ext', libref='hsp_org') 
+hsp_organization_ext=hsp_organization_ext_a.to_df()
+hsp_organization_ext=hsp_organization_ext.rename(columns=lambda x: x.upper())
+display(hsp_organization_ext)
+
+
+hsp_ind_organization_fact_los['ORGANIZATION_ID']=hsp_ind_organization_fact_los['ORGANIZATION_ID'].apply(lambda x: 81180 if x==5085 else x)
+hsp_ind_organization_fact_los['ORGANIZATION_ID']=hsp_ind_organization_fact_los['ORGANIZATION_ID'].apply(lambda x: 81263 if x==5049 else x)
+display(hsp_ind_organization_fact_los)
+
+hsp_ind_organization_fact_tpia['ORGANIZATION_ID']=hsp_ind_organization_fact_tpia['ORGANIZATION_ID'].apply(lambda x: 81180 if x==5085 else x)
+hsp_ind_organization_fact_tpia['ORGANIZATION_ID']=hsp_ind_organization_fact_tpia['ORGANIZATION_ID'].apply(lambda x: 81263 if x==5049 else x)
+display(hsp_ind_organization_fact_tpia)
+
+
+test=hsp_ind_organization_fact_los[hsp_ind_organization_fact_los['ORGANIZATION_ID'].isin([81118,5049,5085,81180,81263])]
+display(test)
+
+test2=hsp_ind_organization_fact_tpia[hsp_ind_organization_fact_tpia['ORGANIZATION_ID'].isin([81118,5049,5085,81180,81263])]
+display(test2)
+
+
+
+# Constant values for org, reg
+constant_org_regLOS = {
+    "INDICATOR_CODE": "033",
+    "FISCAL_YEAR_WH_ID": 22,
+    "SEX_WH_ID": 3,
+    "INDICATOR_SUPPRESSION_CODE": '007',
+    "TOP_PERFORMER_IND_CODE": '999',
+    "DATA_PERIOD_CODE": "033",
+    "DATA_PERIOD_TYPE_CODE": 'FY'
+}
+constant_org_regTPIA = {
+    "INDICATOR_CODE": "034",
+    "FISCAL_YEAR_WH_ID": 22,
+    "SEX_WH_ID": 3,
+    "INDICATOR_SUPPRESSION_CODE": '007',
+    "TOP_PERFORMER_IND_CODE": '999',
+    "DATA_PERIOD_CODE": "034",
+    "DATA_PERIOD_TYPE_CODE": 'FY'
+}
+# Function to prepare DataFrame
+def prepare_org_regLOS(df, id_col):
+    df = df.rename(columns={id_col: 'ORGANIZATION_ID', 'PERCENTILE_90': 'INDICATOR_VALUE'})
+    for col, value in constant_org_regLOS.items():
+        df[col] = value
+    df = df.reindex(columns=hsp_ind_organization_fact_los.columns)
+    return df
+
+# Prepare data
+los_org_prepared = prepare_org_regLOS(los_org_com_trd, 'CORP_ID')
+los_reg_prepared = prepare_org_regLOS(los_reg_com_trd, 'REGION_ID')
+
+# Function to prepare DataFrame
+def prepare_org_regTPIA(df, id_col):
+    df = df.rename(columns={id_col: 'ORGANIZATION_ID', 'PERCENTILE_90': 'INDICATOR_VALUE'})
+    for col, value in constant_org_regTPIA.items():
+        df[col] = value
+    df = df.reindex(columns=hsp_ind_organization_fact_tpia.columns)
+    return df
+tpia_org_prepared = prepare_org_regTPIA(tpia_org_com_trd, 'CORP_ID')
+tpia_reg_prepared = prepare_org_regTPIA(tpia_reg_com_trd, 'REGION_ID')
+
+constant_los = {
+    "INDICATOR_CODE": "033",
+    "FISCAL_YEAR_WH_ID": 22,
+    "SEX_WH_ID": 3,
+    "INDICATOR_SUPPRESSION_CODE": '007',
+    "TOP_PERFORMER_IND_CODE": '999',
+    "IMPROVEMENT_IND_CODE": '999',
+    "COMPARE_IND_CODE": '999',
+    "DATA_PERIOD_CODE": "033",
+    "DATA_PERIOD_TYPE_CODE": 'FY'
+}
+constant_tpia = {
+    "INDICATOR_CODE": "034",
+    "FISCAL_YEAR_WH_ID": 22,
+    "SEX_WH_ID": 3,
+    "INDICATOR_SUPPRESSION_CODE": '007',
+    "TOP_PERFORMER_IND_CODE": '999',
+    "IMPROVEMENT_IND_CODE": '999',
+    "COMPARE_IND_CODE": '999',
+    "DATA_PERIOD_CODE": "034",
+    "DATA_PERIOD_TYPE_CODE": 'FY'
+}
+
+def prepare_los(df, id_col):
+    df = df.rename(columns={id_col: 'ORGANIZATION_ID', 'PERCENTILE_90': 'INDICATOR_VALUE'})
+    for col, value in constant_los.items():
+        df[col] = value
+    df = df.reindex(columns=hsp_ind_organization_fact_los.columns)
+    return df
+
+los_prov_prepared = prepare_los(los_prov, 'PROVINCE_ID')
+los_peer_prepared = prepare_los(los_peer, 'peer_id')
+los_nat_prepared = prepare_los(LOS_nt, 'NATIONAL_ID')
+
+def prepare_tpia(df, id_col):
+    df = df.rename(columns={id_col: 'ORGANIZATION_ID', 'PERCENTILE_90': 'INDICATOR_VALUE'})
+    for col, value in constant_tpia.items():
+        df[col] = value
+    df = df.reindex(columns=hsp_ind_organization_fact_tpia.columns)
+    return df
+tpia_prov_prepared = prepare_tpia(tpia_prov, 'PROVINCE_ID')
+tpia_peer_prepared =prepare_tpia(tpia_peer, 'peer_id')
+tpia_nat_prepared =prepare_tpia(TPIA_nt, 'NATIONAL_ID')
+
+# Concatenate all DataFrames
+hsp_ind_organization_fact_los_final_a = pd.concat([hsp_ind_organization_fact_los, los_org_prepared,los_reg_prepared, los_prov_prepared, los_peer_prepared, los_nat_prepared ], ignore_index=True)
+hsp_ind_organization_fact_los_final=hsp_ind_organization_fact_los_final_a.sort_values(['ORGANIZATION_ID','FISCAL_YEAR_WH_ID'])
+display(hsp_ind_organization_fact_los_final)
+
+hsp_ind_organization_fact_tpia_final_a = pd.concat([hsp_ind_organization_fact_tpia, tpia_org_prepared,tpia_reg_prepared, tpia_prov_prepared, tpia_peer_prepared, tpia_nat_prepared ], ignore_index=True)
+hsp_ind_organization_fact_tpia_final=hsp_ind_organization_fact_tpia_final_a.sort_values(['ORGANIZATION_ID','FISCAL_YEAR_WH_ID'])
+display(hsp_ind_organization_fact_tpia_final)
+
+
+
+# Define the full range of years
+full_year_range = [18, 19, 20, 21, 22]
+
+# Count the number of rows for each ORGANIZATION_ID
+counts_los = hsp_ind_organization_fact_los_final['ORGANIZATION_ID'].value_counts()
+
+# Find ORGANIZATION_IDs with less than 5 rows
+orgs_to_add_los = counts_los[counts_los < 5].index
+
+# Define a function to get missing years
+def missing_years_los(org_id):
+    existing_years = hsp_ind_organization_fact_los_final[hsp_ind_organization_fact_los_final['ORGANIZATION_ID'] == org_id]['FISCAL_YEAR_WH_ID'].unique()
+    return [year for year in full_year_range if year not in existing_years]
+
+# Prepare dummy data
+dummy_datalos = {column: [] for column in hsp_ind_organization_fact_los_final.columns}
+
+
+# Add dummy rows for each ORGANIZATION_ID with less than 5 rows
+for org_id in orgs_to_add_los:
+    missing_years = missing_years_los(org_id)
+    for year in missing_years:
+        for column in hsp_ind_organization_fact_los_final.columns:
+            if column == 'ORGANIZATION_ID':
+                dummy_datalos[column].append(org_id)
+            elif column == 'FISCAL_YEAR_WH_ID':
+                dummy_datalos[column].append(year)
+            elif column == 'SEX_WH_ID':
+                dummy_datalos[column].append(3)  # Example: numeric column
+            elif column == 'INDICATOR_CODE':
+                dummy_datalos[column].append('033')
+            elif column == 'INDICATOR_SUPPRESSION_CODE':
+                dummy_datalos[column].append('999')
+            elif column=='IMPROVEMENT_IND_CODE':
+                dummy_datalos[column].append('999')
+            elif column =='COMPARE_IND_CODE':
+                dummy_datalos[column].append('999')
+            elif column =='DATA_PERIOD_CODE':
+                dummy_datalos[column].append('033')
+            elif column == 'DATA_PERIOD_TYPE_CODE':
+                dummy_datalos[column].append('FY')    
+            else:   
+                    if hsp_ind_organization_fact_los_final[column].dtype == 'int64' or hsp_ind_organization_fact_los_final[column].dtype == 'float64':
+                        dummy_datalos[column].append(0)  # Default value for numeric columns
+                    else:
+                        dummy_datalos[column].append('999')  # Default value for string columns
+                
+# Convert dummy data to DataFrame
+dummy_los = pd.DataFrame(dummy_datalos)
+
+# Append the dummy data to the original DataFrame
+hsp_ind_organization_fact_los_33_a = pd.concat([hsp_ind_organization_fact_los_final, dummy_los], ignore_index=True)
+
+# Optionally, sort the DataFrame based on ORGANIZATION_ID or any other column
+hsp_ind_organization_fact_los_33_b = hsp_ind_organization_fact_los_33_a.sort_values(by=['ORGANIZATION_ID', 'FISCAL_YEAR_WH_ID'])
+hsp_ind_organization_fact_los_33_c = hsp_ind_organization_fact_los_33_b[hsp_ind_organization_fact_los_33_b['ORGANIZATION_ID'].isin(hsp_organization_ext['ORGANIZATION_ID'])]
+display(hsp_ind_organization_fact_los_33_c)
+# Save the updated DataFrame to a new CSV file, if needed
+# hsp_ind_organization_fact_los_final.to_csv('updated_data.csv', index=False)
+
+
+# Define the full range of years
+full_year_range = [18, 19, 20, 21, 22]
+
+# Count the number of rows for each ORGANIZATION_ID
+counts_tpia = hsp_ind_organization_fact_tpia_final['ORGANIZATION_ID'].value_counts()
+
+# Find ORGANIZATION_IDs with less than 5 rows
+orgs_to_add_tpia = counts_tpia[counts_tpia < 5].index
+
+# Define a function to get missing years
+def get_missing_years(org_id):
+    existing_years = hsp_ind_organization_fact_tpia_final[hsp_ind_organization_fact_tpia_final['ORGANIZATION_ID'] == org_id]['FISCAL_YEAR_WH_ID'].unique()
+    return [year for year in full_year_range if year not in existing_years]
+
+# Prepare dummy data
+dummy_datatpia = {column: [] for column in hsp_ind_organization_fact_tpia_final.columns}
+
+
+# Add dummy rows for each ORGANIZATION_ID with less than 5 rows
+for org_id in org_to_add_tpia:
+    missing_years = get_missing_years(org_id)
+    for year in missing_years:
+        for column in hsp_ind_organization_fact_tpia_final.columns:
+            if column == 'ORGANIZATION_ID':
+                dummy_datatpia[column].append(org_id)
+            elif column == 'FISCAL_YEAR_WH_ID':
+                dummy_datatpia[column].append(year)
+            elif column == 'SEX_WH_ID':
+                dummy_datatpia[column].append(3)  # Example: numeric column
+            elif column == 'INDICATOR_CODE':
+                dummy_datatpia[column].append('034')
+            elif column == 'INDICATOR_SUPPRESSION_CODE':
+                dummy_datatpia[column].append('999')
+            elif column=='IMPROVEMENT_IND_CODE':
+                dummy_datatpia[column].append('999')
+            elif column =='COMPARE_IND_CODE':
+                dummy_datatpia[column].append('999')
+            elif column =='DATA_PERIOD_CODE':
+                dummy_datatpia[column].append('034')
+            elif column == 'DATA_PERIOD_TYPE_CODE':
+                dummy_datatpia[column].append('FY')    
+            else:   
+                    if hsp_ind_organization_fact_tpia_final[column].dtype == 'int64' or hsp_ind_organization_fact_tpia_final[column].dtype == 'float64':
+                        dummy_datatpia[column].append(0)  # Default value for numeric columns
+                    else:
+                        dummy_datatpia[column].append('999')  # Default value for string columns
+                
+# Convert dummy data to DataFrame
+dummy_tpia = pd.DataFrame(dummy_datatpia)
+
+# Append the dummy data to the original DataFrame
+hsp_ind_organization_fact_tpia_34_a = pd.concat([hsp_ind_organization_fact_tpia_final, dummy_tpia], ignore_index=True)
+
+# Optionally, sort the DataFrame based on ORGANIZATION_ID or any other column
+hsp_ind_organization_fact_tpia_34_b = hsp_ind_organization_fact_tpia_34_a.sort_values(by=['ORGANIZATION_ID', 'FISCAL_YEAR_WH_ID'])
+hsp_ind_organization_fact_tpia_34_c = hsp_ind_organization_fact_tpia_34_b[hsp_ind_organization_fact_tpia_34_b['ORGANIZATION_ID'].isin(hsp_organization_ext['ORGANIZATION_ID'])]
+display(hsp_ind_organization_fact_tpia_34_c)
+# Save the updated DataFrame to a new CSV file, if needed
+# hsp_ind_organization_fact_tpia_final.to_csv('updated_data.csv', index=False)
+
+
+test1=hsp_ind_organization_fact_tpia_34_c[hsp_ind_organization_fact_tpia_34_c['ORGANIZATION_ID'].isin([693,2044,81410,7020])]
+display(test1)
+test2=hsp_ind_organization_fact_los_33_c[hsp_ind_organization_fact_los_33_c['ORGANIZATION_ID'].isin([693,2044,81410,300])]
+display(test2)
 
 
