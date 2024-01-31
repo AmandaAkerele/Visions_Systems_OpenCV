@@ -550,3 +550,249 @@ test2=hsp_ind_organization_fact_los_33_c[hsp_ind_organization_fact_los_33_c['ORG
 display(test2)
 
 
+////// shorten Rabs py
+# Common function to prepare data
+def prepare_data(source_df, id_col, indicator_code):
+    merged_av1 = pd.merge(source_df[id_col], source_df[['CORP_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']], on=['CORP_ID'], how='left')
+    merged_a = pd.merge(merged_av1[['CORP_ID', 'PERCENTILE_90', 'COMPARE_IND_CODE']], source_df[['CORP_ID', 'IMPROVEMENT_IND_CODE']], on=['CORP_ID'], how='left')
+    merged_df = pd.merge(merged_a, ed_nacrs_flg_1, on='CORP_ID', how='left', indicator=True)
+    result_df = merged_df[merged_df['_merge']=='left_only'].drop(columns=['_merge', 'SUBMISSION_FISCAL_YEAR', 'NACRS_ED_FLG'])
+    display(result_df)
+
+# Prepare LOS data
+prepare_data(los_corp, 'CORP_ID', '033')
+
+# Prepare TPIA data
+prepare_data(tpia_corp, 'CORP_ID', '034')
+
+# Prepare LOS Region data
+prepare_data(los_reg.rename(columns={'NEW_REGION_ID': 'REGION_ID'}), 'REGION_ID', '033')
+
+# Prepare TPIA Region data
+prepare_data(tpia_reg.rename(columns={'NEW_REGION_ID': 'REGION_ID'}), 'REGION_ID', '034')
+
+# Load data from SAS tables
+sas.saslib('hsp_last', path=r"M:\Groups\eReporting\OurHealthSystem\Data Submission\17. Archive - Fall 2022")
+hsp_ind_organization_fact_los_a = sas.sasdata(table='hsp_ind_organization_fact33', libref='hsp_last') 
+hsp_ind_organization_fact_los = hsp_ind_organization_fact_los_a.to_df()
+hsp_ind_organization_fact_los = hsp_ind_organization_fact_los.rename(columns=lambda x: x.upper())
+hsp_ind_organization_fact_los = hsp_ind_organization_fact_los[hsp_ind_organization_fact_los.FISCAL_YEAR_WH_ID != 17]
+display(hsp_ind_organization_fact_los)
+
+hsp_ind_organization_fact_tpia_a = sas.sasdata(table='hsp_ind_organization_fact34', libref='hsp_last') 
+hsp_ind_organization_fact_tpia = hsp_ind_organization_fact_tpia_a.to_df()
+hsp_ind_organization_fact_tpia = hsp_ind_organization_fact_tpia.rename(columns=lambda x: x.upper())
+hsp_ind_organization_fact_tpia = hsp_ind_organization_fact_tpia[hsp_ind_organization_fact_tpia.FISCAL_YEAR_WH_ID != 17]
+display(hsp_ind_organization_fact_tpia)
+
+# ... (Continuation of your code)
+# ... (Previous code)
+
+# Rename columns and apply organization ID mappings for LOS and TPIA
+hsp_ind_organization_fact_los['ORGANIZATION_ID'] = hsp_ind_organization_fact_los['ORGANIZATION_ID'].replace({5085: 81180, 5049: 81263})
+hsp_ind_organization_fact_tpia['ORGANIZATION_ID'] = hsp_ind_organization_fact_tpia['ORGANIZATION_ID'].replace({5085: 81180, 5049: 81263})
+display(hsp_ind_organization_fact_los)
+display(hsp_ind_organization_fact_tpia)
+
+# Filter data for specific organization IDs
+test_los = hsp_ind_organization_fact_los[hsp_ind_organization_fact_los['ORGANIZATION_ID'].isin([81118, 5049, 5085, 81180, 81263])]
+display(test_los)
+
+test_tpia = hsp_ind_organization_fact_tpia[hsp_ind_organization_fact_tpia['ORGANIZATION_ID'].isin([81118, 5049, 5085, 81180, 81263])]
+display(test_tpia)
+
+# Define common constants for organization and region
+constants = {
+    "FISCAL_YEAR_WH_ID": 22,
+    "SEX_WH_ID": 3,
+    "INDICATOR_SUPPRESSION_CODE": '007',
+    "TOP_PERFORMER_IND_CODE": '999',
+    "DATA_PERIOD_TYPE_CODE": 'FY'
+}
+
+# Function to prepare data for LOS and TPIA
+def prepare_data(df, id_col, indicator_code):
+    df = df.rename(columns={id_col: 'ORGANIZATION_ID', 'PERCENTILE_90': 'INDICATOR_VALUE'})
+    df['INDICATOR_CODE'] = indicator_code
+    for col, value in constants.items():
+        df[col] = value
+    df = df.reindex(columns=hsp_ind_organization_fact_los.columns)
+    return df
+
+# Prepare data for LOS and TPIA
+los_org_prepared = prepare_data(los_org_com_trd, 'CORP_ID', '033')
+tpia_org_prepared = prepare_data(tpia_org_com_trd, 'CORP_ID', '034')
+
+los_reg_prepared = prepare_data(los_reg.rename(columns={'NEW_REGION_ID': 'REGION_ID'}), 'REGION_ID', '033')
+tpia_reg_prepared = prepare_data(tpia_reg.rename(columns={'NEW_REGION_ID': 'REGION_ID'}), 'REGION_ID', '034')
+
+# Concatenate DataFrames for LOS and TPIA
+hsp_ind_organization_fact_los_final = pd.concat([hsp_ind_organization_fact_los, los_org_prepared, los_reg_prepared], ignore_index=True)
+display(hsp_ind_organization_fact_los_final)
+
+hsp_ind_organization_fact_tpia_final = pd.concat([hsp_ind_organization_fact_tpia, tpia_org_prepared, tpia_reg_prepared], ignore_index=True)
+display(hsp_ind_organization_fact_tpia_final)
+
+# ... (Continuation of your code)
+# ... (Previous code)
+
+# Define the full range of fiscal years
+full_year_range = [18, 19, 20, 21, 22]
+
+# Function to get missing years for a given organization ID
+def missing_years(df, org_id):
+    existing_years = df[df['ORGANIZATION_ID'] == org_id]['FISCAL_YEAR_WH_ID'].unique()
+    return [year for year in full_year_range if year not in existing_years]
+
+# Define a function to create dummy data
+def create_dummy_data(df, org_id, indicator_code):
+    dummy_data = {column: [] for column in df.columns}
+    missing_years_list = missing_years(df, org_id)
+    
+    for year in missing_years_list:
+        for column in df.columns:
+            if column == 'ORGANIZATION_ID':
+                dummy_data[column].append(org_id)
+            elif column == 'FISCAL_YEAR_WH_ID':
+                dummy_data[column].append(year)
+            elif column == 'SEX_WH_ID':
+                dummy_data[column].append(3)  # Example: numeric column
+            elif column == 'INDICATOR_CODE':
+                dummy_data[column].append(indicator_code)
+            elif column == 'INDICATOR_SUPPRESSION_CODE':
+                dummy_data[column].append('999')
+            elif column == 'IMPROVEMENT_IND_CODE':
+                dummy_data[column].append('999')
+            elif column == 'COMPARE_IND_CODE':
+                dummy_data[column].append('999')
+            elif column == 'DATA_PERIOD_CODE':
+                dummy_data[column].append(indicator_code)
+            elif column == 'DATA_PERIOD_TYPE_CODE':
+                dummy_data[column].append('FY')
+            else:
+                if df[column].dtype == 'int64' or df[column].dtype == 'float64':
+                    dummy_data[column].append(0)  # Default value for numeric columns
+                else:
+                    dummy_data[column].append('999')  # Default value for string columns
+                    
+    return pd.DataFrame(dummy_data)
+
+# Identify organizations with less than 5 rows
+counts_los = hsp_ind_organization_fact_los_final['ORGANIZATION_ID'].value_counts()
+orgs_to_add_los = counts_los[counts_los < 5].index
+
+# Create dummy data for LOS
+dummy_los_data = pd.concat([create_dummy_data(hsp_ind_organization_fact_los_final, org_id, '033') for org_id in orgs_to_add_los], ignore_index=True)
+hsp_ind_organization_fact_los_final = pd.concat([hsp_ind_organization_fact_los_final, dummy_los_data], ignore_index=True)
+
+# Optionally, sort the DataFrame based on ORGANIZATION_ID and FISCAL_YEAR_WH_ID
+hsp_ind_organization_fact_los_final = hsp_ind_organization_fact_los_final.sort_values(by=['ORGANIZATION_ID', 'FISCAL_YEAR_WH_ID'])
+display(hsp_ind_organization_fact_los_final)
+
+# ... (Continuation of your code)
+
+# Identify organizations with less than 5 rows for TPIA
+counts_tpia = hsp_ind_organization_fact_tpia_final['ORGANIZATION_ID'].value_counts()
+orgs_to_add_tpia = counts_tpia[counts_tpia < 5].index
+
+# Create dummy data for TPIA
+dummy_tpia_data = pd.concat([create_dummy_data(hsp_ind_organization_fact_tpia_final, org_id, '034') for org_id in orgs_to_add_tpia], ignore_index=True)
+hsp_ind_organization_fact_tpia_final = pd.concat([hsp_ind_organization_fact_tpia_final, dummy_tpia_data], ignore_index=True)
+
+# Optionally, sort the DataFrame based on ORGANIZATION_ID and FISCAL_YEAR_WH_ID
+hsp_ind_organization_fact_tpia_final = hsp_ind_organization_fact_tpia_final.sort_values(by=['ORGANIZATION_ID', 'FISCAL_YEAR_WH_ID'])
+display(hsp_ind_organization_fact_tpia_final)
+
+# ... (Continuation of your code)
+
+# Filtering specific organization IDs
+test_los = hsp_ind_organization_fact_los_final[hsp_ind_organization_fact_los_final['ORGANIZATION_ID'].isin([81118, 5049, 5085, 81180, 81263])]
+display(test_los)
+
+test_tpia = hsp_ind_organization_fact_tpia_final[hsp_ind_organization_fact_tpia_final['ORGANIZATION_ID'].isin([81118, 5049, 5085, 81180, 81263])]
+display(test_tpia)
+
+# ... (Continuation of your code)
+
+or 
+
+# ... (Previous code)
+
+# Define the full range of fiscal years
+full_year_range = [18, 19, 20, 21, 22]
+
+# Function to get missing years for a given organization ID
+def missing_years(df, org_id):
+    existing_years = df[df['ORGANIZATION_ID'] == org_id]['FISCAL_YEAR_WH_ID'].unique()
+    return [year for year in full_year_range if year not in existing_years]
+
+# Define a function to create dummy data
+def create_dummy_data(df, org_id, indicator_code):
+    dummy_data = {column: [] for column in df.columns}
+    missing_years_list = missing_years(df, org_id)
+    
+    for year in missing_years_list:
+        for column in df.columns:
+            if column == 'ORGANIZATION_ID':
+                dummy_data[column].append(org_id)
+            elif column == 'FISCAL_YEAR_WH_ID':
+                dummy_data[column].append(year)
+            elif column == 'SEX_WH_ID':
+                dummy_data[column].append(3)  # Example: numeric column
+            elif column == 'INDICATOR_CODE':
+                dummy_data[column].append(indicator_code)
+            elif column == 'INDICATOR_SUPPRESSION_CODE':
+                dummy_data[column].append('999')
+            elif column == 'IMPROVEMENT_IND_CODE':
+                dummy_data[column].append('999')
+            elif column == 'COMPARE_IND_CODE':
+                dummy_data[column].append('999')
+            elif column == 'DATA_PERIOD_CODE':
+                dummy_data[column].append(indicator_code)
+            elif column == 'DATA_PERIOD_TYPE_CODE':
+                dummy_data[column].append('FY')
+            else:
+                if df[column].dtype == 'int64' or df[column].dtype == 'float64':
+                    dummy_data[column].append(0)  # Default value for numeric columns
+                else:
+                    dummy_data[column].append('999')  # Default value for string columns
+                    
+    return pd.DataFrame(dummy_data)
+
+# Identify organizations with less than 5 rows
+counts_los = hsp_ind_organization_fact_los_final['ORGANIZATION_ID'].value_counts()
+orgs_to_add_los = counts_los[counts_los < 5].index
+
+# Create dummy data for LOS
+dummy_los_data = pd.concat([create_dummy_data(hsp_ind_organization_fact_los_final, org_id, '033') for org_id in orgs_to_add_los], ignore_index=True)
+hsp_ind_organization_fact_los_final = pd.concat([hsp_ind_organization_fact_los_final, dummy_los_data], ignore_index=True)
+
+# Optionally, sort the DataFrame based on ORGANIZATION_ID and FISCAL_YEAR_WH_ID
+hsp_ind_organization_fact_los_final = hsp_ind_organization_fact_los_final.sort_values(by=['ORGANIZATION_ID', 'FISCAL_YEAR_WH_ID'])
+display(hsp_ind_organization_fact_los_final)
+
+# ... (Continuation of your code)
+
+# Identify organizations with less than 5 rows for TPIA
+counts_tpia = hsp_ind_organization_fact_tpia_final['ORGANIZATION_ID'].value_counts()
+orgs_to_add_tpia = counts_tpia[counts_tpia < 5].index
+
+# Create dummy data for TPIA
+dummy_tpia_data = pd.concat([create_dummy_data(hsp_ind_organization_fact_tpia_final, org_id, '034') for org_id in orgs_to_add_tpia], ignore_index=True)
+hsp_ind_organization_fact_tpia_final = pd.concat([hsp_ind_organization_fact_tpia_final, dummy_tpia_data], ignore_index=True)
+
+# Optionally, sort the DataFrame based on ORGANIZATION_ID and FISCAL_YEAR_WH_ID
+hsp_ind_organization_fact_tpia_final = hsp_ind_organization_fact_tpia_final.sort_values(by=['ORGANIZATION_ID', 'FISCAL_YEAR_WH_ID'])
+display(hsp_ind_organization_fact_tpia_final)
+
+# ... (Continuation of your code)
+
+# Filtering specific organization IDs
+test_los = hsp_ind_organization_fact_los_final[hsp_ind_organization_fact_los_final['ORGANIZATION_ID'].isin([81118, 5049, 5085, 81180, 81263])]
+display(test_los)
+
+test_tpia = hsp_ind_organization_fact_tpia_final[hsp_ind_organization_fact_tpia_final['ORGANIZATION_ID'].isin([81118, 5049, 5085, 81180, 81263])]
+display(test_tpia)
+
+# ... (Continuation of your code)
+
