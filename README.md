@@ -235,3 +235,102 @@ hsp_ind_organization_fact34 = update_hsp_ind_organization_fact34(hsp_ind_organiz
 
 display(hsp_ind_organization_fact34)
 
+
+
+blended 
+
+
+
+You can blend these two functions together into a single function by creating a common function that takes the DataFrame, fiscal year conditions, organization ID conditions, and suppression code mappings as arguments. Here's how you can do it:
+
+```python
+def update_hsp_ind_organization_fact(df, fiscal_year_conditions, org_id_conditions, suppression_code):
+    def update_columns(df, condition, code, value=None):
+        df.loc[condition, ['INDICATOR_SUPPRESSION_CODE', 'TOP_PERFORMER_IND_CODE', 
+                           'IMPROVEMENT_IND_CODE', 'COMPARE_IND_CODE']] = [code, '999', '999', '999']
+        df.loc[condition, 'INDICATOR_VALUE'] = value
+
+    # Update conditions
+    update_columns(df, fiscal_year_conditions, suppression_code)
+
+    # Update 6 - DQ and partial submission
+    common_condition = (df['FISCAL_YEAR_WH_ID'] < 22) & df['ORGANIZATION_ID'].isin(filtered_ID_PS)
+    update_columns(df, common_condition, '002')
+    update_columns(df, common_condition, '006')
+
+    return df
+
+# Create the list of organization IDs for each function
+organization_ids_to_updateLOS = [600, 2000, 9054, 9058, 80286, 80287, 81404]
+organization_ids_to_updateTPIA = organization_ids_to_updateLOS  # Assuming they are the same
+filtered_ID_PS = [list of organization IDs]  # Define the list of organization IDs for partial submission
+filtered_ID_DQ_TPIA = [list of organization IDs]  # Define the list of organization IDs for DQ and TPIA
+
+# Define fiscal year conditions
+fiscal_year_condition33 = (hsp_ind_organization_fact_los_33_c['FISCAL_YEAR_WH_ID'] == 22)
+fiscal_year_condition34 = (hsp_ind_organization_fact_tpia_34_c['FISCAL_YEAR_WH_ID'] == 22)
+
+# Apply the function for fact33 and fact34 separately
+hsp_ind_organization_fact33 = update_hsp_ind_organization_fact(
+    hsp_ind_organization_fact_los_33_c, fiscal_year_condition33, organization_ids_to_updateLOS, '901'
+)
+
+hsp_ind_organization_fact34 = update_hsp_ind_organization_fact(
+    hsp_ind_organization_fact_tpia_34_c, fiscal_year_condition34, organization_ids_to_updateTPIA, '901'
+)
+
+# Display the updated DataFrames
+display(hsp_ind_organization_fact33)
+display(hsp_ind_organization_fact34)
+```
+
+This code defines a single function `update_hsp_ind_organization_fact` that can be applied to both fact33 and fact34 DataFrames by passing the appropriate fiscal year conditions, organization ID conditions, and suppression code. It also assumes that `organization_ids_to_updateTPIA` and `filtered_ID_PS` are the same for both functions, but you can adjust them as needed.
+
+
+JUST TPIA 
+
+def update_hsp_ind_organization_fact34(df):
+    def update_columns(df, condition, suppression_code, value=None):
+        df.loc[condition, ['INDICATOR_SUPPRESSION_CODE', 'TOP_PERFORMER_IND_CODE', 
+                           'IMPROVEMENT_IND_CODE', 'COMPARE_IND_CODE']] = [suppression_code, '999', '999', '999']
+        df.loc[condition, 'INDICATOR_VALUE'] = value
+
+    # Update 1 and 2
+    update_columns(df, 
+                   (df['FISCAL_YEAR_WH_ID'] == 22) & 
+                   df['ORGANIZATION_ID'].isin([600, 2000, 9054, 9058, 80286, 80287, 81404]), 
+                   '901')
+
+    # Update 3 and 4
+    update_columns(df, 
+                   (df['FISCAL_YEAR_WH_ID'] < 22) & 
+                   df['IMPROVEMENT_IND_CODE'].isin(['001', '002', '003']), 
+                   '999')
+
+    update_columns(df, 
+                   (df['FISCAL_YEAR_WH_ID'] < 22) & 
+                   df['COMPARE_IND_CODE'].isin(['001', '002', '003']), 
+                   '999')
+
+    # Update 5
+    update_columns(df, 
+                   (df['FISCAL_YEAR_WH_ID'] < 22) & 
+                   df['ORGANIZATION_ID'].isin(organization_ids_to_updateTPIA), 
+                   '002')
+
+    # Update 6 - DQ and partial submission
+    update_columns(df, 
+                   (df['FISCAL_YEAR_WH_ID'] < 22) & 
+                   df['ORGANIZATION_ID'].isin(filtered_ID_DQ_TPIA), 
+                   '002')
+
+    update_columns(df, 
+                   (df['FISCAL_YEAR_WH_ID'] < 22) & 
+                   df['ORGANIZATION_ID'].isin(filtered_ID_PS), 
+                   '006')
+
+    return df
+
+# Applying the function
+hsp_ind_organization_fact34 = update_hsp_ind_organization_fact34(hsp_ind_organization_fact_tpia_34_c)
+display(hsp_ind_organization_fact34)
