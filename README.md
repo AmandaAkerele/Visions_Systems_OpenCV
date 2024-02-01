@@ -1324,3 +1324,73 @@ display(hsp_ind_organization_fact_los_33_c)
 # Save the updated DataFrame to a new CSV file, if needed
 # hsp_ind_organization_fact_los_final.to_csv('updated_data.csv', index=False)
 
+
+//////////////////////////////////code blended 
+
+def prepare_dummy_data(df, indicator_code):
+    full_year_range = [18, 19, 20, 21, 22]
+
+    # Count the number of rows for each ORGANIZATION_ID
+    counts = df['ORGANIZATION_ID'].value_counts()
+
+    # Find ORGANIZATION_IDs with less than 5 rows
+    orgs_to_add = counts[counts < 5].index
+
+    # Prepare dummy data
+    dummy_data = []
+
+    # Iterate over ORGANIZATION_IDs with less than 5 rows
+    for org_id in orgs_to_add:
+        # Get existing years
+        existing_years = df[df['ORGANIZATION_ID'] == org_id]['FISCAL_YEAR_WH_ID'].unique()
+        # Find missing years
+        missing_years = [year for year in full_year_range if year not in existing_years]
+
+        # Create and append dummy rows
+        for year in missing_years:
+            dummy_row = {'ORGANIZATION_ID': org_id, 'FISCAL_YEAR_WH_ID': year, 'SEX_WH_ID': 3,
+                         'INDICATOR_CODE': indicator_code, 'INDICATOR_SUPPRESSION_CODE': '999',
+                         'IMPROVEMENT_IND_CODE': '999', 'COMPARE_IND_CODE': '999',
+                         'DATA_PERIOD_CODE': indicator_code, 'DATA_PERIOD_TYPE_CODE': 'FY'}
+
+            # Set default values for other columns
+            for column in df.columns:
+                if column not in dummy_row:
+                    if df[column].dtype in ['int64', 'float64']:
+                        dummy_row[column] = 0  # Default value for numeric columns
+                    else:
+                        dummy_row[column] = '999'  # Default value for string columns
+
+            dummy_data.append(dummy_row)
+
+    # Convert dummy data to DataFrame
+    dummy_df = pd.DataFrame(dummy_data)
+
+    # Append the dummy data to the original DataFrame
+    df = pd.concat([df, dummy_df], ignore_index=True)
+
+    # Optionally, sort the DataFrame based on ORGANIZATION_ID or any other column
+    df = df.sort_values(by=['ORGANIZATION_ID', 'FISCAL_YEAR_WH_ID'])
+
+    # Filter only rows with valid ORGANIZATION_ID
+    df = df[df['ORGANIZATION_ID'].isin(hsp_organization_ext['ORGANIZATION_ID'])]
+
+    return df
+
+# Prepare dummy data for 'los'
+hsp_ind_organization_fact_los_final = prepare_dummy_data(hsp_ind_organization_fact_los_final, '033')
+
+# Prepare dummy data for 'tpia'
+hsp_ind_organization_fact_tpia_final = prepare_dummy_data(hsp_ind_organization_fact_tpia_final, '034')
+
+# Display the results for 'los'
+display(hsp_ind_organization_fact_los_final)
+
+# Display the results for 'tpia'
+display(hsp_ind_organization_fact_tpia_final)
+
+# Save the updated DataFrames to new CSV files, if needed
+# hsp_ind_organization_fact_los_final.to_csv('updated_data_los.csv', index=False)
+# hsp_ind_organization_fact_tpia_final.to_csv('updated_data_tpia.csv', index=False)
+
+
