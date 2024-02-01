@@ -1395,67 +1395,54 @@ display(hsp_ind_organization_fact_tpia_final)
 
 
 another ///////////////////////////////////////////
+import pandas as pd
 
-#prepar datasets for applying suppression codes
-los_supp_all_level = los_supp_org_22[['SUBMISSION_FISCAL_YEAR', 'CORP_ID']]
-los_supp_all_level.rename(columns={'CORP_ID': 'ORGANIZATION_ID'}, inplace=True)
-los_supp_all_level['SUPP_LEVEL'] = 'CORP'
-display(los_supp_all_level)
-region_count = los_supp_reg_22['REGION_ID'].value_counts().reset_index()
-region_count.columns = ['REGION_ID', 'reg_cnt']
-#Insert into los_supp_all_level from los_supp_reg where reg_cnt > 0
-# Filter los_supp_reg first
-filtered_los_supp_reg = los_supp_reg_22[los_supp_reg_22['REGION_ID'].isin(region_count[region_count['reg_cnt'] > 0]['REGION_ID'])]
-# Prepare data for insertion
-insert_los_reg = filtered_los_supp_reg[['REGION_ID']].copy()
-insert_los_reg.rename(columns={'REGION_ID': 'ORGANIZATION_ID'}, inplace=True)
-insert_los_reg['SUPP_LEVEL'] = 'REG'
-# Append data
+def prepare_supp_all_level(supp_org, supp_reg, supp_level):
+    # Prepare the base dataframe
+    all_level = supp_org[['SUBMISSION_FISCAL_YEAR', 'CORP_ID']]
+    all_level.rename(columns={'CORP_ID': 'ORGANIZATION_ID'}, inplace=True)
+    all_level['SUPP_LEVEL'] = supp_level
 
-los_supp_all_level = pd.concat([los_supp_all_level,insert_los_reg], ignore_index=True)
+    # Filter and prepare region data
+    region_count = supp_reg['REGION_ID'].value_counts().reset_index()
+    region_count.columns = ['REGION_ID', 'reg_cnt']
+    filtered_reg = supp_reg[supp_reg['REGION_ID'].isin(region_count[region_count['reg_cnt'] > 0]['REGION_ID'])]
+    insert_reg = filtered_reg[['REGION_ID']].copy()
+    insert_reg.rename(columns={'REGION_ID': 'ORGANIZATION_ID'}, inplace=True)
+    insert_reg['SUPP_LEVEL'] = 'REG'
 
-# Create a list of organization_ids from los_supp_all_level
-organization_ids_to_updateLOS = los_supp_all_level['ORGANIZATION_ID'].unique()
-display(organization_ids_to_updateLOS)
+    # Append and return
+    return pd.concat([all_level, insert_reg], ignore_index=True)
 
+def get_unique_organization_ids(df):
+    return df['ORGANIZATION_ID'].unique()
 
-tpia_supp_all_level = tpia_supp_org[['SUBMISSION_FISCAL_YEAR', 'CORP_ID']]
-tpia_supp_all_level.rename(columns={'CORP_ID': 'ORGANIZATION_ID'}, inplace=True)
-tpia_supp_all_level['SUPP_LEVEL'] = 'CORP'
-display(tpia_supp_all_level)
+# Applying the functions
+los_supp_all_level = prepare_supp_all_level(los_supp_org_22, los_supp_reg_22, 'CORP')
+organization_ids_to_updateLOS = get_unique_organization_ids(los_supp_all_level)
+display(los_supp_all_level, organization_ids_to_updateLOS)
 
-region_count = tpia_supp_reg['REGION_ID'].value_counts().reset_index()
-region_count.columns = ['REGION_ID', 'reg_cnt']
-#Insert into tpia_supp_all_level from tpia_supp_reg where reg_cnt > 0
-# Filter tpia_supp_reg first
-filtered_tpia_supp_reg = tpia_supp_reg[tpia_supp_reg['REGION_ID'].isin(region_count[region_count['reg_cnt'] > 0]['REGION_ID'])]
-# Prepare data for insertion
-insert_tpia_reg = filtered_tpia_supp_reg[['REGION_ID']].copy()
-insert_tpia_reg.rename(columns={'REGION_ID': 'ORGANIZATION_ID'}, inplace=True)
-insert_tpia_reg['SUPP_LEVEL'] = 'REG'
-# Append data
+tpia_supp_all_level = prepare_supp_all_level(tpia_supp_org, tpia_supp_reg, 'CORP')
+organization_ids_to_updateTPIA = get_unique_organization_ids(tpia_supp_all_level)
+display(tpia_supp_all_level, organization_ids_to_updateTPIA)
 
-tpia_supp_all_level = pd.concat([tpia_supp_all_level,insert_tpia_reg], ignore_index=True)
+def filter_ids_by_criteria(ed_facility_org, year, type_value, corp_cnt, ind=None):
+    criteria = {
+        'SUBMISSION_FISCAL_YEAR': year,
+        'TYPE': type_value,
+        'CORP_CNT': corp_cnt
+    }
+    if ind is not None:
+        criteria['IND'] = ind
 
-# Create a list of organization_ids from tpia_supp_all_level
-organization_ids_to_updateTPIA = tpia_supp_all_level['ORGANIZATION_ID'].unique()
-display(organization_ids_to_updateTPIA)
+    filtered_ids = ed_facility_org[ed_facility_org[list(criteria)] == pd.Series(criteria)].dropna()['CORP_ID'].unique()
+    return filtered_ids
 
-#now prepare datasets for DQ and PS
+# Applying the function for DQ and PS
+filtered_ID_DQ_TPIA = filter_ids_by_criteria(ed_facility_org, "2022", 'DQ', 1, "TPIA")
+filtered_ID_PS = filter_ids_by_criteria(ed_facility_org, "2022", 'PS', 1)
 
-filtered_ID_DQ_TPIA = ed_facility_org[
-    (ed_facility_org['SUBMISSION_FISCAL_YEAR'] == "2022") &
-    (ed_facility_org['TYPE'] == 'DQ') &
-    (ed_facility_org['CORP_CNT'] == 1) &
-    (ed_facility_org['IND'] == "TPIA")
-]['CORP_ID'].unique()
-display(filtered_ID_DQ_TPIA)
+display(filtered_ID_DQ_TPIA, filtered_ID_PS)
 
-filtered_ID_PS = ed_facility_org[
-    (ed_facility_org['SUBMISSION_FISCAL_YEAR'] == "2022") &
-    (ed_facility_org['TYPE'] == 'PS') &
-    (ed_facility_org['CORP_CNT'] == 1)
-]['CORP_ID'].unique()
-display(filtered_ID_PS)
 
 
