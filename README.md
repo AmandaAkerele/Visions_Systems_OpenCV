@@ -1212,5 +1212,59 @@ check_organization_suppression(ind_id=34)
 
 
 
+///////////////////////change los to tpia. delete temp 
 
+# Define the full range of years
+full_year_range = [18, 19, 20, 21, 22]
+
+# Count the number of rows for each ORGANIZATION_ID
+counts_los = hsp_ind_organization_fact_los_final['ORGANIZATION_ID'].value_counts()
+
+# Find ORGANIZATION_IDs with less than 5 rows
+orgs_to_add_los = counts_los[counts_los < 5].index
+
+# Prepare dummy data
+dummy_data = []
+
+# Iterate over ORGANIZATION_IDs with less than 5 rows
+for org_id in orgs_to_add_los:
+    # Get existing years
+    existing_years = hsp_ind_organization_fact_los_final[hsp_ind_organization_fact_los_final['ORGANIZATION_ID'] == org_id]['FISCAL_YEAR_WH_ID'].unique()
+    # Find missing years
+    missing_years = [year for year in full_year_range if year not in existing_years]
+
+    # Create and append dummy rows
+    for year in missing_years:
+        dummy_row = {'ORGANIZATION_ID': org_id, 'FISCAL_YEAR_WH_ID': year, 'SEX_WH_ID': 3,
+                     'INDICATOR_CODE': '033', 'INDICATOR_SUPPRESSION_CODE': '999',
+                     'IMPROVEMENT_IND_CODE': '999', 'COMPARE_IND_CODE': '999',
+                     'DATA_PERIOD_CODE': '033', 'DATA_PERIOD_TYPE_CODE': 'FY'}
+        
+        # Set default values for other columns
+        for column in hsp_ind_organization_fact_los_final.columns:
+            if column not in dummy_row:
+                if hsp_ind_organization_fact_los_final[column].dtype in ['int64', 'float64']:
+                    dummy_row[column] = 0  # Default value for numeric columns
+                else:
+                    dummy_row[column] = '999'  # Default value for string columns
+        
+        dummy_data.append(dummy_row)
+
+# Convert dummy data to DataFrame
+dummy_los = pd.DataFrame(dummy_data)
+
+# Append the dummy data to the original DataFrame
+hsp_ind_organization_fact_los_final = pd.concat([hsp_ind_organization_fact_los_final, dummy_los], ignore_index=True)
+
+# Optionally, sort the DataFrame based on ORGANIZATION_ID or any other column
+hsp_ind_organization_fact_los_33_a = hsp_ind_organization_fact_los_final.sort_values(by=['ORGANIZATION_ID', 'FISCAL_YEAR_WH_ID'])
+
+# Filter only rows with valid ORGANIZATION_ID
+hsp_ind_organization_fact_los_33_c = hsp_ind_organization_fact_los_33_a[hsp_ind_organization_fact_los_33_a['ORGANIZATION_ID'].isin(hsp_organization_ext['ORGANIZATION_ID'])]
+
+# Display the result
+display(hsp_ind_organization_fact_los_33_c)
+
+# Save the updated DataFrame to a new CSV file, if needed
+# hsp_ind_organization_fact_los_final.to_csv('updated_data.csv', index=False)
 
