@@ -654,3 +654,38 @@ def custom_round(value):
     return value
 
 
+
+
+correct of round for rabs delette after 
+import pandas as pd
+
+# Example DataFrame
+# hsp_ind_organization_fact33 = pd.DataFrame({'INDICATOR_VALUE': [your_data_here]})
+
+# Round the 'INDICATOR_VALUE' column to one decimal place
+hsp_ind_organization_fact33['INDICATOR_VALUE'] = hsp_ind_organization_fact33['INDICATOR_VALUE'].round(1)
+
+# Display the DataFrame
+display(hsp_ind_organization_fact33)
+///
+
+import pandas as pd
+
+# Assuming hsp_ind_organization_fact33 is your DataFrame
+# Example: hsp_ind_organization_fact33 = pd.DataFrame({'INDICATOR_VALUE': [your_data_here]})
+
+def custom_round(value):
+    str_value = str(value)
+    decimal_index = str_value.find('.')
+    if decimal_index != -1 and decimal_index + 1 < len(str_value):
+        digit_after_decimal = int(str_value[decimal_index + 1])
+        if digit_after_decimal >= 5:
+            return round(value, 1)
+    return value
+
+# Apply custom_round to the 'INDICATOR_VALUE' column
+hsp_ind_organization_fact33['INDICATOR_VALUE'] = hsp_ind_organization_fact33['INDICATOR_VALUE'].apply(custom_round)
+
+# Display the DataFrame
+display(hsp_ind_organization_fact33)
+
