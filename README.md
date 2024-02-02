@@ -449,3 +449,164 @@ And now I get:
 NameError: name 'result_dict' is not defined
 
 So I seem to either get an error about the path, or about not defining something. 
+
+
+
+//////////////////////////////////////////
+
+trying to see if this is a working code 
+
+
+import saspy
+import pandas as pd
+
+def read_nacrs_data(years):
+    data_frames = {}  # Dictionary to store dataframes for each year
+    
+    # Create a SAS session (you need to have the proper SAS configuration)
+    sas = saspy.SASsession(cfgname='cihiprod', results='HTML')
+    
+    for year in years:
+        libref = f'nacrs20{year}'  # Define the SAS library reference
+        
+        # Construct the path for each year's data
+        path = f"J:\\DataHoldings\\PROD\\NACRS\\{year}\\UNRESTRICTED"
+        
+        # Define options for data filtering if needed
+        options = {
+            'keep': 'AM_CARE_KEY FACILITY_AM_CARE_NUM SUBMISSION_FISCAL_YEAR SUBMISSION_PERIOD AMCARE_GROUP_CODE',
+            'where': 'AMCARE_GROUP_CODE = "ED"'
+        }
+        
+        # Create a SAS library
+        sas.saslib(libref, path, options)
+        
+        # Read data from the SAS library and store it in a dataframe
+        data_frames[year] = sas.sasdata(table='ambulatory_care', libref=libref, dsopts=options).to_df()
+    
+    sas.disconnect()  # Disconnect the SAS session when done
+    return data_frames
+
+# List of years for which you want to access data
+years_to_access = [2018, 2019, 2020, 2021, 2022]
+
+# Call the function to read NACRS data for the specified years
+nacrs_data = read_nacrs_data(years_to_access)
+
+# Now, you have a dictionary 'nacrs_data' where each key represents a year, and the corresponding value is a dataframe containing the data for that year.
+# Access the dataframe for 2018
+df_2018 = nacrs_data[2018]
+
+# Filter rows where AMCARE_GROUP_CODE is "ED"
+ed_data_2018 = df_2018[df_2018['AMCARE_GROUP_CODE'] == 'ED']
+
+# Select specific columns
+selected_columns = ed_data_2018[['AM_CARE_KEY', 'FACILITY_AM_CARE_NUM', 'SUBMISSION_FISCAL_YEAR']]
+# Combine data from all years into a single dataframe
+combined_data = pd.concat([nacrs_data[year] for year in years_to_access], ignore_index=True)
+# Calculate summary statistics for a specific column
+mean_am_care_key = combined_data['AM_CARE_KEY'].mean()
+
+# Plot data using libraries like Matplotlib or Seaborn
+import matplotlib.pyplot as plt
+combined_data['SUBMISSION_FISCAL_YEAR'].value_counts().plot(kind='bar')
+plt.title('Counts by Fiscal Year')
+plt.xlabel('Fiscal Year')
+plt.ylabel('Count')
+plt.show()
+
+
+
+
+or 
+
+
+
+import saspy
+import pandas as pd
+
+def read_nacrs_data(years):
+    data_frames = {}  # Dictionary to store dataframes for each year
+    
+    # Create a SAS session (you need to have the proper SAS configuration)
+    sas = saspy.SASsession(cfgname='cihiprod', results='HTML')
+    
+    for year in years:
+        libref = f'nacrs20{year}'  # Define the SAS library reference
+        
+        # Construct the path for each year's data
+        path = f"J:\\DataHoldings\\PROD\\NACRS\\{year}\\UNRESTRICTED"
+        
+        # Define options for data filtering if needed
+        options = {
+            'keep': 'AM_CARE_KEY FACILITY_AM_CARE_NUM SUBMISSION_FISCAL_YEAR SUBMISSION_PERIOD AMCARE_GROUP_CODE',
+            'where': 'AMCARE_GROUP_CODE = "ED"'
+        }
+        
+        # Create a SAS library
+        sas.saslib(libref, path, options)
+        
+        # Read data from the SAS library and store it in a dataframe
+        data_frames[year] = sas.sasdata(table='ambulatory_care', libref=libref, dsopts=options).to_df()
+    
+    sas.disconnect()  # Disconnect the SAS session when done
+    return data_frames
+
+# List of years for which you want to access data
+years_to_access = [2018, 2019, 2020, 2021, 2022]
+
+# Call the function to read NACRS data for the specified years
+nacrs_data = read_nacrs_data(years_to_access)
+
+# Now, you have a dictionary 'nacrs_data' where each key represents a year, and the corresponding value is a dataframe containing the data for that year.
+
+# Example: Access the dataframe for 2018
+df_2018 = nacrs_data[2018]
+
+
+
+
+or 
+
+
+
+import saspy
+import pandas as pd
+
+def read_nacrs_data(years):
+    data_frames = {}  # Dictionary to store dataframes for each year
+    
+    # Create a SAS session (you need to have the proper SAS configuration)
+    sas = saspy.SASsession(cfgname='cihiprod', results='HTML')
+    
+    for year in years:
+        libref = f'nacrs20{year}'  # Define the SAS library reference
+        
+        # Construct the path for each year's data
+        path = f"J:\\DataHoldings\\PROD\\NACRS\\{year}\\UNRESTRICTED"
+        
+        # Define options for data filtering if needed
+        options = {
+            'keep': 'AM_CARE_KEY FACILITY_AM_CARE_NUM SUBMISSION_FISCAL_YEAR SUBMISSION_PERIOD AMCARE_GROUP_CODE',
+            'where': 'AMCARE_GROUP_CODE = "ED"'
+        }
+        
+        # Create a SAS library
+        sas.saslib(libref, path, options)
+        
+        # Read data from the SAS library and store it in a dataframe
+        data_frames[year] = sas.sasdata(table='ambulatory_care', libref=libref, dsopts=options).to_df()
+    
+    sas.disconnect()  # Disconnect the SAS session when done
+    return data_frames
+
+# List of years for which you want to access data
+years_to_access = [2018, 2019, 2020, 2021, 2022]
+
+# Call the function to read NACRS data for the specified years
+nacrs_data = read_nacrs_data(years_to_access)
+
+# Now, you have a dictionary 'nacrs_data' where each key represents a year, and the corresponding value is a dataframe containing the data for that year.
+
+# Example: Access the dataframe for 2018
+df_2018 = nacrs_data[2018]
