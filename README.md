@@ -610,3 +610,12 @@ nacrs_data = read_nacrs_data(years_to_access)
 
 # Example: Access the dataframe for 2018
 df_2018 = nacrs_data[2018]
+
+
+
+/// mine 
+
+tpia_org_22 = pd.merge(tpia_org_22, tpia_supp_org[['CORP_ID']], on='CORP_ID', how='left', indicator=True)
+tpia_org_22 = tpia_org_22[tpia_org_22['_merge'] == 'left_only'].drop(columns=['_merge'])
+tpia_org_22 = tpia_org_22.rename(columns={'SUBMISSION_FISCAL_YEAR': 'FISCAL_YEAR'})
+tpia_org_22['CORP_ID'].replace({5085: 81180, 5049:81263}, inplace=True)
