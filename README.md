@@ -630,3 +630,10 @@ tpia_org_22_a = tpia_org_22_a.rename(columns={'SUBMISSION_FISCAL_YEAR': 'FISCAL_
 # Replace specific values in the 'CORP_ID' column
 tpia_org_22_a['CORP_ID'].replace({5085: 81180, 5049: 81263}, inplace=True)
 
+
+
+roundd
+
+
+df['column_name'] = df['column_name'].apply(lambda x: round(x - 0.05, 1))
+
