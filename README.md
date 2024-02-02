@@ -334,3 +334,107 @@ def update_hsp_ind_organization_fact34(df):
 # Applying the function
 hsp_ind_organization_fact34 = update_hsp_ind_organization_fact34(hsp_ind_organization_fact_tpia_34_c)
 display(hsp_ind_organization_fact34)
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Bron 
+# 1- establishing a saspy sessionusing your CIHI credential. (You need to have access to the SAS server!)
+sas = saspy.SASsession(cfgname='cihiprod', results='HTML')
+# Define a saspy library with the location of the folder of the SAS dataset on sas server.
+sas.saslib('nacrslib', path=r"J:\DataHoldings\PROD\NACRS")
+
+
+yr = str(21)
+
+sas.saslib('nacrs' + yr, path=r"J:\DataHoldings\PROD\NACRS\2021\UNRESTRICTED")
+                               
+# filtering required data elements and subsetting ED records from AMBULATORY_CARE table: 
+options = {
+           'keep': 'AM_CARE_KEY FACILITY_AM_CARE_NUM SUBMISSION_FISCAL_YEAR SUBMISSION_PERIOD AMCARE_GROUP_CODE', # filter by name of the requiured columns
+            'where' : 'AMCARE_GROUP_CODE = "ED" ' # filter by value of the rows in the selected columns
+           }
+
+filtered_NACRS_yr = sas.sasdata(table='ambulatory_care', libref='nacrs' + yr, dsopts=options)
+#select tables, set conditions and limited columns here
+
+
+#Return a sas data object.
+#table parameter: just put the name of the SAS dataset, don't put the sas7bdat extention)
+vars()["filtered_NACRS" + yr + "_AMCARE"] = sas.sasdata(table='AMBULATORY_CARE', libref='nacrs' + yr, dsopts=options)  #8.54 GB SAS dataset
+
+# Convert to dataframe
+vars()["df_filtered_NACRS" + yr + "_AMCARE"] = vars()["filtered_NACRS" + yr + "_AMCARE"].to_df()
+
+# Convert float to int
+vars()["df_filtered_NACRS" + yr + "_AMCARE"]['AM_CARE_KEY'] = vars()["df_filtered_NACRS" + yr + "_AMCARE"]['AM_CARE_KEY'].astype(int)
+
+vars()["df_filtered_NACRS" + yr + "_AMCARE"].info()
+
+And this gives me a dataframe called df_filtered_NACRS21_AMCARE.  Ideally, I would like to write all this into a function that creates 5 dataframes, one for each fiscal year. 
+
+Most recently I have tried this, just for the path part and the column selections – I figured that was easiest to start with – I could be wrong!
+
+I tried this:
+
+def my_read(yr_list, options):
+    result_dict={}
+    for yr in my_yr_ls:
+        # static path with yr embedded into it:  
+       
+        path= 'r"J:\DataHoldings\PROD\NACRS\”+ str(yr) +” \UNRESTRICTED"' 
+
+
+        sas.saslib('nacrs20' + str(yr), path, options)
+
+# filtering required data elements and subsetting ED records from AMBULATORY_CARE table: 
+result_dict[yr] = sas.sasdata(table='ambulatory_care', libref='nacrs' + str(yr), dsopts=options)
+    
+return result_dict
+
+# setting the parameters:
+my_yr_ls = [18,19,20,21,22]
+my_options = {
+           'keep': 'AM_CARE_KEY FACILITY_AM_CARE_NUM SUBMISSION_FISCAL_YEAR SUBMISSION_PERIOD AMCARE_GROUP_CODE', # filter by name of the required columns
+            'where' : 'AMCARE_GROUP_CODE = "ED" ' # filter by value of the rows in the selected columns
+
+         }
+
+#call the function:
+my_read(yr_list, options= my_options)
+
+And I get this message:
+
+SyntaxError: (unicode error) 'unicodeescape' codec can't decode bytes in position 22-23: malformed \N character escape
+
+So I tried a solution like using double slashes to escape the escape:
+
+def my_read(yr_list, options):
+    result_dict={}
+    for yr in my_yr_ls:
+        # static path with yr embedded into it:  
+       
+        path= 'r"J:\\DataHoldings\\PROD\\NACRS\\”+ str(yr) +” \\UNRESTRICTED"' 
+
+
+        sas.saslib('nacrs20' + str(yr), path, options)
+
+# filtering required data elements and subsetting ED records from AMBULATORY_CARE table: 
+result_dict[yr] = sas.sasdata(table='ambulatory_care', libref='nacrs' + str(yr), dsopts=options)
+    
+return result_dict
+
+# setting the parameters:
+my_yr_ls = [18,19,20,21,22]
+my_options = {
+           'keep': 'AM_CARE_KEY FACILITY_AM_CARE_NUM SUBMISSION_FISCAL_YEAR SUBMISSION_PERIOD AMCARE_GROUP_CODE', # filter by name of the required columns
+            'where' : 'AMCARE_GROUP_CODE = "ED" ' # filter by value of the rows in the selected columns
+
+         }
+
+#call the function:
+my_read(yr_list, options= my_options)
+
+And now I get:
+
+NameError: name 'result_dict' is not defined
+
+So I seem to either get an error about the path, or about not defining something. 
