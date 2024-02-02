@@ -615,7 +615,18 @@ df_2018 = nacrs_data[2018]
 
 /// mine 
 
-tpia_org_22 = pd.merge(tpia_org_22, tpia_supp_org[['CORP_ID']], on='CORP_ID', how='left', indicator=True)
-tpia_org_22 = tpia_org_22[tpia_org_22['_merge'] == 'left_only'].drop(columns=['_merge'])
-tpia_org_22 = tpia_org_22.rename(columns={'SUBMISSION_FISCAL_YEAR': 'FISCAL_YEAR'})
-tpia_org_22['CORP_ID'].replace({5085: 81180, 5049:81263}, inplace=True)
+# Create a new dataframe tpia_org_22_a
+tpia_org_22_a = pd.DataFrame()  # Initialize an empty dataframe or create it using your data source
+
+# Merge tpia_org_22 into tpia_org_22_a
+tpia_org_22_a = pd.merge(tpia_org_22_a, tpia_org_22[['CORP_ID']], on='CORP_ID', how='left', indicator=True)
+
+# Filter for rows where the merge indicator is 'left_only'
+tpia_org_22_a = tpia_org_22_a[tpia_org_22_a['_merge'] == 'left_only'].drop(columns=['_merge'])
+
+# Rename the 'SUBMISSION_FISCAL_YEAR' column to 'FISCAL_YEAR'
+tpia_org_22_a = tpia_org_22_a.rename(columns={'SUBMISSION_FISCAL_YEAR': 'FISCAL_YEAR'})
+
+# Replace specific values in the 'CORP_ID' column
+tpia_org_22_a['CORP_ID'].replace({5085: 81180, 5049: 81263}, inplace=True)
+
