@@ -640,16 +640,22 @@ df['column_name'] = df['column_name'].apply(lambda x: round(x - 0.05, 1))
 
 jjjj
 
-# los_reg_com_trd_av1
+import pandas as pd
+
+# los_reg_com_a
 los_reg_a  = los_reg_22.rename(columns={'NEW_REGION_ID': 'REGION_ID'})
-los_reg_com_trd_a = pd.merge(los_reg_a ['REGION_ID'],
-                                los_reg_cmp_a[['REGION_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']],
-                                on=['REGION_ID'], how='left')
+los_reg_com_trd_a = pd.merge(los_reg_a[['REGION_ID']],
+                             los_reg_cmp_a[['REGION_ID', 'COMPARE_IND_CODE', 'PERCENTILE_90']],
+                             on=['REGION_ID'], how='left')
 
 # los_reg_com_trd
 los_reg_com_trd_a = pd.merge(los_reg_com_trd_a[['REGION_ID', 'PERCENTILE_90', 'COMPARE_IND_CODE']],
-                           los_reg_trend_b[['REGION_ID', 'IMPROVEMENT_IND_CODE']],
-                           on=['REGION_ID'], how='left')
+                             los_reg_trend_b[['REGION_ID', 'IMPROVEMENT_IND_CODE']],
+                             on=['REGION_ID'], how='left')
 
+# Round all numerical columns to one decimal place
+los_reg_com_trd_a = los_reg_com_trd_a.round(1)
+
+# Display the DataFrame
 display(los_reg_com_trd_a)
 
