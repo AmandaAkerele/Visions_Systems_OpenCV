@@ -337,6 +337,17 @@ display(hsp_ind_organization_fact34)
 
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 Bron 
+
+.. I am trying to access 5 years of NACRS data/create 5 dataframes, from these SAS folders:
+
+J:\DataHoldings\PROD\NACRS\2018\UNRESTRICTED
+J:\DataHoldings\PROD\NACRS\2019\UNRESTRICTED
+J:\DataHoldings\PROD\NACRS\2020\UNRESTRICTED
+J:\DataHoldings\PROD\NACRS\2021\UNRESTRICTED
+J:\DataHoldings\PROD\NACRS\2022\UNRESTRICTED
+
+I can easily do one year at a time, like this (example = 2021):
+
 # 1- establishing a saspy sessionusing your CIHI credential. (You need to have access to the SAS server!)
 sas = saspy.SASsession(cfgname='cihiprod', results='HTML')
 # Define a saspy library with the location of the folder of the SAS dataset on sas server.
