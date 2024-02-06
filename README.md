@@ -3,34 +3,8 @@ delete soon
 
 SAS CODE 
 
-* trending count(*) must be 3 and /comparison count(*) must be 1 otherwise needs to removed the trending/comparison flag;
-%macro check_trending_and_cmp_cnt(yr,ind,ind_id,column_name);
-proc sql;
-* get organization_id with IMPROVEMENT_IND_CODE/COMPARE_IND_CODE;
-create table &ind._has_&column_name as
-select organization_id
-from hsp_ind_organization_fact&ind_id
-where FISCAL_YEAR_WH_ID=&yr and &column_name in ('001','002','003');
 
-create table &ind._&column_name._cnt as
-select distinct count_3yrs
-from (select organization_id,count(*) as count_3yrs
-from hsp_ind_organization_fact&ind_id
-%if &column_name=IMPROVEMENT_IND_CODE %then %do;
-  where organization_id in (select organization_id from &ind._has_&column_name) and FISCAL_YEAR_WH_ID >=&yr-2 and INDICATOR_VALUE ne .
-%end;
-%if &column_name=COMPARE_IND_CODE %then %do;
-  where organization_id in (select organization_id from &ind._has_&column_name) and FISCAL_YEAR_WH_ID =&yr and INDICATOR_VALUE ne .
-%end;
-group by organization_id);
-quit;
-%mend;
 
-%check_trending_and_cmp_cnt(yr=&add_yr,ind=ELOS,ind_id=33,column_name=IMPROVEMENT_IND_CODE); /* 3 and 2 so need to run remove_trend_flag */
-%check_trending_and_cmp_cnt(yr=&add_yr,ind=TPIA,ind_id=34,column_name=IMPROVEMENT_IND_CODE); /* 3 do not need to run remove_trend_flag */
-
-%check_trending_and_cmp_cnt(yr=&add_yr,ind=ELOS,ind_id=33,column_name=COMPARE_IND_CODE); /* 1 only */
-%check_trending_and_cmp_cnt(yr=&add_yr,ind=TPIA,ind_id=34,column_name=COMPARE_IND_CODE); /* 1 only */
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
