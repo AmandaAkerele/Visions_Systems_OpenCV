@@ -1,7 +1,77 @@
 # Visions_Systems_OpenCV
 delete soon
 
-SAS CODE 
+puthon CODE 
+
+import pandas as pd
+
+# Assuming you have loaded your data into a DataFrame df_hsp_ind_organization_fact
+
+yr = 2024
+
+# Filter dataframe based on criteria for ELOS IMPROVEMENT_IND_CODE
+filtered_df = df_hsp_ind_organization_fact[(df_hsp_ind_organization_fact['FISCAL_YEAR_WH_ID'] == yr) & (df_hsp_ind_organization_fact['IMPROVEMENT_IND_CODE'].isin(['001', '002', '003']))]
+
+# Process data for ELOS IMPROVEMENT_IND_CODE
+if 'IMPROVEMENT_IND_CODE' in filtered_df.columns:
+    filtered_df = filtered_df[(filtered_df['FISCAL_YEAR_WH_ID'] >= yr - 2) & (filtered_df['INDICATOR_VALUE'] != '.')]
+
+count_3yrs_ELOS_IMPROVEMENT = filtered_df.groupby('organization_id')['count_3yrs'].nunique().reset_index()
+
+# Filter dataframe based on criteria for ELOS COMPARE_IND_CODE
+filtered_df = df_hsp_ind_organization_fact[(df_hsp_ind_organization_fact['FISCAL_YEAR_WH_ID'] == yr) & (df_hsp_ind_organization_fact['COMPARE_IND_CODE'].isin(['001', '002', '003']))]
+
+# Process data for ELOS COMPARE_IND_CODE
+if 'COMPARE_IND_CODE' in filtered_df.columns:
+    filtered_df = filtered_df[(filtered_df['FISCAL_YEAR_WH_ID'] == yr) & (filtered_df['INDICATOR_VALUE'] != '.')]
+
+count_3yrs_ELOS_COMPARE = filtered_df.groupby('organization_id')['count_3yrs'].nunique().reset_index()
+
+# Repeat similar steps for TPIA and other cases
+
+print(count_3yrs_ELOS_IMPROVEMENT)
+print(count_3yrs_ELOS_COMPARE)
+# Print results for other cases as needed
+
+
+
+
+
+//:///
+
+import pandas as pd
+
+# Assuming you have loaded your data into a DataFrame df_hsp_ind_organization_fact
+
+yr = 2024
+
+# Define a function to filter and process the data
+def process_data(yr, ind, ind_id, column_name):
+    filtered_df = df_hsp_ind_organization_fact[(df_hsp_ind_organization_fact['FISCAL_YEAR_WH_ID'] == yr) & (df_hsp_ind_organization_fact[column_name].isin(['001', '002', '003']))]
+
+    if column_name == 'IMPROVEMENT_IND_CODE':
+        filtered_df = filtered_df[(filtered_df['FISCAL_YEAR_WH_ID'] >= yr - 2) & (filtered_df['INDICATOR_VALUE'] != '.')]
+    elif column_name == 'COMPARE_IND_CODE':
+        filtered_df = filtered_df[(filtered_df['FISCAL_YEAR_WH_ID'] == yr) & (filtered_df['INDICATOR_VALUE'] != '.')]
+
+    count_3yrs_df = filtered_df.groupby('organization_id')['count_3yrs'].nunique().reset_index()
+
+    return count_3yrs_df
+
+# Call the function for your cases
+add_yr = 2024
+ind_ELOS_IMPROVEMENT = process_data(add_yr, 'ELOS', 33, 'IMPROVEMENT_IND_CODE')
+ind_TPIA_IMPROVEMENT = process_data(add_yr, 'TPIA', 34, 'IMPROVEMENT_IND_CODE')
+ind_ELOS_COMPARE = process_data(add_yr, 'ELOS', 33, 'COMPARE_IND_CODE')
+ind_TPIA_COMPARE = process_data(add_yr, 'TPIA', 34, 'COMPARE_IND_CODE')
+
+print(ind_ELOS_IMPROVEMENT)
+print(ind_TPIA_IMPROVEMENT)
+print(ind_ELOS_COMPARE)
+print(ind_TPIA_COMPARE)
+
+
+
 
 
 
