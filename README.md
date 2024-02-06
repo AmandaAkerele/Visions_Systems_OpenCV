@@ -1,4 +1,61 @@
 # Visions_Systems_OpenCV
+
+def create_code_dataframe(df):
+    # Create tpia_has_improvement_code DataFrame
+    tpia_has_improvement_code = df[
+        (df['FISCAL_YEAR_WH_ID'] == 22) &
+        (df['IMPROVEMENT_IND_CODE'].isin(['001', '002', '003']))
+    ].loc[:, ['ORGANIZATION_ID']].drop_duplicates()
+
+    # Create tpia_has_comparison_code DataFrame
+    tpia_has_comparison_code = df[
+        (df['FISCAL_YEAR_WH_ID'] == 22) &
+        (df['COMPARE_IND_CODE'].isin(['001', '002', '003']))
+    ].loc[:, ['ORGANIZATION_ID']].drop_duplicates()
+
+    # Create tpia_improvement_code_cnt DataFrame
+    tpia_improvement_code_cnt = df[
+        (df['ORGANIZATION_ID'].isin(tpia_has_improvement_code['ORGANIZATION_ID'])) &
+        (df['FISCAL_YEAR_WH_ID'] >= 20) &
+        (~df['INDICATOR_VALUE'].isna())
+    ].groupby('ORGANIZATION_ID').size().reset_index(name='COUNT_3YRS')
+
+    # Create tpia_comparison_code_cnt DataFrame
+    tpia_comparison_code_cnt = df[
+        (df['ORGANIZATION_ID'].isin(tpia_has_comparison_code['ORGANIZATION_ID'])) &
+        (df['FISCAL_YEAR_WH_ID'] == 22) &
+        (~df['INDICATOR_VALUE'].isna())
+    ].groupby('ORGANIZATION_ID').size().reset_index(name='COUNT_3YRS')
+
+    # Create tpia_improvement_ind_code_blank DataFrame
+    tpia_improvement_ind_code_blank = df[
+        (df['ORGANIZATION_ID'].isin(tpia_has_improvement_code['ORGANIZATION_ID'])) &
+        (df['FISCAL_YEAR_WH_ID'] >= 20) &
+        (df['INDICATOR_VALUE'].isna())
+    ].loc[:, ['ORGANIZATION_ID']].drop_duplicates().sort_values('ORGANIZATION_ID')
+
+    # Create tpia_compare_ind_code_blank DataFrame
+    tpia_compare_ind_code_blank = df[
+        (df['ORGANIZATION_ID'].isin(tpia_has_comparison_code['ORGANIZATION_ID'])) &
+        (df['FISCAL_YEAR_WH_ID'] == 22) &
+        (df['INDICATOR_VALUE'].isna())
+    ].loc[:, ['ORGANIZATION_ID']].drop_duplicates().sort_values('ORGANIZATION_ID')
+
+    return {
+        'tpia_has_improvement_code': tpia_has_improvement_code,
+        'tpia_has_comparison_code': tpia_has_comparison_code,
+        'tpia_improvement_code_cnt': tpia_improvement_code_cnt,
+        'tpia_comparison_code_cnt': tpia_comparison_code_cnt,
+        'tpia_improvement_ind_code_blank': tpia_improvement_ind_code_blank,
+        'tpia_compare_ind_code_blank': tpia_compare_ind_code_blank
+    }
+xxxxx cc
+
+
+
+
+
+
 # Assuming tpia is your DataFrame and it has similar columns as hsp_ind_organization_fact33_a
 
 # Applying functions to tpia DataFrame
