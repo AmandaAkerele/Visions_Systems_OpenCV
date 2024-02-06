@@ -31,7 +31,7 @@ display(tpia_compare_ind_code_blank)
 /////////
 
 # Define a function to filter and create DataFrame
-def create_los_dataframe(df, org_ids, year_condition, ind_code_column):
+def create_dataframe(df, org_ids, year_condition, ind_code_column):
     filtered_df = df[
         df['ORGANIZATION_ID'].isin(org_ids) & 
         year_condition &
@@ -39,8 +39,26 @@ def create_los_dataframe(df, org_ids, year_condition, ind_code_column):
     ][['ORGANIZATION_ID']].drop_duplicates().sort_values('ORGANIZATION_ID')
     return filtered_df
 
+# Create tpia_improvement_ind_code_blank DataFrame
+tpia_improvement_ind_code_blank = create_dataframe(
+    hsp_ind_organization_fact33,
+    tpia_has_improvement_code['ORGANIZATION_ID'],
+    (hsp_ind_organization_fact33['FISCAL_YEAR_WH_ID'] >= 20),
+    'IMPROVEMENT_IND_CODE'
+)
+display(tpia_improvement_ind_code_blank)
+
+# Create tpia_compare_ind_code_blank DataFrame
+tpia_compare_ind_code_blank = create_dataframe(
+    hsp_ind_organization_fact33,
+    tpia_has_comparison_code['ORGANIZATION_ID'],
+    (hsp_ind_organization_fact33['FISCAL_YEAR_WH_ID'] == 22),
+    'COMPARE_IND_CODE'
+)
+display(tpia_compare_ind_code_blank)
+
 # Create los_improvement_ind_code_blank DataFrame
-los_improvement_ind_code_blank = create_los_dataframe(
+los_improvement_ind_code_blank = create_dataframe(
     hsp_ind_organization_fact33,
     los_has_improvement_code['ORGANIZATION_ID'],
     (hsp_ind_organization_fact33['FISCAL_YEAR_WH_ID'] >= 20),
@@ -49,15 +67,13 @@ los_improvement_ind_code_blank = create_los_dataframe(
 display(los_improvement_ind_code_blank)
 
 # Create los_compare_ind_code_blank DataFrame
-los_compare_ind_code_blank = create_los_dataframe(
+los_compare_ind_code_blank = create_dataframe(
     hsp_ind_organization_fact33,
     los_has_comparison_code['ORGANIZATION_ID'],
     (hsp_ind_organization_fact33['FISCAL_YEAR_WH_ID'] == 22),
     'COMPARE_IND_CODE'
 )
 display(los_compare_ind_code_blank)
-
-
 
 
 
