@@ -1,239 +1,25 @@
 # Visions_Systems_OpenCV
 
-def create_code_dataframe(df):
-    # Create tpia_has_improvement_code DataFrame
-    tpia_has_improvement_code = df[
-        (df['FISCAL_YEAR_WH_ID'] == 22) &
-        (df['IMPROVEMENT_IND_CODE'].isin(['001', '002', '003']))
-    ].loc[:, ['ORGANIZATION_ID']].drop_duplicates()
-
-    # Create tpia_has_comparison_code DataFrame
-    tpia_has_comparison_code = df[
-        (df['FISCAL_YEAR_WH_ID'] == 22) &
-        (df['COMPARE_IND_CODE'].isin(['001', '002', '003']))
-    ].loc[:, ['ORGANIZATION_ID']].drop_duplicates()
-
-    # Create tpia_improvement_code_cnt DataFrame
-    tpia_improvement_code_cnt = df[
-        (df['ORGANIZATION_ID'].isin(tpia_has_improvement_code['ORGANIZATION_ID'])) &
-        (df['FISCAL_YEAR_WH_ID'] >= 20) &
-        (~df['INDICATOR_VALUE'].isna())
-    ].groupby('ORGANIZATION_ID').size().reset_index(name='COUNT_3YRS')
-
-    # Create tpia_comparison_code_cnt DataFrame
-    tpia_comparison_code_cnt = df[
-        (df['ORGANIZATION_ID'].isin(tpia_has_comparison_code['ORGANIZATION_ID'])) &
-        (df['FISCAL_YEAR_WH_ID'] == 22) &
-        (~df['INDICATOR_VALUE'].isna())
-    ].groupby('ORGANIZATION_ID').size().reset_index(name='COUNT_3YRS')
-
-    # Create tpia_improvement_ind_code_blank DataFrame
-    tpia_improvement_ind_code_blank = df[
-        (df['ORGANIZATION_ID'].isin(tpia_has_improvement_code['ORGANIZATION_ID'])) &
-        (df['FISCAL_YEAR_WH_ID'] >= 20) &
-        (df['INDICATOR_VALUE'].isna())
-    ].loc[:, ['ORGANIZATION_ID']].drop_duplicates().sort_values('ORGANIZATION_ID')
-
-    # Create tpia_compare_ind_code_blank DataFrame
-    tpia_compare_ind_code_blank = df[
-        (df['ORGANIZATION_ID'].isin(tpia_has_comparison_code['ORGANIZATION_ID'])) &
-        (df['FISCAL_YEAR_WH_ID'] == 22) &
-        (df['INDICATOR_VALUE'].isna())
-    ].loc[:, ['ORGANIZATION_ID']].drop_duplicates().sort_values('ORGANIZATION_ID')
-
-    return {
-        'tpia_has_improvement_code': tpia_has_improvement_code,
-        'tpia_has_comparison_code': tpia_has_comparison_code,
-        'tpia_improvement_code_cnt': tpia_improvement_code_cnt,
-        'tpia_comparison_code_cnt': tpia_comparison_code_cnt,
-        'tpia_improvement_ind_code_blank': tpia_improvement_ind_code_blank,
-        'tpia_compare_ind_code_blank': tpia_compare_ind_code_blank
-    }
-xxxxx cc
 
 
-
-
-
-
-# Assuming tpia is your DataFrame and it has similar columns as hsp_ind_organization_fact33_a
-
-# Applying functions to tpia DataFrame
-tpia_has_improvement_code = create_code_dataframe(tpia, 22, 'IMPROVEMENT_IND_CODE', ['001', '002', '003'])
-tpia_has_comparison_code = create_code_dataframe(tpia, 22, 'COMPARE_IND_CODE', ['001', '002', '003'])
-
-tpia_improvement_code_cnt = create_count_dataframe(tpia, tpia_has_improvement_code, 20, 22, 'INDICATOR_VALUE')
-tpia_comparison_code_cnt = create_count_dataframe(tpia, tpia_has_comparison_code, 22, 22, 'INDICATOR_VALUE')
-
-tpia_improvement_ind_code_blank = create_blank_dataframe(tpia, tpia_has_improvement_code, 20, 22, 'INDICATOR_VALUE')
-tpia_compare_ind_code_blank = create_blank_dataframe(tpia, tpia_has_comparison_code, 22, 22, 'INDICATOR_VALUE')
-
-
-tpia up delete 
-
-delete soon
-def create_code_dataframe(df, year, code_column, codes):
-    return df[
-        (df['FISCAL_YEAR_WH_ID'] == year) &
-        (df[code_column].isin(codes))
-    ].loc[:, ['ORGANIZATION_ID']].drop_duplicates()
-
-def create_count_dataframe(df, org_df, start_year, current_year, indicator_column):
-    return df[
-        (df['ORGANIZATION_ID'].isin(org_df['ORGANIZATION_ID'])) &
-        (df['FISCAL_YEAR_WH_ID'] >= start_year) &
-        (df['FISCAL_YEAR_WH_ID'] <= current_year) &
-        (~df[indicator_column].isna())
-    ].groupby('ORGANIZATION_ID').size().reset_index(name='COUNT_3YRS')
-
-def create_blank_dataframe(df, org_df, start_year, current_year, indicator_column):
-    return df[
-        (df['ORGANIZATION_ID'].isin(org_df['ORGANIZATION_ID'])) &
-        (df['FISCAL_YEAR_WH_ID'] >= start_year) &
-        (df['FISCAL_YEAR_WH_ID'] <= current_year) &
-        (df[indicator_column].isna())
-    ].loc[:, ['ORGANIZATION_ID']].drop_duplicates().sort_values('ORGANIZATION_ID')
-
-# Applying functions
-los_has_improvement_code = create_code_dataframe(hsp_ind_organization_fact33_a, 22, 'IMPROVEMENT_IND_CODE', ['001', '002', '003'])
-los_has_comparison_code = create_code_dataframe(hsp_ind_organization_fact33_a, 22, 'COMPARE_IND_CODE', ['001', '002', '003'])
-
-los_improvement_code_cnt = create_count_dataframe(hsp_ind_organization_fact33_a, los_has_improvement_code, 20, 22, 'INDICATOR_VALUE')
-los_comparison_code_cnt = create_count_dataframe(hsp_ind_organization_fact33_a, los_has_comparison_code, 22, 22, 'INDICATOR_VALUE')
-
-los_improvement_ind_code_blank = create_blank_dataframe(hsp_ind_organization_fact33_a, los_has_improvement_code, 20, 22, 'INDICATOR_VALUE')
-los_compare_ind_code_blank = create_blank_dataframe(hsp_ind_organization_fact33_a, los_has_comparison_code, 22, 22, 'INDICATOR_VALUE')
-
-
-
-//// delete 
-
-
-
-
-# Create los_has_improvement_code DataFrame
-los_has_improvement_code = hsp_ind_organization_fact33_a[
-    (hsp_ind_organization_fact33_a['FISCAL_YEAR_WH_ID'] == 22) &
-    (hsp_ind_organization_fact33_a['IMPROVEMENT_IND_CODE'].isin(['001', '002', '003']))
-].loc[:, ['ORGANIZATION_ID']].drop_duplicates()
-
-# Create los_has_comparison_code DataFrame
-los_has_comparison_code = hsp_ind_organization_fact33_a[
-    (hsp_ind_organization_fact33_a['FISCAL_YEAR_WH_ID'] == 22) &
-    (hsp_ind_organization_fact33_a['COMPARE_IND_CODE'].isin(['001', '002', '003']))
-].loc[:, ['ORGANIZATION_ID']].drop_duplicates()
-
-# Create los_improvement_code_cnt DataFrame
-los_improvement_code_cnt = hsp_ind_organization_fact33_a[
-    (hsp_ind_organization_fact33_a['ORGANIZATION_ID'].isin(los_has_improvement_code['ORGANIZATION_ID'])) &
-    (hsp_ind_organization_fact33_a['FISCAL_YEAR_WH_ID'] >= 20) &
-    (~hsp_ind_organization_fact33_a['INDICATOR_VALUE'].isna())
-].groupby('ORGANIZATION_ID').size().reset_index(name='COUNT_3YRS')
-
-# Create los_comparison_code_cnt DataFrame
-los_comparison_code_cnt = hsp_ind_organization_fact33_a[
-    (hsp_ind_organization_fact33_a['ORGANIZATION_ID'].isin(los_has_comparison_code['ORGANIZATION_ID'])) &
-    (hsp_ind_organization_fact33_a['FISCAL_YEAR_WH_ID'] == 22) &
-    (~hsp_ind_organization_fact33_a['INDICATOR_VALUE'].isna())
-].groupby('ORGANIZATION_ID').size().reset_index(name='COUNT_3YRS')
 
 # Create los_improvement_ind_code_blank DataFrame
-los_improvement_ind_code_blank = hsp_ind_organization_fact33_a[
+los_improvement_ind_code_blank = hsp_ind_organization_fact33[
     (hsp_ind_organization_fact33_a['ORGANIZATION_ID'].isin(los_has_improvement_code['ORGANIZATION_ID'])) &
     (hsp_ind_organization_fact33_a['FISCAL_YEAR_WH_ID'] >= 20) &
-    (hsp_ind_organization_fact33_a['INDICATOR_VALUE'].isna())
-].loc[:, ['ORGANIZATION_ID']].drop_duplicates().sort_values('ORGANIZATION_ID')
-
+    (hsp_ind_organization_fact33_a['IMPROVEMENT_IND_CODE'].isna())
+][['ORGANIZATION_ID']].drop_duplicates().sort_values('ORGANIZATION_ID')
+display(los_improvement_ind_code_blank)
 # Create los_compare_ind_code_blank DataFrame
-los_compare_ind_code_blank = hsp_ind_organization_fact33_a[
+los_compare_ind_code_blank = hsp_ind_organization_fact33[
     (hsp_ind_organization_fact33_a['ORGANIZATION_ID'].isin(los_has_comparison_code['ORGANIZATION_ID'])) &
     (hsp_ind_organization_fact33_a['FISCAL_YEAR_WH_ID'] == 22) &
-    (hsp_ind_organization_fact33_a['INDICATOR_VALUE'].isna())
-].loc[:, ['ORGANIZATION_ID']].drop_duplicates().sort_values('ORGANIZATION_ID')
+    (hsp_ind_organization_fact33_a['COMPARE_IND_CODE'].isna())
+][['ORGANIZATION_ID']].drop_duplicates().sort_values('ORGANIZATION_ID')
 
-
-display(los_has_improvement_code)
-display(los_has_comparison_code)
-display(los_improvement_code_cnt)
-display(los_comparison_code_cnt)
-display(los_improvement_ind_code_blank)
 display(los_compare_ind_code_blank)
-test2=hsp_ind_organization_fact33_a[hsp_ind_organization_fact33_a['ORGANIZATION_ID'].isin([20034,99002,120])]
-display(test2)
-test3=hsp_ind_organization_fact33[hsp_ind_organization_fact33['ORGANIZATION_ID'].isin([20034,99002,120])]
-display(test3)
 
-
-///////////RABS ABOVE 
-
-puthon CODE 
-
-import pandas as pd
-
-# Assuming you have loaded your data into a DataFrame df_hsp_ind_organization_fact
-
-yr = 2024
-
-# Filter dataframe based on criteria for ELOS IMPROVEMENT_IND_CODE
-filtered_df = df_hsp_ind_organization_fact[(df_hsp_ind_organization_fact['FISCAL_YEAR_WH_ID'] == yr) & (df_hsp_ind_organization_fact['IMPROVEMENT_IND_CODE'].isin(['001', '002', '003']))]
-
-# Process data for ELOS IMPROVEMENT_IND_CODE
-if 'IMPROVEMENT_IND_CODE' in filtered_df.columns:
-    filtered_df = filtered_df[(filtered_df['FISCAL_YEAR_WH_ID'] >= yr - 2) & (filtered_df['INDICATOR_VALUE'] != '.')]
-
-count_3yrs_ELOS_IMPROVEMENT = filtered_df.groupby('organization_id')['count_3yrs'].nunique().reset_index()
-
-# Filter dataframe based on criteria for ELOS COMPARE_IND_CODE
-filtered_df = df_hsp_ind_organization_fact[(df_hsp_ind_organization_fact['FISCAL_YEAR_WH_ID'] == yr) & (df_hsp_ind_organization_fact['COMPARE_IND_CODE'].isin(['001', '002', '003']))]
-
-# Process data for ELOS COMPARE_IND_CODE
-if 'COMPARE_IND_CODE' in filtered_df.columns:
-    filtered_df = filtered_df[(filtered_df['FISCAL_YEAR_WH_ID'] == yr) & (filtered_df['INDICATOR_VALUE'] != '.')]
-
-count_3yrs_ELOS_COMPARE = filtered_df.groupby('organization_id')['count_3yrs'].nunique().reset_index()
-
-# Repeat similar steps for TPIA and other cases
-
-print(count_3yrs_ELOS_IMPROVEMENT)
-print(count_3yrs_ELOS_COMPARE)
-# Print results for other cases as needed
-
-
-
-
-
-//:///
-
-import pandas as pd
-
-# Assuming you have loaded your data into a DataFrame df_hsp_ind_organization_fact
-
-yr = 2024
-
-# Define a function to filter and process the data
-def process_data(yr, ind, ind_id, column_name):
-    filtered_df = df_hsp_ind_organization_fact[(df_hsp_ind_organization_fact['FISCAL_YEAR_WH_ID'] == yr) & (df_hsp_ind_organization_fact[column_name].isin(['001', '002', '003']))]
-
-    if column_name == 'IMPROVEMENT_IND_CODE':
-        filtered_df = filtered_df[(filtered_df['FISCAL_YEAR_WH_ID'] >= yr - 2) & (filtered_df['INDICATOR_VALUE'] != '.')]
-    elif column_name == 'COMPARE_IND_CODE':
-        filtered_df = filtered_df[(filtered_df['FISCAL_YEAR_WH_ID'] == yr) & (filtered_df['INDICATOR_VALUE'] != '.')]
-
-    count_3yrs_df = filtered_df.groupby('organization_id')['count_3yrs'].nunique().reset_index()
-
-    return count_3yrs_df
-
-# Call the function for your cases
-add_yr = 2024
-ind_ELOS_IMPROVEMENT = process_data(add_yr, 'ELOS', 33, 'IMPROVEMENT_IND_CODE')
-ind_TPIA_IMPROVEMENT = process_data(add_yr, 'TPIA', 34, 'IMPROVEMENT_IND_CODE')
-ind_ELOS_COMPARE = process_data(add_yr, 'ELOS', 33, 'COMPARE_IND_CODE')
-ind_TPIA_COMPARE = process_data(add_yr, 'TPIA', 34, 'COMPARE_IND_CODE')
-
-print(ind_ELOS_IMPROVEMENT)
-print(ind_TPIA_IMPROVEMENT)
-print(ind_ELOS_COMPARE)
-print(ind_TPIA_COMPARE)
+ 
 
 
 
