@@ -1,6 +1,65 @@
 # Visions_Systems_OpenCV
 delete soon
 
+
+
+
+
+# Create los_has_improvement_code DataFrame
+los_has_improvement_code = hsp_ind_organization_fact33_a[
+    (hsp_ind_organization_fact33_a['FISCAL_YEAR_WH_ID'] == 22) &
+    (hsp_ind_organization_fact33_a['IMPROVEMENT_IND_CODE'].isin(['001', '002', '003']))
+].loc[:, ['ORGANIZATION_ID']].drop_duplicates()
+
+# Create los_has_comparison_code DataFrame
+los_has_comparison_code = hsp_ind_organization_fact33_a[
+    (hsp_ind_organization_fact33_a['FISCAL_YEAR_WH_ID'] == 22) &
+    (hsp_ind_organization_fact33_a['COMPARE_IND_CODE'].isin(['001', '002', '003']))
+].loc[:, ['ORGANIZATION_ID']].drop_duplicates()
+
+# Create los_improvement_code_cnt DataFrame
+los_improvement_code_cnt = hsp_ind_organization_fact33_a[
+    (hsp_ind_organization_fact33_a['ORGANIZATION_ID'].isin(los_has_improvement_code['ORGANIZATION_ID'])) &
+    (hsp_ind_organization_fact33_a['FISCAL_YEAR_WH_ID'] >= 20) &
+    (~hsp_ind_organization_fact33_a['INDICATOR_VALUE'].isna())
+].groupby('ORGANIZATION_ID').size().reset_index(name='COUNT_3YRS')
+
+# Create los_comparison_code_cnt DataFrame
+los_comparison_code_cnt = hsp_ind_organization_fact33_a[
+    (hsp_ind_organization_fact33_a['ORGANIZATION_ID'].isin(los_has_comparison_code['ORGANIZATION_ID'])) &
+    (hsp_ind_organization_fact33_a['FISCAL_YEAR_WH_ID'] == 22) &
+    (~hsp_ind_organization_fact33_a['INDICATOR_VALUE'].isna())
+].groupby('ORGANIZATION_ID').size().reset_index(name='COUNT_3YRS')
+
+# Create los_improvement_ind_code_blank DataFrame
+los_improvement_ind_code_blank = hsp_ind_organization_fact33_a[
+    (hsp_ind_organization_fact33_a['ORGANIZATION_ID'].isin(los_has_improvement_code['ORGANIZATION_ID'])) &
+    (hsp_ind_organization_fact33_a['FISCAL_YEAR_WH_ID'] >= 20) &
+    (hsp_ind_organization_fact33_a['INDICATOR_VALUE'].isna())
+].loc[:, ['ORGANIZATION_ID']].drop_duplicates().sort_values('ORGANIZATION_ID')
+
+# Create los_compare_ind_code_blank DataFrame
+los_compare_ind_code_blank = hsp_ind_organization_fact33_a[
+    (hsp_ind_organization_fact33_a['ORGANIZATION_ID'].isin(los_has_comparison_code['ORGANIZATION_ID'])) &
+    (hsp_ind_organization_fact33_a['FISCAL_YEAR_WH_ID'] == 22) &
+    (hsp_ind_organization_fact33_a['INDICATOR_VALUE'].isna())
+].loc[:, ['ORGANIZATION_ID']].drop_duplicates().sort_values('ORGANIZATION_ID')
+
+
+display(los_has_improvement_code)
+display(los_has_comparison_code)
+display(los_improvement_code_cnt)
+display(los_comparison_code_cnt)
+display(los_improvement_ind_code_blank)
+display(los_compare_ind_code_blank)
+test2=hsp_ind_organization_fact33_a[hsp_ind_organization_fact33_a['ORGANIZATION_ID'].isin([20034,99002,120])]
+display(test2)
+test3=hsp_ind_organization_fact33[hsp_ind_organization_fact33['ORGANIZATION_ID'].isin([20034,99002,120])]
+display(test3)
+
+
+///////////RABS ABOVE 
+
 puthon CODE 
 
 import pandas as pd
