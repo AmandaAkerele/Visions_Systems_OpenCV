@@ -1,6 +1,40 @@
 # Visions_Systems_OpenCV
 delete soon
+def create_code_dataframe(df, year, code_column, codes):
+    return df[
+        (df['FISCAL_YEAR_WH_ID'] == year) &
+        (df[code_column].isin(codes))
+    ].loc[:, ['ORGANIZATION_ID']].drop_duplicates()
 
+def create_count_dataframe(df, org_df, start_year, current_year, indicator_column):
+    return df[
+        (df['ORGANIZATION_ID'].isin(org_df['ORGANIZATION_ID'])) &
+        (df['FISCAL_YEAR_WH_ID'] >= start_year) &
+        (df['FISCAL_YEAR_WH_ID'] <= current_year) &
+        (~df[indicator_column].isna())
+    ].groupby('ORGANIZATION_ID').size().reset_index(name='COUNT_3YRS')
+
+def create_blank_dataframe(df, org_df, start_year, current_year, indicator_column):
+    return df[
+        (df['ORGANIZATION_ID'].isin(org_df['ORGANIZATION_ID'])) &
+        (df['FISCAL_YEAR_WH_ID'] >= start_year) &
+        (df['FISCAL_YEAR_WH_ID'] <= current_year) &
+        (df[indicator_column].isna())
+    ].loc[:, ['ORGANIZATION_ID']].drop_duplicates().sort_values('ORGANIZATION_ID')
+
+# Applying functions
+los_has_improvement_code = create_code_dataframe(hsp_ind_organization_fact33_a, 22, 'IMPROVEMENT_IND_CODE', ['001', '002', '003'])
+los_has_comparison_code = create_code_dataframe(hsp_ind_organization_fact33_a, 22, 'COMPARE_IND_CODE', ['001', '002', '003'])
+
+los_improvement_code_cnt = create_count_dataframe(hsp_ind_organization_fact33_a, los_has_improvement_code, 20, 22, 'INDICATOR_VALUE')
+los_comparison_code_cnt = create_count_dataframe(hsp_ind_organization_fact33_a, los_has_comparison_code, 22, 22, 'INDICATOR_VALUE')
+
+los_improvement_ind_code_blank = create_blank_dataframe(hsp_ind_organization_fact33_a, los_has_improvement_code, 20, 22, 'INDICATOR_VALUE')
+los_compare_ind_code_blank = create_blank_dataframe(hsp_ind_organization_fact33_a, los_has_comparison_code, 22, 22, 'INDICATOR_VALUE')
+
+
+
+//// delete 
 
 
 
