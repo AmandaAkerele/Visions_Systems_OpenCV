@@ -1,4 +1,19 @@
 # Visions_Systems_OpenCV
+# Assuming tpia is your DataFrame and it has similar columns as hsp_ind_organization_fact33_a
+
+# Applying functions to tpia DataFrame
+tpia_has_improvement_code = create_code_dataframe(tpia, 22, 'IMPROVEMENT_IND_CODE', ['001', '002', '003'])
+tpia_has_comparison_code = create_code_dataframe(tpia, 22, 'COMPARE_IND_CODE', ['001', '002', '003'])
+
+tpia_improvement_code_cnt = create_count_dataframe(tpia, tpia_has_improvement_code, 20, 22, 'INDICATOR_VALUE')
+tpia_comparison_code_cnt = create_count_dataframe(tpia, tpia_has_comparison_code, 22, 22, 'INDICATOR_VALUE')
+
+tpia_improvement_ind_code_blank = create_blank_dataframe(tpia, tpia_has_improvement_code, 20, 22, 'INDICATOR_VALUE')
+tpia_compare_ind_code_blank = create_blank_dataframe(tpia, tpia_has_comparison_code, 22, 22, 'INDICATOR_VALUE')
+
+
+tpia up delete 
+
 delete soon
 def create_code_dataframe(df, year, code_column, codes):
     return df[
