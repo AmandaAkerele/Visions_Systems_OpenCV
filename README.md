@@ -211,38 +211,34 @@ hsp_ind_organization_fact_tpia_34_d = hsp_ind_organization_fact_tpia_34_c[hsp_in
 
 trying 
 
-# fiscal_year_timeframe = [18, 19, 20, 21, 22]
+import pandas as pd
+import numpy as np
 
-# Count the number of rows for each ORGANIZATION_ID
-counts_tpia = hsp_ind_organization_fact_tpia_final['ORGANIZATION_ID'].value_counts()
-
-# Find ORGANIZATION_IDs with less than 5 rows
-orgs_to_add_tpia = counts_tpia[counts_tpia < 5].index
+# Assuming the DataFrame and the necessary variables are already defined
+fiscal_year_timeframe = [18, 19, 20, 21, 22]
+hsp_ind_organization_fact_tpia_final = pd.DataFrame()  # Example DataFrame
+hsp_organization_ext = pd.DataFrame()  # Example DataFrame
 
 # Prepare dummy data
 dummy_data = []
 
 # Iterate over ORGANIZATION_IDs with less than 5 rows
 for org_id in orgs_to_add_tpia:
-    # Get existing years
     existing_years = hsp_ind_organization_fact_tpia_final[hsp_ind_organization_fact_tpia_final['ORGANIZATION_ID'] == org_id]['FISCAL_YEAR_WH_ID'].unique()
-    # Find missing years
     missing_years = [year for year in fiscal_year_timeframe if year not in existing_years]
 
-    # Create and append dummy rows
     for year in missing_years:
         dummy_row = {'ORGANIZATION_ID': org_id, 'FISCAL_YEAR_WH_ID': year, 'SEX_WH_ID': 3,
                      'INDICATOR_CODE': '034', 'INDICATOR_SUPPRESSION_CODE': '999',
                      'IMPROVEMENT_IND_CODE': '999', 'COMPARE_IND_CODE': '999',
                      'DATA_PERIOD_CODE': '034', 'DATA_PERIOD_TYPE_CODE': 'FY'}
-        
-        # Set default values for other columns
+
         for column in hsp_ind_organization_fact_tpia_final.columns:
             if column not in dummy_row:
                 if hsp_ind_organization_fact_tpia_final[column].dtype in ['int64', 'float64']:
-                    dummy_row[column] = 0  # Default value for numeric columns
+                    dummy_row[column] = 0
                 else:
-                    dummy_row[column] = '999'  # Default value for string columns
+                    dummy_row[column] = '999'
         
         dummy_data.append(dummy_row)
 
@@ -252,6 +248,26 @@ dummy_tpia = pd.DataFrame(dummy_data)
 # Append the dummy data to the original DataFrame
 hsp_ind_organization_fact_tpia_final = pd.concat([hsp_ind_organization_fact_tpia_final, dummy_tpia], ignore_index=True)
 
+# Add blank rows for specific organizations (e.g., 7028)
+orgs_blank_add = [7028]
+blank_data = []
+
+for org_id in orgs_blank_add:
+    for year in fiscal_year_timeframe:
+        blank_row = {'ORGANIZATION_ID': org_id, 'FISCAL_YEAR_WH_ID': year}
+        for column in hsp_ind_organization_fact_tpia_final.columns:
+            if column in ['SEX_WH_ID', 'INDICATOR_CODE', 'INDICATOR_SUPPRESSION_CODE', 'IMPROVEMENT_IND_CODE', 'COMPARE_IND_CODE', 'DATA_PERIOD_CODE', 'DATA_PERIOD_TYPE_CODE']:
+                blank_row[column] = '999'  # Placeholder for string columns
+            else:
+                blank_row[column] = np.nan  # Placeholder for numeric and other types of columns
+        blank_data.append(blank_row)
+
+# Convert blank data to DataFrame
+blank_tpia = pd.DataFrame(blank_data)
+
+# Append the blank data to the DataFrame
+hsp_ind_organization_fact_tpia_final = pd.concat([hsp_ind_organization_fact_tpia_final, blank_tpia], ignore_index=True)
+
 # Optionally, sort the DataFrame based on ORGANIZATION_ID or any other column
 hsp_ind_organization_fact_tpia_34_a = hsp_ind_organization_fact_tpia_final.sort_values(by=['ORGANIZATION_ID', 'FISCAL_YEAR_WH_ID'])
 
@@ -259,11 +275,10 @@ hsp_ind_organization_fact_tpia_34_a = hsp_ind_organization_fact_tpia_final.sort_
 hsp_ind_organization_fact_tpia_34_c = hsp_ind_organization_fact_tpia_34_a[hsp_ind_organization_fact_tpia_34_a['ORGANIZATION_ID'].isin(hsp_organization_ext['ORGANIZATION_ID'])]
 
 # Display the result
-# display(hsp_ind_organization_fact_tpia_34_c)
+print(hsp_ind_organization_fact_tpia_34_c.head())  # Example to display top rows
 
 # Save the updated DataFrame to a new CSV file, if needed
 # hsp_ind_organization_fact_tpia_final.to_csv('updated_data.csv', index=False)
-
 
 
 
