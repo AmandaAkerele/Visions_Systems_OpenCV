@@ -1,15 +1,14 @@
 
+Hello Team,
 
-Hi Team
+I hope you are all well. I'm reaching out to inquire about the current status and stage of the application for the referral I submitted for the following position: 
+J0124-0054 - Consultant, Procurement.
 
-Trust you are doing great.
-I would like to make enquiries about the stage and application status for a referral I put in place for the position below: 
-J0124-0054- Consultant, Procurement
+I would appreciate any updates you might have on this matter.
 
-Looking forward to hearing from you on if there is any update. 
-
-Thank You
+Thank you,
 Amanda
+
 
 
 
