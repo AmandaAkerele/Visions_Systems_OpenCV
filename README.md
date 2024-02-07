@@ -104,172 +104,82 @@ hsp_ind_organization_fact_los_33_b = pd.concat([hsp_ind_organization_fact_los_33
 hsp_ind_organization_fact_los_33_c = hsp_ind_organization_fact_los_33_b.sort_values(by=['ORGANIZATION_ID', 'FISCAL_YEAR_WH_ID'])
 hsp_ind_organization_fact_los_33_d = hsp_ind_organization_fact_los_33_c[hsp_ind_organization_fact_los_33_b['ORGANIZATION_ID'].isin(hsp_organization_ext['ORGANIZATION_ID'])]
 ////////////////////
-
-
-
-
-///
-CONVERTED
+CONVERTED LOS 
 
 import pandas as pd
 import numpy as np
 
-# Define the full range of years
+def create_year_org_combinations(year_range, org_ids):
+    return pd.DataFrame([(year, org_id) for year in year_range for org_id in org_ids], columns=['FISCAL_YEAR_WH_ID', 'ORGANIZATION_ID'])
+
+def create_default_values_df(df, year_range, org_ids_to_add, default_values):
+    # Create all combinations of years and organizations
+    all_combinations = create_year_org_combinations(year_range, org_ids_to_add)
+    
+    # Merge to find missing combinations
+    merged = pd.merge(all_combinations, df, on=['FISCAL_YEAR_WH_ID', 'ORGANIZATION_ID'], how='left', indicator=True)
+    missing_combinations = merged[merged['_merge'] == 'left_only']
+
+    # Drop unnecessary columns and fill with default values
+    missing_combinations = missing_combinations[['FISCAL_YEAR_WH_ID', 'ORGANIZATION_ID']]
+    for column in df.columns:
+        if column not in missing_combinations:
+            missing_combinations[column] = default_values.get(column, np.nan if df[column].dtype in ['float64', 'int64'] else '999')
+    
+    return missing_combinations
+
+# Define year range and default values
 full_year_range = [18, 19, 20, 21, 22]
-
-# Assuming the DataFrame is already defined
-hsp_ind_organization_fact_los_final = pd.DataFrame()
-
-# Function to determine missing years for a given ORGANIZATION_ID
-def missing_years_los(org_id, df, year_range):
-    existing_years = df[df['ORGANIZATION_ID'] == org_id]['FISCAL_YEAR_WH_ID'].unique()
-    return set(year_range) - set(existing_years)
-
-# Function to generate dummy data for each missing year
-def generate_dummy_data(org_id, missing_years, columns, default_values):
-    dummy_data = []
-    for year in missing_years:
-        row = {col: default_values.get(col, np.nan) for col in columns}
-        row['ORGANIZATION_ID'] = org_id
-        row['FISCAL_YEAR_WH_ID'] = year
-        dummy_data.append(row)
-    return dummy_data
-
-# Default values for dummy rows
 default_values = {
     'SEX_WH_ID': 3, 'INDICATOR_CODE': '033', 'INDICATOR_SUPPRESSION_CODE': '999',
     'IMPROVEMENT_IND_CODE': '999', 'COMPARE_IND_CODE': '999', 'DATA_PERIOD_TYPE_CODE': 'FY',
-    'INDICATOR_VALUE': np.nan
+    'INDICATOR_VALUE': np.nan, 'DATA_PERIOD_CODE': lambda year: f'0{year}'
 }
 
-# Identify organizations with less than 5 rows
+# Identify organizations with fewer than 5 entries
 counts_los = hsp_ind_organization_fact_los_final['ORGANIZATION_ID'].value_counts()
-orgs_to_add_los = counts_los[counts_los < 5].index
+orgs_to_add_los = counts_los[counts_los < 5].index.tolist()
 
-# Generate and append dummy and blank rows
-all_dummy_rows_los = []
-for org_id in orgs_to_add_los:
-    missing_years = missing_years_los(org_id, hsp_ind_organization_fact_los_final, full_year_range)
-    dummy_rows = generate_dummy_data(org_id, missing_years, hsp_ind_organization_fact_los_final.columns, default_values)
-    all_dummy_rows_los.extend(dummy_rows)
+# Add dummy rows for organizations with less than 5 entries
+dummy_rows_df = create_default_values_df(hsp_ind_organization_fact_los_final, full_year_range, orgs_to_add_los, default_values)
+hsp_ind_organization_fact_los_33_a = pd.concat([hsp_ind_organization_fact_los_final, dummy_rows_df], ignore_index=True)
 
-# Handle specific ORGANIZATION_IDs for blank rows
-additional_org_ids_los = [7028]
-for org_id in additional_org_ids_los:
-    missing_years = missing_years_los(org_id, hsp_ind_organization_fact_los_final, full_year_range)
-    blank_rows = generate_dummy_data(org_id, missing_years, hsp_ind_organization_fact_los_final.columns, default_values)
-    all_dummy_rows_los.extend(blank_rows)
+# Add blank rows for specific organizations (e.g., 7028)
+orgs_blank_add = [7028]
+blank_rows_df = create_default_values_df(hsp_ind_organization_fact_los_final, full_year_range, orgs_blank_add, default_values)
+hsp_ind_organization_fact_los_33_b = pd.concat([hsp_ind_organization_fact_los_33_a, blank_rows_df], ignore_index=True)
 
-# Convert to DataFrame and append to the original DataFrame
-dummy_and_blank_rows_los = pd.DataFrame(all_dummy_rows_los)
-hsp_ind_organization_fact_los_33_a = pd.concat([hsp_ind_organization_fact_los_final, dummy_and_blank_rows_los], ignore_index=True)
-
-# Optionally, sort and filter the DataFrame
-hsp_organization_ext = pd.DataFrame()  # Assuming this DataFrame is already defined
-hsp_ind_organization_fact_los_33_b = hsp_ind_organization_fact_los_33_a.sort_values(by=['ORGANIZATION_ID', 'FISCAL_YEAR_WH_ID'])
-final_df_los = hsp_ind_organization_fact_los_33_b[hsp_ind_organization_fact_los_33_b['ORGANIZATION_ID'].isin(hsp_organization_ext['ORGANIZATION_ID'])]
-
-# Validate the final DataFrame
-# Check for missing values in critical columns
-missing_values_check_los = final_df_los.isnull().sum()
-print("Missing values in each column (LOS DataFrame):\n", missing_values_check_los)
-
-# Verify the shape of the final DataFrame
-print("Shape of the final DataFrame (LOS DataFrame):", final_df_los.shape)
-
-# Display a sample of the final DataFrame for review
-print("Sample data from the final DataFrame (LOS DataFrame):")
-print(final_df_los.head())
-
-////
-TPIA
-import pandas as pd
-import numpy as np
-
-# Define the full range of years
-full_year_range = [18, 19, 20, 21, 22]
-
-# Assuming the DataFrame is already defined
-hsp_ind_organization_fact_tpia_final = pd.DataFrame()
-
-# Function to determine missing years for a given ORGANIZATION_ID
-def missing_years_tpia(org_id, df, year_range):
-    existing_years = df[df['ORGANIZATION_ID'] == org_id]['FISCAL_YEAR_WH_ID'].unique()
-    return set(year_range) - set(existing_years)
-
-# Function to generate dummy data for each missing year
-def generate_dummy_data(org_id, missing_years, columns, default_values):
-    dummy_data = []
-    for year in missing_years:
-        row = {col: default_values.get(col, np.nan) for col in columns}
-        row['ORGANIZATION_ID'] = org_id
-        row['FISCAL_YEAR_WH_ID'] = year
-        dummy_data.append(row)
-    return dummy_data
-
-# Default values for dummy rows
-default_values = {
-    'SEX_WH_ID': 3, 'INDICATOR_CODE': '033', 'INDICATOR_SUPPRESSION_CODE': '999',
-    'IMPROVEMENT_IND_CODE': '999', 'COMPARE_IND_CODE': '999', 'DATA_PERIOD_TYPE_CODE': 'FY',
-    'INDICATOR_VALUE': np.nan
-}
-
-# Identify organizations with less than 5 rows
-counts_tpia = hsp_ind_organization_fact_tpia_final['ORGANIZATION_ID'].value_counts()
-orgs_to_add_tpia = counts_tpia[counts_tpia < 5].index
-
-# Generate and append dummy and blank rows
-all_dummy_rows = []
-for org_id in orgs_to_add_tpia:
-    missing_years = missing_years_tpia(org_id, hsp_ind_organization_fact_tpia_final, full_year_range)
-    dummy_rows = generate_dummy_data(org_id, missing_years, hsp_ind_organization_fact_tpia_final.columns, default_values)
-    all_dummy_rows.extend(dummy_rows)
-
-# Handle specific ORGANIZATION_IDs for blank rows
-additional_org_ids = [7028]
-for org_id in additional_org_ids:
-    missing_years = missing_years_tpia(org_id, hsp_ind_organization_fact_tpia_final, full_year_range)
-    blank_rows = generate_dummy_data(org_id, missing_years, hsp_ind_organization_fact_tpia_final.columns, default_values)
-    all_dummy_rows.extend(blank_rows)
-
-# Convert to DataFrame and append to the original DataFrame
-dummy_and_blank_rows = pd.DataFrame(all_dummy_rows)
-hsp_ind_organization_fact_tpia_34_a = pd.concat([hsp_ind_organization_fact_tpia_final, dummy_and_blank_rows], ignore_index=True)
-
-# Optionally, sort and filter the DataFrame
-hsp_organization_ext = pd.DataFrame()  # Assuming this DataFrame is already defined
-hsp_ind_organization_fact_tpia_34_b = hsp_ind_organization_fact_tpia_34_a.sort_values(by=['ORGANIZATION_ID', 'FISCAL_YEAR_WH_ID'])
-final_df = hsp_ind_organization_fact_tpia_34_b[hsp_ind_organization_fact_tpia_34_b['ORGANIZATION_ID'].isin(hsp_organization_ext['ORGANIZATION_ID'])]
-
-# Finalizing and validating the output
-
-# Convert to DataFrame and append to the original DataFrame
-dummy_and_blank_rows = pd.DataFrame(all_dummy_rows)
-hsp_ind_organization_fact_tpia_34_a = pd.concat([hsp_ind_organization_fact_tpia_final, dummy_and_blank_rows], ignore_index=True)
-
-# Optionally, sort and filter the DataFrame
-hsp_organization_ext = pd.DataFrame()  # Assuming this DataFrame is already defined
-hsp_ind_organization_fact_tpia_34_b = hsp_ind_organization_fact_tpia_34_a.sort_values(by=['ORGANIZATION_ID', 'FISCAL_YEAR_WH_ID'])
-final_df = hsp_ind_organization_fact_tpia_34_b[hsp_ind_organization_fact_tpia_34_b['ORGANIZATION_ID'].isin(hsp_organization_ext['ORGANIZATION_ID'])]
-
-# Validate the final DataFrame
-# Check for missing values in critical columns
-missing_values_check = final_df.isnull().sum()
-print("Missing values in each column:\n", missing_values_check)
-
-# Verify the shape of the final DataFrame
-print("Shape of the final DataFrame:", final_df.shape)
-
-# Display a sample of the final DataFrame for review
-print("Sample data from the final DataFrame:")
-print(final_df.head())
-//////////////
-BLENDED
-///////
+# Sort and filter the DataFrame
+hsp_ind_organization_fact_los_33_c = hsp_ind_organization_fact_los_33_b.sort_values(by=['ORGANIZATION_ID', 'FISCAL_YEAR_WH_ID'])
+hsp_ind_organization_fact_los_33_d = hsp_ind_organization_fact_los_33_c[hsp_ind_organization_fact_los_33_c['ORGANIZATION_ID'].isin(hsp_organization_ext['ORGANIZATION_ID'])]
 
 
 
-//////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Define the full range of years
 full_year_range = [18, 19, 20, 21, 22]
 
