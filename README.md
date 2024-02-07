@@ -153,7 +153,60 @@ hsp_ind_organization_fact_los_33_b = pd.concat([hsp_ind_organization_fact_los_33
 hsp_ind_organization_fact_los_33_c = hsp_ind_organization_fact_los_33_b.sort_values(by=['ORGANIZATION_ID', 'FISCAL_YEAR_WH_ID'])
 hsp_ind_organization_fact_los_33_d = hsp_ind_organization_fact_los_33_c[hsp_ind_organization_fact_los_33_c['ORGANIZATION_ID'].isin(hsp_organization_ext['ORGANIZATION_ID'])]
 
+//////
+TPIA 
 
+import pandas as pd
+import numpy as np
+
+def create_year_org_combinations(year_range, org_ids):
+    return pd.DataFrame([(year, org_id) for year in year_range for org_id in org_ids], columns=['FISCAL_YEAR_WH_ID', 'ORGANIZATION_ID'])
+
+def create_default_values_df(df, year_range, org_ids_to_add, default_values):
+    # Create all combinations of years and organizations
+    all_combinations = create_year_org_combinations(year_range, org_ids_to_add)
+    
+    # Merge to find missing combinations
+    merged = pd.merge(all_combinations, df, on=['FISCAL_YEAR_WH_ID', 'ORGANIZATION_ID'], how='left', indicator=True)
+    missing_combinations = merged[merged['_merge'] == 'left_only']
+
+    # Drop unnecessary columns and fill with default values
+    missing_combinations = missing_combinations[['FISCAL_YEAR_WH_ID', 'ORGANIZATION_ID']]
+    for column in df.columns:
+        if column not in missing_combinations:
+            missing_combinations[column] = default_values.get(column, np.nan if df[column].dtype in ['float64', 'int64'] else '999')
+    
+    return missing_combinations
+
+# Define year range and default values for tpia
+full_year_range = [18, 19, 20, 21, 22]
+default_values_tpia = {
+    'SEX_WH_ID': 3, 'INDICATOR_CODE': '033', 'INDICATOR_SUPPRESSION_CODE': '999',
+    'IMPROVEMENT_IND_CODE': '999', 'COMPARE_IND_CODE': '999', 'DATA_PERIOD_TYPE_CODE': 'FY',
+    'INDICATOR_VALUE': np.nan, 'DATA_PERIOD_CODE': lambda year: f'0{year}'
+}
+
+# Assuming the DataFrame is already defined
+hsp_ind_organization_fact_tpia_final = pd.DataFrame()
+
+# Identify organizations with fewer than 5 entries in tpia
+counts_tpia = hsp_ind_organization_fact_tpia_final['ORGANIZATION_ID'].value_counts()
+orgs_to_add_tpia = counts_tpia[counts_tpia < 5].index.tolist()
+
+# Add dummy rows for organizations with less than 5 entries in tpia
+dummy_rows_df_tpia = create_default_values_df(hsp_ind_organization_fact_tpia_final, full_year_range, orgs_to_add_tpia, default_values_tpia)
+hsp_ind_organization_fact_tpia_34_a = pd.concat([hsp_ind_organization_fact_tpia_final, dummy_rows_df_tpia], ignore_index=True)
+
+# Add blank rows for specific organizations in tpia (e.g., 7028)
+orgs_blank_add_tpia = [7028]
+blank_rows_df_tpia = create_default_values_df(hsp_ind_organization_fact_tpia_final, full_year_range, orgs_blank_add_tpia, default_values_tpia)
+hsp_ind_organization_fact_tpia_34_b = pd.concat([hsp_ind_organization_fact_tpia_34_a, blank_rows_df_tpia], ignore_index=True)
+
+# Sort and filter the DataFrame for tpia
+hsp_ind_organization_fact_tpia_34_c = hsp_ind_organization_fact_tpia_34_b.sort_values(by=['ORGANIZATION_ID', 'FISCAL_YEAR_WH_ID'])
+hsp_organization_ext = pd.DataFrame()  # Assuming this DataFrame is already defined
+hsp_ind_organization_fact_tpia_34_d = hsp_ind_organization_fact_tpia_34_c[hsp_ind_organization_fact_tpia_34_c['ORGANIZATION_ID'].isin(hsp_organization_ext['ORGANIZATION_ID'])]
+//////
 
 
 
