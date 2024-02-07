@@ -9,10 +9,14 @@ def update_hsp_ind_organization_fact34(df):
         ((df['FISCAL_YEAR_WH_ID'] == 22) & (df['ORGANIZATION_ID'].isin(filtered_ID_PS)))
     ]
 
-    # Set suppression codes
-    suppression_codes = ['901' if org_id == 80286 else '002' for org_id in df['ORGANIZATION_ID']]
+    # Define a lambda function to set suppression code based on organization ID
+    suppression_code_lambda = lambda org_id: '901' if org_id == 80286 else '002'
+
+    # Apply the lambda function to each organization ID to get suppression codes
+    suppression_codes = df['ORGANIZATION_ID'].apply(suppression_code_lambda)
+
     # Keep previous suppression codes for other organizations
-    suppression_codes = ['901' if org_id == 80286 else '002' if code == '002' else '901' for org_id, code in zip(df['ORGANIZATION_ID'], suppression_codes)]
+    suppression_codes = np.where(suppression_codes == '002', '002', '901')
     
     indicator_values = [None, None, None, None, None]
 
