@@ -1,3 +1,31 @@
+from pyspark.sql import SparkSession
+
+# Initialize Spark session
+spark = SparkSession.builder \
+    .appName("Read Excel File") \
+    .getOrCreate()
+
+# Define the file path of the Excel file (assuming it's saved as CSV)
+file_path = '/path/to/your/file.csv'
+
+# Read the Excel file into a Spark DataFrame
+df = spark.read.csv(file_path, header=True, inferSchema=True)
+
+# Show the schema and first few rows of the DataFrame
+df.printSchema()
+df.show()
+
+# Stop the Spark session
+spark.stop()
+
+
+
+
+
+
+
+
+
 df_fac_a = '/Data/Groups/CAD/YHS InDepth/YHS In-Depth 2023 Nov Release/FACILITY_FILES/ED_FACILITY_LIST/ED_FACILITY_LIST_FINAL.xlsx'
 df_ucc_a ='/Data/Groups/CAD/YHS InDepth/YHS In-Depth 2023 Nov Release/FACILITY_FILES/ED_FACILITY_LIST/UCC_FY2022.xlsx'
 df_dq_a  ='/Data/Groups/CAD/YHS InDepth/YHS In-Depth 2023 Nov Release/FACILITY_FILES/ED_FACILITY_LIST/SUBMITTING_FAC_DQ.xlsx'
