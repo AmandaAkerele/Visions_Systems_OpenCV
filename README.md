@@ -2,6 +2,39 @@ from pyspark.sql import SparkSession
 
 # Initialize Spark session
 spark = SparkSession.builder \
+    .appName("Read Excel Files") \
+    .getOrCreate()
+
+# Define the file path of the Excel file
+file_path = '/path/to/your/file.xlsx'
+
+# Read the Excel file into a Spark DataFrame
+df = spark.read \
+    .format("com.crealytics.spark.excel") \
+    .option("header", "true") \
+    .option("inferSchema", "true") \
+    .load(file_path)
+
+# Show the schema and first few rows of the DataFrame
+df.printSchema()
+df.show()
+
+# Stop the Spark session
+spark.stop()
+
+
+
+/////////
+
+
+
+
+
+
+from pyspark.sql import SparkSession
+
+# Initialize Spark session
+spark = SparkSession.builder \
     .appName("Read Excel File") \
     .getOrCreate()
 
