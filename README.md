@@ -1,33 +1,84 @@
-nacrs_options={'keep':'AM_CARE_KEY SUBMISSION_FISCAL_YEAR FACILITY_PROVINCE AMCARE_GROUP_CODE \
+from pyspark.sql import SparkSession
+
+# Initialize Spark session
+spark = SparkSession.builder \
+    .appName("NACRS_ED_Analysis") \
+    .getOrCreate()
+
+# Define NACRS options
+nacrs_options = {'keep': 'AM_CARE_KEY SUBMISSION_FISCAL_YEAR FACILITY_PROVINCE AMCARE_GROUP_CODE \
                      FACILITY_AM_CARE_NUM TRIAGE_DATE TRIAGE_TIME DATE_OF_REGISTRATION REGISTRATION_TIME\
                      DISPOSITION_DATE DISPOSITION_TIME VISIT_DISPOSITION WAIT_TIME_TO_PIA_HOURS\
                      LOS_HOURS WAIT_TIME_TO_INPATIENT_HOURS TIME_PHYSICAN_INIT_ASSESSMENT\
                      ED_VISIT_IND_CODE AMCARE_GROUP_CODE GENDER AGE_NUM',
-              'where': 'ED_VISIT_IND_CODE in ("1") and AMCARE_GROUP_CODE in ("ED")'}                        
-nacrs_yr = sas.sasdata(table='ambulatory_care',libref=f"NACRS{open_year-2000}", dsopts=nacrs_options) 
-nacrs_options2={'keep':'AM_CARE_KEY'}                       
-df_dups_a = sas.sasdata(table='nacrs_gud_dups_2022_2023', 
-                        libref=f"NACRSGUD", dsopts=nacrs_options2)
-sas.saslib('fac', path=r"L:\Groups\CAD\YHS InDepth\YHS In-Depth 2023 Nov Release\FACILITY_FILES\ED_FACILITY_LIST")
-df_fac_a = sas.sasdata(table='ed_facility_list_final', libref='fac') 
-df_ucc_a = sas.sasdata(table='ucc_2022', libref='fac') 
-df_dq_a = sas.sasdata(table='submitting_fac_dq', libref='fac')
-df_ps_a = sas.sasdata(table='partial_submitting_fac', libref='fac')
-df_lookup_a = sas.sasdata(table='fy22_look_up_table', libref='fac')
+                 'where': 'ED_VISIT_IND_CODE in ("1") and AMCARE_GROUP_CODE in ("ED")'}
 
-df_nacrs_yr = nacrs_yr.to_df()
-df_nacrs_yr=df_nacrs_yr.rename(columns=lambda x: x.upper())
-df_dups = df_dups_a.to_df()
-df_dups=df_dups.rename(columns=lambda x: x.upper())
-df_fac=df_fac_a.to_df()
-df_fac=df_fac.rename(columns=lambda x: x.upper())
-df_ucc=df_ucc_a.to_df()
-df_ucc=df_ucc.rename(columns=lambda x: x.upper())
-df_dq=df_dq_a.to_df()
-df_dq=df_dq.rename(columns=lambda x: x.upper()).astype({'FACILITY_AM_CARE_NUM':object, 'FISCAL_YEAR':object})
-df_ps_test=df_ps_a.to_df()
-df_ps_test['fiscal_year']=df_ps_test['fiscal_year'].astype(int)
-df_ps_test['FACILITY_AM_CARE_NUM']=df_ps_test['FACILITY_AM_CARE_NUM'].astype(int)
-df_ps=df_ps_test.rename(columns=lambda x: x.upper()).astype({'FACILITY_AM_CARE_NUM':object,'FISCAL_YEAR':object})
-df_lookup=df_lookup_a.to_df()
-df_lookup=df_lookup.rename(columns=lambda x: x.upper()).astype({'INSTNUM':object})
+# Load ambulatory_care table as Spark DataFrame
+nacrs_yr = spark.read.format("csv").options(**nacrs_options).load("path_to_file")
+
+# Load other tables as Spark DataFrames
+df_dups_a = spark.read.format("csv").options(**nacrs_options2).load("path_to_file")
+df_fac_a = spark.read.format("csv").load("path_to_file")
+df_ucc_a = spark.read.format("csv").load("path_to_file")
+df_dq_a = spark.read.format("csv").load("path_to_file")
+df_ps_a = spark.read.format("csv").load("path_to_file")
+df_lookup_a = spark.read.format("csv").load("path_to_file")
+
+# Convert to Pandas DataFrame if needed
+df_nacrs_yr = nacrs_yr.toPandas()
+df_dups = df_dups_a.toPandas()
+df_fac = df_fac_a.toPandas()
+df_ucc = df_ucc_a.toPandas()
+df_dq = df_dq_a.toPandas()
+df_ps = df_ps_a.toPandas()
+df_lookup = df_lookup_a.toPandas()
+
+# Rename columns to uppercase
+df_nacrs_yr.columns = map(str.upper, df_nacrs_yr.columns)
+df_dups.columns = map(str.upper, df_dups.columns)
+df_fac.columns = map(str.upper, df_fac.columns)
+df_ucc.columns = map(str.upper, df_ucc.columns)
+df_dq.columns = map(str.upper, df_dq.columns)
+df_ps.columns = map(str.upper, df_ps.columns)
+df_lookup.columns = map(str.upper, df_lookup.columns)
+
+# Optionally, perform data manipulations and analysis using PySpark APIs
+# For example:
+# df_nacrs_yr.groupBy("GENDER").count().show()
+
+# Stop Spark session
+spark.stop()
+
+
+
+andoter 
+from pyspark.sql import SparkSession
+
+# Initialize Spark session
+spark = SparkSession.builder \
+    .appName("NACRS_ED_Analysis") \
+    .getOrCreate()
+
+# Define NACRS options
+nacrs_options = {'header': True,
+                 'inferSchema': True,
+                 'sep': ','}
+
+# Load ambulatory_care table as Spark DataFrame
+nacrs_yr = spark.read.csv("path_to_ambulatory_care_file.csv", **nacrs_options)
+
+# Load other tables as Spark DataFrames
+df_dups_a = spark.read.csv("path_to_dups_file.csv", **nacrs_options)
+df_fac_a = spark.read.csv("path_to_facility_list_file.csv", **nacrs_options)
+df_ucc_a = spark.read.csv("path_to_ucc_file.csv", **nacrs_options)
+df_dq_a = spark.read.csv("path_to_dq_file.csv", **nacrs_options)
+df_ps_a = spark.read.csv("path_to_ps_file.csv", **nacrs_options)
+df_lookup_a = spark.read.csv("path_to_lookup_table.csv", **nacrs_options)
+
+# Optionally, perform any necessary data manipulations
+# For example:
+# df_nacrs_yr = nacrs_yr.select([list_of_columns])
+
+# Stop Spark session
+spark.stop()
+
