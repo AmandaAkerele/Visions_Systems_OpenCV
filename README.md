@@ -1,4 +1,46 @@
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import col
+
+# Initialize Spark session
+spark = SparkSession.builder \
+    .appName("Drop_First_Row_and_Set_Header") \
+    .getOrCreate()
+
+# Assume df_fac is your DataFrame
+
+# Extract the header row (second row)
+header = df_fac.limit(1).collect()[0]
+
+# Drop the first row
+df_fac_no_header = df_fac.subtract(df_fac.limit(1))
+
+# Set the header using the second row
+df_fac_with_header = df_fac_no_header.toDF(*[col(col_name) for col_name in header])
+
+# Show the resulting DataFrame
+df_fac_with_header.show()
+
+# Stop Spark session
+spark.stop()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+or 
+
+
+
+from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit
 
 # Initialize Spark session
