@@ -1,26 +1,34 @@
-from pyspark.sql import SparkSession
+---------------------------------------------------------------------------
+AnalysisException                         Traceback (most recent call last)
+/tmp/ipykernel_9462/3729316439.py in <cell line: 10>()
+      8 
+      9 # Merge dataframes on specified columns
+---> 10 merged_df = df_fac.join(df_dq, 
+     11                         on=['FACILITY_AM_CARE_NUM', 'SUBMISSION_FISCAL_YEAR'],
+     12                         how='inner') \
 
-# Initialize Spark session
-spark = SparkSession.builder \
-    .appName("Set_Header_From_Second_Row") \
-    .getOrCreate()
+/usr/local/lib/python3.10/dist-packages/pyspark/sql/dataframe.py in join(self, other, on, how)
+   2485                 on = self._jseq([])
+   2486             assert isinstance(how, str), "how should be a string"
+-> 2487             jdf = self._jdf.join(other._jdf, on, how)
+   2488         return DataFrame(jdf, self.sparkSession)
+   2489 
 
-# Assume df_fac is your DataFrame
+/usr/local/lib/python3.10/dist-packages/py4j/java_gateway.py in __call__(self, *args)
+   1320 
+   1321         answer = self.gateway_client.send_command(command)
+-> 1322         return_value = get_return_value(
+   1323             answer, self.gateway_client, self.target_id, self.name)
+   1324 
 
-# Extract the first row as the header
-header = df_fac.take(2)[-1]
+/usr/local/lib/python3.10/dist-packages/pyspark/errors/exceptions/captured.py in deco(*a, **kw)
+    183                 # Hide where the exception came from that shows a non-Pythonic
+    184                 # JVM exception message.
+--> 185                 raise converted from None
+    186             else:
+    187                 raise
 
-# Filter out the header row
-df_fac_data = df_fac.subtract(df_fac.limit(1))
-
-# Set the header
-df_fac_with_header = spark.createDataFrame(df_fac_data.collect(), header)
-
-# Show the resulting DataFrame
-df_fac_with_header.show()
-
-# Stop Spark session
-spark.stop()
+AnalysisException: [UNRESOLVED_USING_COLUMN_FOR_JOIN] USING column `SUBMISSION_FISCAL_YEAR` cannot be resolved on the right side of the join. The right-side columns: [`CORP_ID`, `FACILITY_AM_CARE_NUM`, `FACILITY_NAME`, `FISCAL_YEAR`, `IND`, `PEER`, `PROVINCE`, `REGION_ID`, `REGION_NAME`, `SITE_ID`].
 
 
 
