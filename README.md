@@ -1,38 +1,26 @@
 ---------------------------------------------------------------------------
-AnalysisException                         Traceback (most recent call last)
-/tmp/ipykernel_9462/3729316439.py in <cell line: 10>()
-      8 
-      9 # Merge dataframes on specified columns
----> 10 merged_df = df_fac.join(df_dq, 
-     11                         on=['FACILITY_AM_CARE_NUM', 'SUBMISSION_FISCAL_YEAR'],
-     12                         how='inner') \
+from pyspark.sql import SparkSession
 
-/usr/local/lib/python3.10/dist-packages/pyspark/sql/dataframe.py in join(self, other, on, how)
-   2485                 on = self._jseq([])
-   2486             assert isinstance(how, str), "how should be a string"
--> 2487             jdf = self._jdf.join(other._jdf, on, how)
-   2488         return DataFrame(jdf, self.sparkSession)
-   2489 
+# Initialize Spark session
+spark = SparkSession.builder \
+    .appName("Join_DataFrames") \
+    .getOrCreate()
 
-/usr/local/lib/python3.10/dist-packages/py4j/java_gateway.py in __call__(self, *args)
-   1320 
-   1321         answer = self.gateway_client.send_command(command)
--> 1322         return_value = get_return_value(
-   1323             answer, self.gateway_client, self.target_id, self.name)
-   1324 
+# Assume df_fac and df_dq are your DataFrames
 
-/usr/local/lib/python3.10/dist-packages/pyspark/errors/exceptions/captured.py in deco(*a, **kw)
-    183                 # Hide where the exception came from that shows a non-Pythonic
-    184                 # JVM exception message.
---> 185                 raise converted from None
-    186             else:
-    187                 raise
+# Specify the columns for joining
+join_columns = ['FACILITY_AM_CARE_NUM', 'FISCAL_YEAR']
 
-AnalysisException: [UNRESOLVED_USING_COLUMN_FOR_JOIN] USING column `SUBMISSION_FISCAL_YEAR` cannot be resolved on the right side of the join. The right-side columns: [`CORP_ID`, `FACILITY_AM_CARE_NUM`, `FACILITY_NAME`, `FISCAL_YEAR`, `IND`, `PEER`, `PROVINCE`, `REGION_ID`, `REGION_NAME`, `SITE_ID`].
+# Merge dataframes on specified columns
+merged_df = df_fac.join(df_dq, 
+                        on=join_columns,
+                        how='inner')
 
+# Show the resulting DataFrame
+merged_df.show()
 
-
-
+# Stop Spark session
+spark.stop()
 
 
 
