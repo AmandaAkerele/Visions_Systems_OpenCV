@@ -1,107 +1,58 @@
-import logging
-from pyspark.sql import SparkSession
+# Merge dataframes on specified columns and suffixes
+merged_df = df_fac.merge(df_dq, 
+                         left_on=['FACILITY_AM_CARE_NUM', 'SUBMISSION_FISCAL_YEAR'],
+                         right_on=['FACILITY_AM_CARE_NUM', 'FISCAL_YEAR'],
+                         suffixes=('_df_fac', '_df_dq'))
 
-# Suppress warnings
-logger = logging.getLogger('py4j')
-logger.setLevel(logging.ERROR)
+# Define a list of columns to keep
+columns_to_keep = [
+    'FACILITY_AM_CARE_NUM', 'SUBMISSION_FISCAL_YEAR', 'SITE_ID', 'CORP_ID',
+    'REGION_ID', 'PROVINCE_ID', 'NACRS_ED_FLG'
+]
 
-# Initialize Spark session
-spark = SparkSession.builder \
-    .appName("Suppress_Warnings") \
-    .getOrCreate()
+# Add 'TYPE' column with values 'DQ' for merged_df
+merged_df['TYPE'] = 'DQ'
 
-# Load data or perform other operations here...
+# Create DataFrames t3 and t4 based on conditions
+t3 = df_fac[df_fac['NACRS_ED_FLG'] == 1][columns_to_keep].copy()
+t3['TYPE'] = 'SL'
+t3['IND'] = ''
 
-# Stop Spark session
-spark.stop()
+ps = df_ps[df_ps['FISCAL_YEAR'].astype(str) == '2022']
+t4 = df_fac[df_fac['FACILITY_AM_CARE_NUM'].astype(str).isin(ps['FACILITY_AM_CARE_NUM'].astype(str))][columns_to_keep].copy()
+t4['TYPE'] = 'PS'
+t4['IND'] = ''
 
+# Concatenate DataFrames t3, t4, and merged_df
+result_df = pd.concat([t3, t4, merged_df], ignore_index=True)
 
+# Remove duplicated columns and reset index
+result_df = result_df[result_df.columns.drop_duplicates()].reset_index(drop=True)
 
+# Filter df_fac based on CORP_ID
+filtered_df_fac = df_fac[df_fac['CORP_ID'].isin(result_df['CORP_ID'])]
 
+# Group by CORP_ID and count
+tmp_cnt_ed_facility_org = filtered_df_fac.groupby('CORP_ID').size().reset_index(name='CORP_CNT')
 
+# Merge result_df with tmp_cnt_ed_facility_org
+ed_facility_org = result_df.merge(tmp_cnt_ed_facility_org, on='CORP_ID')
 
+# Sort the DataFrame by 'TYPE' and 'FACILITY_AM_CARE_NUM'
+ed_facility_org= ed_facility_org.sort_values(by=['TYPE', 'FACILITY_AM_CARE_NUM'])
 
-from pyspark.sql import SparkSession
+# Rename columns 'REGION_NAME_x' and 'REGION_NAME_y' to 'REGION_NAME'
+ed_facility_org = ed_facility_org.rename(columns={'REGION_NAME_x': 'REGION_NAME', 'REGION_NAME_y': 'REGION_NAME'})
 
-# Initialize Spark session
-spark = SparkSession.builder \
-    .appName("NACRS_ED_Analysis") \
-    .getOrCreate()
+# Remove duplicated columns and reset index
+ed_facility_org = ed_facility_org[ed_facility_org.columns.drop_duplicates()].reset_index(drop=True)
 
-# Define NACRS options
-nacrs_options = {'keep': 'AM_CARE_KEY SUBMISSION_FISCAL_YEAR FACILITY_PROVINCE AMCARE_GROUP_CODE \
-                     FACILITY_AM_CARE_NUM TRIAGE_DATE TRIAGE_TIME DATE_OF_REGISTRATION REGISTRATION_TIME\
-                     DISPOSITION_DATE DISPOSITION_TIME VISIT_DISPOSITION WAIT_TIME_TO_PIA_HOURS\
-                     LOS_HOURS WAIT_TIME_TO_INPATIENT_HOURS TIME_PHYSICAN_INIT_ASSESSMENT\
-                     ED_VISIT_IND_CODE AMCARE_GROUP_CODE GENDER AGE_NUM',
-                 'where': 'ED_VISIT_IND_CODE in ("1") and AMCARE_GROUP_CODE in ("ED")'}
+# Specify the columns in the desired order
+columns_to_keep = [
+    'SUBMISSION_FISCAL_YEAR',	'FACILITY_AM_CARE_NUM','SITE_ID',	'CORP_ID',	'REGION_ID', 'PROVINCE_ID',	'TYPE',	'IND',	'NACRS_ED_FLG',	'CORP_CNT']
 
-# Load ambulatory_care table as Spark DataFrame
-nacrs_yr = spark.read.format("csv").options(**nacrs_options).load("path_to_file")
+# Select the desired columns from the DataFrame
+ed_facility_org = ed_facility_org[columns_to_keep]
 
-# Load other tables as Spark DataFrames
-df_dups_a = spark.read.format("csv").options(**nacrs_options2).load("path_to_file")
-df_fac_a = spark.read.format("csv").load("path_to_file")
-df_ucc_a = spark.read.format("csv").load("path_to_file")
-df_dq_a = spark.read.format("csv").load("path_to_file")
-df_ps_a = spark.read.format("csv").load("path_to_file")
-df_lookup_a = spark.read.format("csv").load("path_to_file")
-
-# Convert to Pandas DataFrame if needed
-df_nacrs_yr = nacrs_yr.toPandas()
-df_dups = df_dups_a.toPandas()
-df_fac = df_fac_a.toPandas()
-df_ucc = df_ucc_a.toPandas()
-df_dq = df_dq_a.toPandas()
-df_ps = df_ps_a.toPandas()
-df_lookup = df_lookup_a.toPandas()
-
-# Rename columns to uppercase
-df_nacrs_yr.columns = map(str.upper, df_nacrs_yr.columns)
-df_dups.columns = map(str.upper, df_dups.columns)
-df_fac.columns = map(str.upper, df_fac.columns)
-df_ucc.columns = map(str.upper, df_ucc.columns)
-df_dq.columns = map(str.upper, df_dq.columns)
-df_ps.columns = map(str.upper, df_ps.columns)
-df_lookup.columns = map(str.upper, df_lookup.columns)
-
-# Optionally, perform data manipulations and analysis using PySpark APIs
-# For example:
-# df_nacrs_yr.groupBy("GENDER").count().show()
-
-# Stop Spark session
-spark.stop()
-
-
-
-andoter 
-from pyspark.sql import SparkSession
-
-# Initialize Spark session
-spark = SparkSession.builder \
-    .appName("NACRS_ED_Analysis") \
-    .getOrCreate()
-
-# Define NACRS options
-nacrs_options = {'header': True,
-                 'inferSchema': True,
-                 'sep': ','}
-
-# Load ambulatory_care table as Spark DataFrame
-nacrs_yr = spark.read.csv("path_to_ambulatory_care_file.csv", **nacrs_options)
-
-# Load other tables as Spark DataFrames
-df_dups_a = spark.read.csv("path_to_dups_file.csv", **nacrs_options)
-df_fac_a = spark.read.csv("path_to_facility_list_file.csv", **nacrs_options)
-df_ucc_a = spark.read.csv("path_to_ucc_file.csv", **nacrs_options)
-df_dq_a = spark.read.csv("path_to_dq_file.csv", **nacrs_options)
-df_ps_a = spark.read.csv("path_to_ps_file.csv", **nacrs_options)
-df_lookup_a = spark.read.csv("path_to_lookup_table.csv", **nacrs_options)
-
-# Optionally, perform any necessary data manipulations
-# For example:
-# df_nacrs_yr = nacrs_yr.select([list_of_columns])
-
-# Stop Spark session
-spark.stop()
-
+# Display the resulting DataFrame
+# display(ed_facility_org)
