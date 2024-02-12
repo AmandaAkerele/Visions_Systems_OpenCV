@@ -1,4 +1,45 @@
 from pyspark.sql import SparkSession
+
+# Initialize Spark session
+spark = SparkSession.builder \
+    .appName("Set_Header_From_Second_Row") \
+    .getOrCreate()
+
+# Assume df_fac is your DataFrame
+
+# Extract the first row as the header
+header = df_fac.take(2)[-1]
+
+# Filter out the header row
+df_fac_data = df_fac.subtract(df_fac.limit(1))
+
+# Set the header
+df_fac_with_header = spark.createDataFrame(df_fac_data.collect(), header)
+
+# Show the resulting DataFrame
+df_fac_with_header.show()
+
+# Stop Spark session
+spark.stop()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+or 
+
+from pyspark.sql import SparkSession
 from pyspark.sql.functions import col
 
 # Initialize Spark session
