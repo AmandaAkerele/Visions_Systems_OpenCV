@@ -1,3 +1,26 @@
+import logging
+from pyspark.sql import SparkSession
+
+# Suppress warnings
+logger = logging.getLogger('py4j')
+logger.setLevel(logging.ERROR)
+
+# Initialize Spark session
+spark = SparkSession.builder \
+    .appName("Suppress_Warnings") \
+    .getOrCreate()
+
+# Load data or perform other operations here...
+
+# Stop Spark session
+spark.stop()
+
+
+
+
+
+
+
 from pyspark.sql import SparkSession
 
 # Initialize Spark session
