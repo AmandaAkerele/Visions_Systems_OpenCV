@@ -1,3 +1,33 @@
+from pyspark.sql.functions import lit
+
+# Get the list of columns from tmp_ed_facility_org_a
+all_columns = tmp_ed_facility_org_a.columns
+
+# Add missing columns as null to t3 and t4
+for col in all_columns:
+    if col not in t3.columns:
+        t3 = t3.withColumn(col, lit(None))
+    if col not in t4.columns:
+        t4 = t4.withColumn(col, lit(None))
+
+
+t3 = t3.select(all_columns)
+t4 = t4.select(all_columns)
+
+tmp_ed_facility_org = tmp_ed_facility_org_a.union(t3).union(t4).distinct()
+
+
+
+
+
+
+
+
+
+
+
+
+
 from pyspark.sql import functions as F
 from pyspark.sql.window import Window
 
