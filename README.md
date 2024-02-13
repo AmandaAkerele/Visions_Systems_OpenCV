@@ -1,3 +1,52 @@
+from pyspark.sql.functions import col
+
+# List to keep track of seen columns
+seen_columns = set()
+unique_columns = []
+
+for column in tmp_ed_facility_org_a.columns:
+    if column not in seen_columns:
+        unique_columns.append(column)
+        seen_columns.add(column)
+
+# Selecting only the unique columns from tmp_ed_facility_org_a
+tmp_ed_facility_org_a = tmp_ed_facility_org_a.select(*unique_columns)
+
+
+
+and 
+# Perform the union operation
+tmp_ed_facility_org = tmp_ed_facility_org_a.unionByName(t3, allowMissingColumns=True) \
+                                           .unionByName(t4, allowMissingColumns=True) \
+                                           .distinct()
+
+combin e
+from pyspark.sql.functions import col
+
+# Step 1: Remove duplicate 'CORP_ID' column from tmp_ed_facility_org_a
+seen_columns = set()
+unique_columns = []
+
+for column in tmp_ed_facility_org_a.columns:
+    if column not in seen_columns:
+        unique_columns.append(column)
+        seen_columns.add(column)
+
+tmp_ed_facility_org_a = tmp_ed_facility_org_a.select(*unique_columns)
+
+# Step 2: Perform the union operation
+tmp_ed_facility_org = tmp_ed_facility_org_a.unionByName(t3, allowMissingColumns=True) \
+                                           .unionByName(t4, allowMissingColumns=True) \
+                                           .distinct()
+
+
+
+
+
+
+
+
+
 from pyspark.sql import DataFrame
 
 def rename_columns_to_uppercase(df: DataFrame) -> DataFrame:
