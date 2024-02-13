@@ -85,6 +85,27 @@ t4_common = t4.select([F.col(c).alias(c.upper()) for c in common_columns])
 tmp_ed_facility_org = tmp_ed_facility_org_a_common.unionByName(t3_common).unionByName(t4_common).distinct()
 
 
+blend this 
+from pyspark.sql.functions import col
+
+# Step 1: Remove duplicate 'SITE_ID' column from t4
+seen_columns = set()
+unique_columns_t4 = []
+
+for column in t4.columns:
+    if column not in seen_columns:
+        unique_columns_t4.append(column)
+        seen_columns.add(column)
+
+t4 = t4.select(*unique_columns_t4)
+
+# Step 2: Perform the union operation
+tmp_ed_facility_org = tmp_ed_facility_org_a.unionByName(t3, allowMissingColumns=True) \
+                                           .unionByName(t4, allowMissingColumns=True) \
+                                           .distinct()
+
+
+
 
 
 
