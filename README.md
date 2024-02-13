@@ -1,33 +1,27 @@
-from pyspark.sql.functions import lit, col
+AnalysisException                         Traceback (most recent call last)
+/tmp/ipykernel_289/3926978093.py in <cell line: 2>()
+      1 # Union the DataFrames
+----> 2 tmp_ed_facility_org = tmp_ed_facility_org_a.unionByName(t3).unionByName(t4).distinct()
 
-# Get the list of columns from tmp_ed_facility_org_a in lowercase
-all_columns_lower = [c.lower() for c in tmp_ed_facility_org_a.columns]
+/usr/local/lib/python3.10/dist-packages/pyspark/sql/dataframe.py in unionByName(self, other, allowMissingColumns)
+   4035         +----+----+----+----+----+----+
+   4036         """
+-> 4037         return DataFrame(self._jdf.unionByName(other._jdf, allowMissingColumns), self.sparkSession)
+   4038 
+   4039     def intersect(self, other: "DataFrame") -> "DataFrame":
 
-# Add missing columns to t3 and t4 with case-insensitive comparison
-for col_name in tmp_ed_facility_org_a.columns:
-    col_name_lower = col_name.lower()
-    if col_name_lower not in [c.lower() for c in t3.columns]:
-        t3 = t3.withColumn(col_name, lit(None))
-    if col_name_lower not in [c.lower() for c in t4.columns]:
-        t4 = t4.withColumn(col_name, lit(None))
+/usr/local/lib/python3.10/dist-packages/py4j/java_gateway.py in __call__(self, *args)
+   1320 
+   1321         answer = self.gateway_client.send_command(command)
+-> 1322         return_value = get_return_value(
+   1323             answer, self.gateway_client, self.target_id, self.name)
+   1324 
 
-# Now perform the unionByName operation
-tmp_ed_facility_org = tmp_ed_facility_org_a.unionByName(t3, allowMissingColumns=True).unionByName(t4, allowMissingColumns=True).distinct()
+/usr/local/lib/python3.10/dist-packages/pyspark/errors/exceptions/captured.py in deco(*a, **kw)
+    183                 # Hide where the exception came from that shows a non-Pythonic
+    184                 # JVM exception message.
+--> 185                 raise converted from None
+    186             else:
+    187                 raise
 
-
-or 
-from pyspark.sql import DataFrame
-
-def rename_columns_to_uppercase(df: DataFrame) -> DataFrame:
-    for col_name in df.columns:
-        df = df.withColumnRenamed(col_name, col_name.upper())
-    return df
-
-# Applying the function to your DataFrames
-tmp_ed_facility_org_a = rename_columns_to_uppercase(tmp_ed_facility_org_a)
-t3 = rename_columns_to_uppercase(t3)
-t4 = rename_columns_to_uppercase(t4)
-
-# Union the DataFrames
-tmp_ed_facility_org = tmp_ed_facility_org_a.unionByName(t3).unionByName(t4).distinct()
-
+AnalysisException: [COLUMN_ALREADY_EXISTS] The column `corp_id` already exists. Consider to choose another name or rename the existing column.
