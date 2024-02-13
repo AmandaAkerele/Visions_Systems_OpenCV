@@ -28,4 +28,6 @@ tmp_ed_facility_org_a = rename_columns_to_uppercase(tmp_ed_facility_org_a)
 t3 = rename_columns_to_uppercase(t3)
 t4 = rename_columns_to_uppercase(t4)
 
+# Union the DataFrames
+tmp_ed_facility_org = tmp_ed_facility_org_a.unionByName(t3).unionByName(t4).distinct()
 
