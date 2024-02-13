@@ -1,27 +1,41 @@
-AnalysisException                         Traceback (most recent call last)
-/tmp/ipykernel_289/3926978093.py in <cell line: 2>()
-      1 # Union the DataFrames
-----> 2 tmp_ed_facility_org = tmp_ed_facility_org_a.unionByName(t3).unionByName(t4).distinct()
+from pyspark.sql import DataFrame
 
-/usr/local/lib/python3.10/dist-packages/pyspark/sql/dataframe.py in unionByName(self, other, allowMissingColumns)
-   4035         +----+----+----+----+----+----+
-   4036         """
--> 4037         return DataFrame(self._jdf.unionByName(other._jdf, allowMissingColumns), self.sparkSession)
-   4038 
-   4039     def intersect(self, other: "DataFrame") -> "DataFrame":
+def rename_columns_to_uppercase(df: DataFrame) -> DataFrame:
+    # Dictionary to track renamed columns to avoid duplicates
+    renamed_columns = {}
+    for col_name in df.columns:
+        upper_col_name = col_name.upper()
+        # Check if the uppercase version of the column already exists
+        if upper_col_name in renamed_columns:
+            # If it exists, generate a new unique name (you can customize this part as needed)
+            unique_name = upper_col_name + "_1"
+            df = df.withColumnRenamed(col_name, unique_name)
+            renamed_columns[unique_name] = None
+        else:
+            df = df.withColumnRenamed(col_name, upper_col_name)
+            renamed_columns[upper_col_name] = None
+    return df
 
-/usr/local/lib/python3.10/dist-packages/py4j/java_gateway.py in __call__(self, *args)
-   1320 
-   1321         answer = self.gateway_client.send_command(command)
--> 1322         return_value = get_return_value(
-   1323             answer, self.gateway_client, self.target_id, self.name)
-   1324 
+# Applying the function to your DataFrames
+tmp_ed_facility_org_a = rename_columns_to_uppercase(tmp_ed_facility_org_a)
+t3 = rename_columns_to_uppercase(t3)
+t4 = rename_columns_to_uppercase(t4)
 
-/usr/local/lib/python3.10/dist-packages/pyspark/errors/exceptions/captured.py in deco(*a, **kw)
-    183                 # Hide where the exception came from that shows a non-Pythonic
-    184                 # JVM exception message.
---> 185                 raise converted from None
-    186             else:
-    187                 raise
+# Union the DataFrames
+tmp_ed_facility_org = tmp_ed_facility_org_a.unionByName(t3).unionByName(t4).distinct()
 
-AnalysisException: [COLUMN_ALREADY_EXISTS] The column `corp_id` already exists. Consider to choose another name or rename the existing column.
+
+or 
+
+common_columns = set(tmp_ed_facility_org_a.columns).intersection(t3.columns).intersection(t4.columns)
+
+tmp_ed_facility_org_a_common = tmp_ed_facility_org_a.select([F.col(c).alias(c.upper()) for c in common_columns])
+t3_common = t3.select([F.col(c).alias(c.upper()) for c in common_columns])
+t4_common = t4.select([F.col(c).alias(c.upper()) for c in common_columns])
+
+tmp_ed_facility_org = tmp_ed_facility_org_a_common.unionByName(t3_common).unionByName(t4_common).distinct()
+
+
+
+
+
