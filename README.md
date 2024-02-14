@@ -1,48 +1,41 @@
-tmp_ed_facility_org_a= pd.merge(df_fac, df_dq, how='inner',
-                                      left_on=['FACILITY_AM_CARE_NUM', 'SUBMISSION_FISCAL_YEAR'],
-                                      right_on=['FACILITY_AM_CARE_NUM', 'FISCAL_YEAR'])
-# Rename columns without suffixes
-column_mapping = {'SITE_ID_x': 'SITE_ID',
-                  'CORP_ID_x': 'CORP_ID', 
-                  'REGION_ID_x': 'REGION_ID',
-                  'PROVINCE_ID_x': 'PROVINCE_ID',
-                  'SITE_ID_y': 'SITE_ID',
-                  'CORP_ID_y': 'CORP_ID', 
-                  'REGION_ID_y': 'REGION_ID',
-                  'PROVINCE_ID_y': 'PROVINCE_ID'}
-tmp_ed_facility_org_a = tmp_ed_facility_org_a.rename(columns=column_mapping)
-tmp_ed_facility_org_a= tmp_ed_facility_org_a.loc[:, ~tmp_ed_facility_org_a.columns.duplicated()]
+from pyspark.sql import functions as F
 
+# Assuming df_fac and df_dq are your Spark DataFrames and already loaded
 
-tmp_ed_facility_org_a['TYPE'] = 'DQ'
-t3 = df_fac[df_fac['NACRS_ED_FLG'] == 1][['SUBMISSION_FISCAL_YEAR', 'FACILITY_AM_CARE_NUM', 'SITE_ID', 'CORP_ID',
-                                               'REGION_ID', 'PROVINCE_ID', 'NACRS_ED_FLG']]
-t3.loc[:,'TYPE'] = 'SL'
-t3.loc[:,'IND'] = ''
-#t3['row_num']=range(1,len(t3)=1)
+# Inner join df_fac and df_dq while avoiding duplicate columns
+tmp_ed_facility_org_a = df_fac.join(df_dq, 
+    (df_fac['FACILITY_AM_CARE_NUM'] == df_dq['FACILITY_AM_CARE_NUM']) & 
+    (df_fac['SUBMISSION_FISCAL_YEAR'] == df_dq['FISCAL_YEAR']), 
+    'inner')
 
-ps= df_ps[df_ps['FISCAL_YEAR'].astype(str)=='2022']
-t4 = df_fac[df_fac['FACILITY_AM_CARE_NUM'].astype(str).isin(ps['FACILITY_AM_CARE_NUM'].astype(str))]
+# Drop duplicated columns from df_dq
+duplicate_columns = ['SITE_ID', 'CORP_ID', 'REGION_ID', 'PROVINCE_ID']
+for column in duplicate_columns:
+    tmp_ed_facility_org_a = tmp_ed_facility_org_a.drop(df_dq[column])
 
-t4.loc[:,'TYPE'] = 'PS'
-t4.loc[:,'IND'] = ''
-tmp_ed_facility_org=pd.concat([tmp_ed_facility_org_a,t3,t4],ignore_index=True)
-    # Drop duplicate columns
-tmp_ed_facility_org= tmp_ed_facility_org.loc[:, ~tmp_ed_facility_org.columns.duplicated()]
+# Add TYPE column
+tmp_ed_facility_org_a = tmp_ed_facility_org_a.withColumn('TYPE', F.lit('DQ'))
 
+# Filter df_fac and create t3 DataFrame
+t3 = df_fac.filter(df_fac['NACRS_ED_FLG'] == 1).select('SUBMISSION_FISCAL_YEAR', 'FACILITY_AM_CARE_NUM', 
+                                                       'SITE_ID', 'CORP_ID', 'REGION_ID', 'PROVINCE_ID', 
+                                                       'NACRS_ED_FLG')
+t3 = t3.withColumn('TYPE', F.lit('SL')).withColumn('IND', F.lit(''))
 
+# Filter df_ps and create t4 DataFrame
+ps = df_ps.filter(df_ps['FISCAL_YEAR'] == '2022')
+t4 = df_fac.join(ps, df_fac['FACILITY_AM_CARE_NUM'] == ps['FACILITY_AM_CARE_NUM'], 'inner')
+t4 = t4.withColumn('TYPE', F.lit('PS')).withColumn('IND', F.lit(''))
 
-filtered_ed_fac = df_fac[df_fac['CORP_ID'].isin(tmp_ed_facility_org['CORP_ID'])]
+# Union DataFrames
+tmp_ed_facility_org = tmp_ed_facility_org_a.union(t3).union(t4).dropDuplicates()
 
-# Group by CORP_ID and count
-tmp_cnt_ed_facility_org = filtered_ed_fac.groupby('CORP_ID').size().reset_index(name='CORP_CNT')
+# Filter and group by
+filtered_ed_fac = df_fac.join(tmp_ed_facility_org, 'CORP_ID')
+tmp_cnt_ed_facility_org = filtered_ed_fac.groupBy('CORP_ID').count().withColumnRenamed('count', 'CORP_CNT')
 
-# Create ED_FACILITY_ORG
-# Merge TMP_ED_FACILITY_ORG with TMP_CNT_ED_FACILITY_ORG
-ed_facility_org = pd.merge(tmp_ed_facility_org, tmp_cnt_ed_facility_org, on='CORP_ID')
+# Merge and sort
+ed_facility_org = tmp_ed_facility_org.join(tmp_cnt_ed_facility_org, 'CORP_ID').orderBy(['TYPE', 'FACILITY_AM_CARE_NUM'])
 
-# Sort the DataFrame
-ed_facility_org = ed_facility_org.sort_values(by=['TYPE', 'FACILITY_AM_CARE_NUM'])
-ed_facility_org = ed_facility_org.rename(columns={'REGION_NAME_x' : 'REGION_NAME','REGION_NAME_y' : 'REGION_NAME'})
- # Drop duplicate columns
-ed_facility_org= ed_facility_org.loc[:, ~ed_facility_org.columns.duplicated()]
+# Drop duplicates if any
+ed_facility_org = ed_facility_org.dropDuplicates()
