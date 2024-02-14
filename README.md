@@ -1,13 +1,12 @@
-# After your existing code
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col
 
-# Cache the DataFrame if it's going to be reused
-nacrs_yr_df.cache()
+# Initialize Spark session
+spark = SparkSession.builder.appName("NACRS Data Processing").getOrCreate()
 
-# Get the row count
-row_count = nacrs_yr_df.count()
+# ... your existing code for loading and processing the data ...
 
-# Print the row count
-print("Row count:", row_count)
-
-# Clear the cache if the DataFrame is no longer needed
-nacrs_yr_df.unpersist()
+# Use countApprox for getting approximate row count
+# For example, using a timeout of 1000ms (1 second) and a confidence of 0.95
+approx_row_count = nacrs_yr_df.countApprox(1000, 0.95)
+print("Approximate Row Count:", approx_row_count)
