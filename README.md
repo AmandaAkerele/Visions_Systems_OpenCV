@@ -1,13 +1,25 @@
-# Row count
-row_count = df.count()
-print("Number of rows:", row_count)
+from pyspark.sql import SparkSession
 
-# Column count
-column_count = len(df.columns)
-print("Number of columns:", column_count)
+# Create a SparkSession with increased executor memory and potentially other settings
+spark = SparkSession.builder \
+    .appName("Large DataFrame Application") \
+    .config("spark.executor.memory", "4g")  # Increase as needed
+    .config("spark.executor.cores", "4")  # Adjust based on your cluster setup
+    .config("spark.driver.memory", "4g")  # Increase as needed
+    .config("spark.sql.shuffle.partitions", "200")  # Adjust based on your data size
+    .getOrCreate()
 
+# Assuming df is your DataFrame
+try:
+    # Row count
+    row_count = df.count()
+    print("Number of rows:", row_count)
 
-24/02/14 11:07:45 ERROR TaskSchedulerImpl: Lost executor 18 on 10.4.5.78: Command exited with code 52
-24/02/14 11:07:45 WARN TaskSetManager: Lost task 165.0 in stage 15.0 (TID 1587) (10.4.5.78 executor 18): ExecutorLostFailure (executor 18 exited caused by one of the running tasks) Reason: Command exited with code 52
-24/02/14 11:07:45 WARN TaskSetManager: Lost task 156.0 in stage 15.0 (TID 1578) (10.4.5.78 executor 18): ExecutorLostFailure (executor 18 exited caused by one of the running tasks) Reason: Command exited with code 52
-24/02/14 11:07:45
+    # Column count
+    column_count = len(df.columns)
+    print("Number of columns:", column_count)
+
+except Exception as e:
+    print("Error encountered:", e)
+    spark.stop()
+
