@@ -1,34 +1,13 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col
+AttributeError                            Traceback (most recent call last)
+/tmp/ipykernel_292/3789467198.py in <cell line: 2>()
+      1 # Convert the Table to a pandas DataFrame
+----> 2 nacrs_yr_df2 = nacrs_yr_df.to_pandas()
 
-# Initialize Spark session
-spark = SparkSession.builder.appName("NACRS Data Processing").getOrCreate()
+/usr/local/lib/python3.10/dist-packages/pyspark/sql/dataframe.py in __getattr__(self, name)
+   3121         """
+   3122         if name not in self.columns:
+-> 3123             raise AttributeError(
+   3124                 "'%s' object has no attribute '%s'" % (self.__class__.__name__, name)
+   3125             )
 
-# Define the options
-nacrs_options = {
-    'keep': 'AM_CARE_KEY SUBMISSION_FISCAL_YEAR FACILITY_PROVINCE AMCARE_GROUP_CODE FACILITY_AM_CARE_NUM TRIAGE_DATE TRIAGE_TIME DATE_OF_REGISTRATION REGISTRATION_TIME DISPOSITION_DATE DISPOSITION_TIME VISIT_DISPOSITION WAIT_TIME_TO_PIA_HOURS LOS_HOURS WAIT_TIME_TO_INPATIENT_HOURS TIME_PHYSICAN_INIT_ASSESSMENT ED_VISIT_IND_CODE AMCARE_GROUP_CODE GENDER AGE_NUM',
-    'where': 'ED_VISIT_IND_CODE in ("1") and AMCARE_GROUP_CODE in ("ED")'
-}
-
-nacrs_options2 = {'keep': 'AM_CARE_KEY'}
-
-# Read the ambulatory_care data from a Parquet file
-nacrs_yr_df = spark.read.parquet("path_to_ambulatory_care.parquet")
-
-# Filter and select columns as per nacrs_options
-selected_columns = nacrs_options['keep'].split()
-nacrs_yr_df = nacrs_yr_df.filter((col('ED_VISIT_IND_CODE') == "1") & (col('AMCARE_GROUP_CODE') == "ED")) \
-                         .select(*selected_columns)
-
-# Rename columns to uppercase
-nacrs_yr_df = nacrs_yr_df.toDF(*[c.upper() for c in nacrs_yr_df.columns])
-
-# Read the nacrs_gud_dups_2022_2023 data from a Parquet file
-df_dups_a = spark.read.parquet("path_to_nacrs_gud_dups_2022_2023.parquet")
-
-# Filter and select columns as per nacrs_options2
-df_dups_a = df_dups_a.select(*nacrs_options2['keep'].split())
-
-# Show the data (for verification)
-nacrs_yr_df.show()
-df_dups_a.show()
+AttributeError: 'DataFrame' object has no attribute 'to_pandas'
