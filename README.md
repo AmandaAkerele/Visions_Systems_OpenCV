@@ -1,56 +1,48 @@
-Subject: Assistance Needed with Spark Executor Error in DataFrame Operations
+tmp_ed_facility_org_a= pd.merge(df_fac, df_dq, how='inner',
+                                      left_on=['FACILITY_AM_CARE_NUM', 'SUBMISSION_FISCAL_YEAR'],
+                                      right_on=['FACILITY_AM_CARE_NUM', 'FISCAL_YEAR'])
+# Rename columns without suffixes
+column_mapping = {'SITE_ID_x': 'SITE_ID',
+                  'CORP_ID_x': 'CORP_ID', 
+                  'REGION_ID_x': 'REGION_ID',
+                  'PROVINCE_ID_x': 'PROVINCE_ID',
+                  'SITE_ID_y': 'SITE_ID',
+                  'CORP_ID_y': 'CORP_ID', 
+                  'REGION_ID_y': 'REGION_ID',
+                  'PROVINCE_ID_y': 'PROVINCE_ID'}
+tmp_ed_facility_org_a = tmp_ed_facility_org_a.rename(columns=column_mapping)
+tmp_ed_facility_org_a= tmp_ed_facility_org_a.loc[:, ~tmp_ed_facility_org_a.columns.duplicated()]
 
-Dear Michael,
 
-I hope this message finds you well. I am currently facing a challenge with a DataFrame operation in Apache Spark, and I believe your expertise could be immensely beneficial in resolving it.
+tmp_ed_facility_org_a['TYPE'] = 'DQ'
+t3 = df_fac[df_fac['NACRS_ED_FLG'] == 1][['SUBMISSION_FISCAL_YEAR', 'FACILITY_AM_CARE_NUM', 'SITE_ID', 'CORP_ID',
+                                               'REGION_ID', 'PROVINCE_ID', 'NACRS_ED_FLG']]
+t3.loc[:,'TYPE'] = 'SL'
+t3.loc[:,'IND'] = ''
+#t3['row_num']=range(1,len(t3)=1)
 
-I have been working with a DataFrame created from a Parquet file in Spark. My objective is to display the row and column counts of this DataFrame. However, during this process, I am consistently encountering an error that seems to be related to the Spark executors. Here is the error message that appears:
+ps= df_ps[df_ps['FISCAL_YEAR'].astype(str)=='2022']
+t4 = df_fac[df_fac['FACILITY_AM_CARE_NUM'].astype(str).isin(ps['FACILITY_AM_CARE_NUM'].astype(str))]
 
-```
-24/02/14 11:07:45 ERROR TaskSchedulerImpl: Lost executor 18 on 10.4.5.78: Command exited with code 52
-24/02/14 11:07:45 WARN TaskSetManager: Lost task 165.0 in stage 15.0 (TID 1587) (10.4.5.78 executor 18): ExecutorLostFailure (executor 18 exited caused by one of the running tasks) Reason: Command exited with code 52
-24/02/14 11:07:45 WARN TaskSetManager: Lost task 156.0 in stage 15.0 (TID 1578) (10.4.5.78 executor 18): ExecutorLostFailure (executor 18 exited caused by one of the running tasks) Reason: Command exited with code 52
-24/02/14 11:07:45
-```
+t4.loc[:,'TYPE'] = 'PS'
+t4.loc[:,'IND'] = ''
+tmp_ed_facility_org=pd.concat([tmp_ed_facility_org_a,t3,t4],ignore_index=True)
+    # Drop duplicate columns
+tmp_ed_facility_org= tmp_ed_facility_org.loc[:, ~tmp_ed_facility_org.columns.duplicated()]
 
-From my understanding, this error indicates that the executor with ID 18 is being lost due to an exit command with code 52. This issue leads to the loss of tasks associated with the DataFrame operation I am attempting to perform.
 
-Given your experience with Spark and its environment, I would greatly appreciate your insights into the following:
 
-1. What could potentially cause an executor to exit with code 52, and how can this be prevented?
-2. Are there any specific configurations or resource allocations that I should consider adjusting to mitigate this issue?
-3. Would you recommend any best practices or alternative approaches to efficiently display the row and column counts for a large DataFrame in Spark?
+filtered_ed_fac = df_fac[df_fac['CORP_ID'].isin(tmp_ed_facility_org['CORP_ID'])]
 
-Your guidance on this matter would be invaluable. I am looking forward to your suggestions and am happy to provide any further information you might need to better understand the context of this problem.
+# Group by CORP_ID and count
+tmp_cnt_ed_facility_org = filtered_ed_fac.groupby('CORP_ID').size().reset_index(name='CORP_CNT')
 
-Thank you very much for your time and assistance.
+# Create ED_FACILITY_ORG
+# Merge TMP_ED_FACILITY_ORG with TMP_CNT_ED_FACILITY_ORG
+ed_facility_org = pd.merge(tmp_ed_facility_org, tmp_cnt_ed_facility_org, on='CORP_ID')
 
-Best regards,
-
-or 
-
-Subject: Assistance Required with Spark Executor Failure
-
-Dear Michael,
-
-I hope this email finds you well. I'm currently working on a project where I'm using Apache Spark to process a large dataset from a Parquet file. My objective is straightforward - I need to display the row and column counts of the DataFrame I've created. However, I've encountered a persistent issue that's hindering my progress.
-
-Each time I attempt to execute the code to display these counts, I receive the following error messages:
-
-```
-24/02/14 11:07:45 ERROR TaskSchedulerImpl: Lost executor 18 on 10.4.5.78: Command exited with code 52
-24/02/14 11:07:45 WARN TaskSetManager: Lost task 165.0 in stage 15.0 (TID 1587) (10.4.5.78 executor 18): ExecutorLostFailure (executor 18 exited caused by one of the running tasks) Reason: Command exited with code 52
-24/02/14 11:07:45 WARN TaskSetManager: Lost task 156.0 in stage 15.0 (TID 1578) (10.4.5.78 executor 18): ExecutorLostFailure (executor 18 exited caused by one of the running tasks) Reason: Command exited with code 52
-24/02/14 11:07:45
-```
-
-From what I understand, this error indicates that an executor in our Spark cluster is being lost during the task's execution, specifically pointing to an exit caused by an issue at the system level. This type of error often suggests problems such as resource constraints (like memory issues), executor misconfiguration, or potentially data skewness.
-
-Given your expertise with Spark and its configuration, I would greatly appreciate your insight or suggestions on how to resolve this issue. Could you advise on adjustments that might be needed in our Spark setup, or is there an alternative approach you recommend for handling large datasets in this context?
-
-Your assistance in this matter would be invaluable, as it's a critical component of our project. Please let me know if you need any more information or details about the setup and the issue.
-
-Thank you in advance for your help and support.
-
-Best regards,
-
+# Sort the DataFrame
+ed_facility_org = ed_facility_org.sort_values(by=['TYPE', 'FACILITY_AM_CARE_NUM'])
+ed_facility_org = ed_facility_org.rename(columns={'REGION_NAME_x' : 'REGION_NAME','REGION_NAME_y' : 'REGION_NAME'})
+ # Drop duplicate columns
+ed_facility_org= ed_facility_org.loc[:, ~ed_facility_org.columns.duplicated()]
