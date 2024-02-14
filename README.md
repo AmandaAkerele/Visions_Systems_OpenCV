@@ -1,31 +1,10 @@
-# create spark session
-spark_token = "D1tlsoCjLWJqJi6yt78dmbSv8WxgEcFop0me4sSJb7I="
+nacrs_options={'keep':'AM_CARE_KEY SUBMISSION_FISCAL_YEAR FACILITY_PROVINCE AMCARE_GROUP_CODE \
+                     FACILITY_AM_CARE_NUM TRIAGE_DATE TRIAGE_TIME DATE_OF_REGISTRATION REGISTRATION_TIME\
+                     DISPOSITION_DATE DISPOSITION_TIME VISIT_DISPOSITION WAIT_TIME_TO_PIA_HOURS\
+                     LOS_HOURS WAIT_TIME_TO_INPATIENT_HOURS TIME_PHYSICAN_INIT_ASSESSMENT\
+                     ED_VISIT_IND_CODE AMCARE_GROUP_CODE GENDER AGE_NUM',
+              'where': 'ED_VISIT_IND_CODE in ("1") and AMCARE_GROUP_CODE in ("ED")'}                        
+nacrs_yr = sas.sasdata(table='ambulatory_care',libref=f"NACRS{open_year-2000}", dsopts=nacrs_options)
 
-#### initialize spark session
-extraClassPath = None
-for file in os.listdir("/opt/jars"):
-    # check only text files
-    if file.endswith('.jar'):
-        if extraClassPath is None:
-            extraClassPath = f"/opt/jars/{file}"
-        else:
-            extraClassPath += f",/opt/jars/{file}"
-            
-# connect to spark cluster
-spark = (SparkSession.builder
-                     .master(f"spark://spkm-aakerele:7077")
-                     .appName("OracleSparkApp")
-                     .config("spark.authenticate", "true")
-                     .config("spark.authenticate.secret", spark_token)
-                     .config("spark.driver.memory", "64g")
-                     .config("spark.executor.memory", "64g")
-                     .config('spark.executor.cores', '4')
-                     .config("spark.jars", extraClassPath)
-                     .config("spark.driver.extraClassPath", extraClassPath)
-                     .config("spark.sql.parquet.datetimeRebaseModeInRead", "CORRECTED")
-                     .config("spark.sql.parquet.datetimeRebaseModeInWrite", "CORRECTED")
-                     .config("spark.sql.autoBroadcastJoinThreshold", "-1")
-                     .config("spark.sql.debug.maxToStringFields", 1000)
-                     .config('spark.sql.timestampType', "TIMESTAMP_NTZ")
-                     .getOrCreate())
-
+df_nacrs_yr = nacrs_yr.to_df()
+df_nacrs_yr=df_nacrs_yr.rename(columns=lambda x: x.upper())
