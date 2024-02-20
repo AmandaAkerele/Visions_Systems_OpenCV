@@ -1,24 +1,28 @@
-# # Alias both DataFrames
-# df_fac_alias = df_fac.alias("fac")
-# df_dq_alias = df_dq.alias("dq")
+from pyspark.sql.functions import col
 
-# # Perform the inner join using aliases
-# tmp_ed_facility_org_a = df_fac_alias.join(
-#     df_dq_alias,
-#     (col("fac.FACILITY_AM_CARE_NUM") == col("dq.FACILITY_AM_CARE_NUM")) &
-#     (col("fac.SUBMISSION_FISCAL_YEAR") == col("dq.FISCAL_YEAR")),
-#     'inner'
-# )
+# Alias DataFrames
+ed_nodup_noucc_nosb_alias = ed_nodup_noucc_nosb_22.alias("ed")
+df_fac_alias = df_fac.alias("fac")
 
-# # Select columns and handle duplicates
-# # List all columns from df_fac and selectively from df_dq to avoid duplicates
-# selected_columns = [col(f"fac.{column_name}") for column_name in df_fac.columns]
+# Perform the join using aliases
+ed_records_22_aa_df = ed_nodup_noucc_nosb_alias.join(
+    df_fac_alias,
+    col("ed.FACILITY_AM_CARE_NUM") == col("fac.FACILITY_AM_CARE_NUM"),
+    "left"
+)
 
-# # Add columns from df_dq, renaming those that conflict
-# conflicting_columns = ['SITE_ID', 'FACILITY_AM_CARE_NUM', 'CORP_ID', 'REGION_ID', 'PROVINCE_ID', 'REGION_NAME']  # Adjust based on your data
-# for column_name in df_dq.columns:
-#     if column_name not in conflicting_columns:
-#         selected_columns.append(col(f"dq.{column_name}"))
 
-# # Construct the final DataFrame with selected columns
-# tmp_ed_facility_org_a = tmp_ed_facility_org_a.select(selected_columns)
+# Select columns and handle duplicates
+# Use the aliased column names to avoid ambiguity
+selected_columns = [
+    col("ed.AM_CARE_KEY"), 
+    col("ed.SUBMISSION_FISCAL_YEAR").alias("SUBMISSION_FISCAL_YEAR"), 
+    col("fac.FACILITY_PROVINCE"), 
+    col("ed.FACILITY_AM_CARE_NUM"), 
+    col("ed.TRIAGE_DATE"), 
+    # Add other columns here as needed
+    # Ensure you are using the aliased column names and resolving any conflicts
+]
+
+# Construct the final DataFrame with selected columns
+ed_records_22_aa_df = ed_records_22_aa_df.select(*selected_columns)
