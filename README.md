@@ -1,19 +1,24 @@
-# Adjusting the join operation
-ed_records_22_aa_df = ed_nodup_noucc_nosb_22.join(df_fac, 'FACILITY_AM_CARE_NUM', 'left')
+# # Alias both DataFrames
+# df_fac_alias = df_fac.alias("fac")
+# df_dq_alias = df_dq.alias("dq")
 
-# Renaming one of the duplicate columns
-# This depends on which 'SUBMISSION_FISCAL_YEAR' you want to keep or rename
-# Assuming you want to keep the one from ed_nodup_noucc_nosb_22 and rename the one from df_fac
-ed_records_22_aa_df = ed_records_22_aa_df.withColumnRenamed('SUBMISSION_FISCAL_YEAR', 'SUBMISSION_FISCAL_YEAR_nodup')
+# # Perform the inner join using aliases
+# tmp_ed_facility_org_a = df_fac_alias.join(
+#     df_dq_alias,
+#     (col("fac.FACILITY_AM_CARE_NUM") == col("dq.FACILITY_AM_CARE_NUM")) &
+#     (col("fac.SUBMISSION_FISCAL_YEAR") == col("dq.FISCAL_YEAR")),
+#     'inner'
+# )
 
+# # Select columns and handle duplicates
+# # List all columns from df_fac and selectively from df_dq to avoid duplicates
+# selected_columns = [col(f"fac.{column_name}") for column_name in df_fac.columns]
 
-# Select specific columns
-selected_columns = ['AM_CARE_KEY', 'SUBMISSION_FISCAL_YEAR_nodup', 'FACILITY_PROVINCE', 'FACILITY_AM_CARE_NUM', 
-                    'TRIAGE_DATE', 'TRIAGE_TIME', 'DATE_OF_REGISTRATION', 'REGISTRATION_TIME', 'DISPOSITION_DATE', 
-                    'DISPOSITION_TIME', 'VISIT_DISPOSITION', 'WAIT_TIME_TO_PIA_HOURS', 'LOS_HOURS', 
-                    'WAIT_TIME_TO_INPATIENT_HOURS', 'TIME_PHYSICAN_INIT_ASSESSMENT', 'ED_VISIT_IND_CODE', 
-                    'AMCARE_GROUP_CODE', 'GENDER', 'AGE_NUM', 'SITE_ID', 'SITE_NAME', 'SITE_PEER', 'CORP_ID', 
-                    'CORP_NAME', 'CORP_PEER', 'NEW_REGION_ID', 'REGION_E_DESC', 'PROVINCE_ID', 'PROVINCE_NAME', 
-                    'NACRS_ED_FLG']
+# # Add columns from df_dq, renaming those that conflict
+# conflicting_columns = ['SITE_ID', 'FACILITY_AM_CARE_NUM', 'CORP_ID', 'REGION_ID', 'PROVINCE_ID', 'REGION_NAME']  # Adjust based on your data
+# for column_name in df_dq.columns:
+#     if column_name not in conflicting_columns:
+#         selected_columns.append(col(f"dq.{column_name}"))
 
-ed_records_22_aa_df = ed_records_22_aa_df.select(*selected_columns)
+# # Construct the final DataFrame with selected columns
+# tmp_ed_facility_org_a = tmp_ed_facility_org_a.select(selected_columns)
