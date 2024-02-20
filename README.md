@@ -1,31 +1,29 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col
+--------------------------------------------------------------------------
+AnalysisException                         Traceback (most recent call last)
+/tmp/ipykernel_6145/4235826331.py in <cell line: 13>()
+     11                      'NACRS_ED_FLG']
+     12 
+---> 13 ed_records_22_aa_df = ed_records_22_aa_df.select(columns_to_select)
 
-# Create a Spark session
-spark = SparkSession.builder.appName("NACRS Data Processing").getOrCreate()
+/usr/local/lib/python3.10/dist-packages/pyspark/sql/dataframe.py in select(self, *cols)
+   3221         +-----+---+
+   3222         """
+-> 3223         jdf = self._jdf.select(self._jcols(*cols))
+   3224         return DataFrame(jdf, self.sparkSession)
+   3225 
 
-# Define the file path for the Parquet file (assuming open_year is defined somewhere in your code)
-file_path = f"/path/to/NACRS{open_year-2000}/ambulatory_care"
+/usr/local/lib/python3.10/dist-packages/py4j/java_gateway.py in __call__(self, *args)
+   1320 
+   1321         answer = self.gateway_client.send_command(command)
+-> 1322         return_value = get_return_value(
+   1323             answer, self.gateway_client, self.target_id, self.name)
+   1324 
 
-# Read the Parquet file
-df = spark.read.parquet(file_path)
+/usr/local/lib/python3.10/dist-packages/pyspark/errors/exceptions/captured.py in deco(*a, **kw)
+    183                 # Hide where the exception came from that shows a non-Pythonic
+    184                 # JVM exception message.
+--> 185                 raise converted from None
+    186             else:
+    187                 raise
 
-# Columns to select
-columns_to_select = [
-    'AM_CARE_KEY', 'SUBMISSION_FISCAL_YEAR', 'FACILITY_PROVINCE', 'AMCARE_GROUP_CODE',
-    'FACILITY_AM_CARE_NUM', 'TRIAGE_DATE', 'TRIAGE_TIME', 'DATE_OF_REGISTRATION', 'REGISTRATION_TIME',
-    'DISPOSITION_DATE', 'DISPOSITION_TIME', 'VISIT_DISPOSITION', 'WAIT_TIME_TO_PIA_HOURS',
-    'LOS_HOURS', 'WAIT_TIME_TO_INPATIENT_HOURS', 'TIME_PHYSICAN_INIT_ASSESSMENT',
-    'ED_VISIT_IND_CODE', 'AMCARE_GROUP_CODE', 'GENDER', 'AGE_NUM'
-]
-
-# Selecting the specific columns
-df_nacrs_yr = df.select(columns_to_select)
-
-# Applying the filter condition
-df_nacrs_yr = df_nacrs_yr.filter((col("ED_VISIT_IND_CODE") == "1") & (col("AMCARE_GROUP_CODE") == "ED"))
-
-# Renaming columns to uppercase
-df_nacrs_yr = df_nacrs_yr.select([col(c).alias(c.upper()) for c in df_nacrs_yr.columns])
-
-# df_nacrs_yr is now the DataFrame with the desired transformations
+AnalysisException: [AMBIGUOUS_REFERENCE] Reference `SUBMISSION_FISCAL_YEAR` is ambiguous, could be: [`SUBMISSION_FISCAL_YEAR`, `SUBMISSION_FISCAL_YEAR`].
