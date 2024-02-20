@@ -1,28 +1,23 @@
-from pyspark.sql.functions import col
+exclude_types = ['SL', 'PS', 'DQ']
+exclude_facility_nums_for_TPIA = ed_facility_org[ed_facility_org['TYPE'].isin(['DQ']) & (ed_facility_org['IND'] == 'TPIA')]['FACILITY_AM_CARE_NUM']
+exclude_facility_nums = ed_facility_org[ed_facility_org['TYPE'].isin(exclude_types)]['FACILITY_AM_CARE_NUM']
+# Filter ed_record_bb DataFrame
+ed_record = ed_record_bb[~ed_record_bb['FACILITY_AM_CARE_NUM'].isin(exclude_facility_nums) & ~ed_record_bb['FACILITY_AM_CARE_NUM'].isin(exclude_facility_nums_for_TPIA)]
 
-# Alias DataFrames
-ed_nodup_noucc_nosb_alias = ed_nodup_noucc_nosb_22.alias("ed")
-df_fac_alias = df_fac.alias("fac")
+#For PEER group remove ucc and standalones only;
+# Filter out specific rows from ed_facility_org
+exclude_facility_nums_sl = ed_facility_org[(ed_facility_org['TYPE'] == 'SL') & (ed_facility_org['FACILITY_AM_CARE_NUM'] != '54242')]['FACILITY_AM_CARE_NUM']
+exclude_facility_nums_dq = ed_facility_org[(ed_facility_org['TYPE'] == 'DQ') & (ed_facility_org['IND'] == 'TPIA')]['FACILITY_AM_CARE_NUM']
 
-# Perform the join using aliases
-ed_records_22_aa_df = ed_nodup_noucc_nosb_alias.join(
-    df_fac_alias,
-    col("ed.FACILITY_AM_CARE_NUM") == col("fac.FACILITY_AM_CARE_NUM"),
-    "left"
-)
+# Create ed_record_Peer DataFrame
+ed_record_Peer = ed_record_bb[~ed_record_bb['FACILITY_AM_CARE_NUM'].isin(exclude_facility_nums_sl) &
+                                    ~ed_record_bb['FACILITY_AM_CARE_NUM'].isin(exclude_facility_nums_dq)]
 
+# Filter out specific rows from ed_facility_org for ed_record_with_ucc
+# dataset with UCC for NAT, PROV, REG level
+#remove DQ using datasets with UCC
+exclude_facility_nums_tpia = ed_facility_org[(ed_facility_org['TYPE'] == 'DQ') & (ed_facility_org['IND'] == 'TPIA')]['FACILITY_AM_CARE_NUM']
 
-# Select columns and handle duplicates
-# Use the aliased column names to avoid ambiguity
-selected_columns = [
-    col("ed.AM_CARE_KEY"), 
-    col("ed.SUBMISSION_FISCAL_YEAR").alias("SUBMISSION_FISCAL_YEAR"), 
-    col("fac.FACILITY_PROVINCE"), 
-    col("ed.FACILITY_AM_CARE_NUM"), 
-    col("ed.TRIAGE_DATE"), 
-    # Add other columns here as needed
-    # Ensure you are using the aliased column names and resolving any conflicts
-]
+# Create ed_record_with_ucc DataFrame TPIA
+ed_record_with_ucc = ed_record_with_ucc_bb[~ed_record_with_ucc_bb['FACILITY_AM_CARE_NUM'].isin(exclude_facility_nums_tpia)]
 
-# Construct the final DataFrame with selected columns
-ed_records_22_aa_df = ed_records_22_aa_df.select(*selected_columns)
