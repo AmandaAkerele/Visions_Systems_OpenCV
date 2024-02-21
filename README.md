@@ -1,34 +1,57 @@
-from pyspark.sql.functions import col
+# For corp level without UCC
+# Vectorized approach for 'tpia_rec' calculation
+ed_record['tpia_rec'] = 'Y'
+ed_record.loc[ed_record['TIME_PHYSICAN_INIT_ASSESSMENT'].isna() | (ed_record['TIME_PHYSICAN_INIT_ASSESSMENT'].str.strip() == ''), 'tpia_rec'] = 'B'
+ed_record.loc[ed_record['TIME_PHYSICAN_INIT_ASSESSMENT'] == '9999', 'tpia_rec'] = 'N'
 
-# Assuming ed_records_22_aa_df is created from a join of ed_nodup_noucc_nosb_22 and df_fac
-# and you need to handle potential duplicate 'SUBMISSION_FISCAL_YEAR' column
+# Filter records not equal to 'B'
+tpia_org_cnt = ed_record[ed_record['tpia_rec'] != 'B']
 
-# Alias DataFrames
-ed_alias = ed_nodup_noucc_nosb_22.alias("ed")
-fac_alias = df_fac.alias("fac")
+# Aggregation
+tpia_org_rec = tpia_org_cnt.groupby(['SUBMISSION_FISCAL_YEAR', 'CORP_ID']).agg(
+    Total_CASE=('AM_CARE_KEY', 'count'),
+    tpia_calc_cnt=('tpia_rec', lambda x: (x == 'Y').sum()),
+    tpia_elig_cnt=('tpia_rec', lambda x: (x.isin(['Y', 'N'])).sum())
+).reset_index()
 
-# Perform the join using aliases
-ed_records_22_aa_df = ed_alias.join(
-    fac_alias,
-    col("ed.FACILITY_AM_CARE_NUM") == col("fac.FACILITY_AM_CARE_NUM"),
-    "left"
-)
+# Calculate percentage and sort
+tpia_org_rec['tpia_rec_pct'] = tpia_org_rec['tpia_calc_cnt'] / tpia_org_rec['Total_CASE']
+tpia_org_rec.sort_values(by=['CORP_ID'], inplace=True)
 
-# Select columns and handle duplicates
-# List all columns from ed_nodup_noucc_nosb_22 and selectively from df_fac to avoid duplicates
-selected_columns = [col(f"ed.{column_name}") for column_name in ed_nodup_noucc_nosb_22.columns]
+# Conditional DataFrame creation
+tpia_supp_org = tpia_org_rec.query("(tpia_calc_cnt < 50) or (tpia_calc_cnt > 50 and tpia_rec_pct < 0.75)")
+tpia_rpt_org = tpia_org_rec.query("(tpia_calc_cnt >= 50) or (tpia_calc_cnt < 50 and tpia_rec_pct >= 0.75)")
 
-# Add columns from df_fac, renaming those that conflict
-conflicting_columns = ['FACILITY_AM_CARE_NUM', 'SUBMISSION_FISCAL_YEAR']  # Include 'SUBMISSION_FISCAL_YEAR' here
-for column_name in df_fac.columns:
-    if column_name not in conflicting_columns:
-        selected_columns.append(col(f"fac.{column_name}"))
-    else:
-        # If the column is conflicting, rename it (e.g., append '_fac')
-        selected_columns.append(col(f"fac.{column_name}").alias(f"{column_name}_fac"))
 
-# Construct the final DataFrame with selected columns
-ed_records_22_aa_df = ed_records_22_aa_df.select(*selected_columns)
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-# LOS for admit without UCC
-ed_records_admit_22_bb_df = ed_records_22_aa_df.filter(col('VISIT_DISPOSITION').isin(['06', '07']))
+# For corp level with ucc
+# Create a Dataframe tpia_org_cnt_ucc_22_a
+ed_record_with_ucc_22['tpia_rec'] = 'B'  
+ed_record_with_ucc_22.loc[ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT'] == '9999', 'tpia_rec'] = 'N'
+ed_record_with_ucc_22.loc[ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT'].notna() & 
+                          (ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT'] != '9999'), 'tpia_rec'] = 'Y'
+
+# Filter out rows with tpia_rec_22 equal to "B"
+tpia_org_cnt_ucc_22 = ed_record_with_ucc_22[ed_record_with_ucc_22['tpia_rec'] != 'B']
+ed_record_with_ucc_22[ed_record_with_ucc_22['tpia_rec'] != 'B']
+
+tpia_org_rec_ucc_22 = tpia_org_cnt_ucc_22.groupby(['SUBMISSION_FISCAL_YEAR', 'CORP_ID']).agg(
+    Total_CASE=pd.NamedAgg(column='AM_CARE_KEY', aggfunc='count'),
+    tpia_calc_cnt=pd.NamedAgg(column='tpia_rec', aggfunc=lambda x: (x == 'Y').sum()),
+    tpia_elig_cnt=pd.NamedAgg(column='tpia_rec', aggfunc=lambda x: (x.isin(['Y', 'N'])).sum()),
+    tpia_rec_pct=pd.NamedAgg(column='tpia_rec', aggfunc=lambda x: (x == 'Y').sum() / len(x))
+).reset_index()
+
+
+# Filter 'tpia_org_rec_ucc' based on conditions
+tpia_supp_org_ucc_22 = tpia_org_rec_ucc_22[(tpia_org_rec_ucc_22['tpia_calc_cnt']<50) | 
+                                           ((tpia_org_rec_ucc_22['tpia_calc_cnt'] >50) & 
+                                            (tpia_org_rec_ucc_22['tpia_rec_pct'] < 0.75))]
+
+tpia_rpt_org_ucc_22 = tpia_org_rec_ucc_22[(tpia_org_rec_ucc_22['tpia_calc_cnt'] >=50) | 
+                                          ((tpia_org_rec_ucc_22['tpia_calc_cnt'] < 50) & 
+                                           (tpia_org_rec_ucc_22['tpia_rec_pct'] >=0.75))]
+
+
+ 
