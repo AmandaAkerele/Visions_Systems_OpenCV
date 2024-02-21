@@ -1,57 +1,63 @@
-from pyspark.sql import functions as F
+# For Peer level
 
-# Create 'tpia_rec' column with initial value 'Y'
-ed_record = ed_record.withColumn('tpia_rec', F.lit('Y'))
+tpia_peer_cnt_a_df = ed_record_22_Peer.copy()
+tpia_peer_cnt_a_df['tpia_rec'] = 'B'
+tpia_peer_cnt_a_df.loc[tpia_peer_cnt_a_df['TIME_PHYSICAN_INIT_ASSESSMENT'].str.strip() == '', 'tpia_rec'] = 'B'
+tpia_peer_cnt_a_df.loc[tpia_peer_cnt_a_df['TIME_PHYSICAN_INIT_ASSESSMENT'] == '9999', 'tpia_rec'] = 'N'
+tpia_peer_cnt_a_df.loc[~tpia_peer_cnt_a_df['TIME_PHYSICAN_INIT_ASSESSMENT'].isin(['9999', '']), 'tpia_rec'] = 'Y'
 
-# Update 'tpia_rec' based on conditions
-ed_record = ed_record.withColumn('tpia_rec', 
-                                 F.when(ed_record['TIME_PHYSICAN_INIT_ASSESSMENT'].isNull() | 
-                                        (ed_record['TIME_PHYSICAN_INIT_ASSESSMENT'] == ''), 'B')
-                                  .when(ed_record['TIME_PHYSICAN_INIT_ASSESSMENT'] == '9999', 'N')
-                                  .otherwise(ed_record['tpia_rec']))
+tpia_peer_cnt_df = tpia_peer_cnt_a_df[tpia_peer_cnt_a_df['tpia_rec'] !='B']
 
-# Filter records not equal to 'B'
-tpia_org_cnt = ed_record.filter(ed_record['tpia_rec'] != 'B')
+tpia_peer_rec_df = tpia_peer_cnt_df.groupby(['SUBMISSION_FISCAL_YEAR', 'SITE_PEER']).agg(
+    tpia_calc_cnt = pd.NamedAgg(column='tpia_rec', aggfunc=lambda x: (x == 'Y').sum()),
+    tpia_elig_cnt= pd.NamedAgg(column='tpia_rec', aggfunc=lambda x: (x.isin(['Y', 'N'])).sum()),
+    tpia_rec_pct=pd.NamedAgg(column='tpia_rec', aggfunc=lambda x: (x == 'Y').sum() / len(x))
+).reset_index()
 
-# Aggregation
-tpia_org_rec = tpia_org_cnt.groupBy('SUBMISSION_FISCAL_YEAR', 'CORP_ID').agg(
-    F.count('AM_CARE_KEY').alias('Total_CASE'),
-    F.sum(F.when(col('tpia_rec') == 'Y', 1).otherwise(0)).alias('tpia_calc_cnt'),
-    F.sum(F.when(col('tpia_rec').isin(['Y', 'N']), 1).otherwise(0)).alias('tpia_elig_cnt')
-)
+tpia_supp_peer_df = tpia_peer_rec_df[(tpia_peer_rec_df['tpia_calc_cnt'] < 50)]
 
-# Calculate percentage and sort
-tpia_org_rec = tpia_org_rec.withColumn('tpia_rec_pct', col('tpia_calc_cnt') / col('Total_CASE'))
-tpia_org_rec = tpia_org_rec.orderBy('CORP_ID')
+# If the DataFrame is empty, there's no suppression at the "peer" level 
 
-# Conditional DataFrame creation
-tpia_supp_org = tpia_org_rec.filter((col('tpia_calc_cnt') < 50) | ((col('tpia_calc_cnt') > 50) & (col('tpia_rec_pct') < 0.75)))
-tpia_rpt_org = tpia_org_rec.filter((col('tpia_calc_cnt') >= 50) | ((col('tpia_calc_cnt') < 50) & (col('tpia_rec_pct') >= 0.75)))
-
-
-
-# Create 'tpia_rec' column
-ed_record_with_ucc_22 = ed_record_with_ucc_22.withColumn('tpia_rec', 
-                                                         F.when(ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT'] == '9999', 'N')
-                                                          .when(ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT'].isNotNull() & 
-                                                                (ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT'] != '9999'), 'Y')
-                                                          .otherwise('B'))
-
-# Filter out rows with 'tpia_rec' equal to "B"
-tpia_org_cnt_ucc_22 = ed_record_with_ucc_22.filter(ed_record_with_ucc_22['tpia_rec'] != 'B')
-
-# Aggregation
-tpia_org_rec_ucc_22 = tpia_org_cnt_ucc_22.groupBy('SUBMISSION_FISCAL_YEAR', 'CORP_ID').agg(
-    F.count('AM_CARE_KEY').alias('Total_CASE'),
-    F.sum(F.when(col('tpia_rec') == 'Y', 1).otherwise(0)).alias('tpia_calc_cnt'),
-    F.sum(F.when(col('tpia_rec').isin(['Y', 'N']), 1).otherwise(0)).alias('tpia_elig_cnt')
-).withColumn('tpia_rec_pct', col('tpia_calc_cnt') / col('Total_CASE'))
-
-# Filter 'tpia_org_rec_ucc' based on conditions
-tpia_supp_org_ucc_22 = tpia_org_rec_ucc_22.filter((col('tpia_calc_cnt') < 50) | ((col('tpia_calc_cnt') > 50) & (col('tpia_rec_pct') < 0.75)))
-tpia_rpt_org_ucc_22 = tpia_org_rec_ucc_22.filter((col('tpia_calc_cnt') >= 50) | ((col('tpia_calc_cnt') < 50) & (col('tpia_rec_pct') >= 0.75)))
+if tpia_peer_rec_df.empty:
+    print("No suppression at peer level.")
+    
+if tpia_supp_peer_df.empty:
+    print("No suppression at peer level.")
 
 
 
 
+# For Region 
+conditions = [
+    pd.isna(ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT']) | (ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT'].str.strip() == ''),
+    ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT'] == '9999',
+    ~ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT'].isin(['9999', ''])
+]  
 
+choices = ['B', 'N', 'Y']
+ed_record_with_ucc_22['tpia_rec'] = np.select(conditions, choices, default=None)
+
+# Filtering for tpia_reg_cnt
+tpia_reg_cnt = ed_record_with_ucc_22[ed_record_with_ucc_22['tpia_rec'] != 'B']
+
+#Aggregating data for tpia_reg_rec
+aggregation = {
+    'AM_CARE_KEY': 'count',
+    'tpia_rec': [
+        lambda x: (x == 'Y').sum(),
+        lambda x: (x.isin(['Y', 'N'])).sum(),
+        lambda x: (x == 'Y').mean()
+    ]
+}
+
+tpia_reg_rec = tpia_reg_cnt.groupby(['SUBMISSION_FISCAL_YEAR', 'NEW_REGION_ID']).agg(aggregation)
+tpia_reg_rec.columns = ['Total_CASE', 'tpia_calc_cnt', 'tpia_elig_cnt', 'tpia_rec_pct']
+tpia_reg_rec.reset_index(inplace=True)
+
+# Creating tpia_supp_reg and tpia_rpt_reg Dataframe using query method
+
+condition_supp = "(tpia_calc_cnt < 50) | ((tpia_calc_cnt > 50) & (tpia_rec_pct < 0.75))"
+condition_rpt = "(tpia_calc_cnt >= 50) | ((tpia_calc_cnt < 50) & (tpia_rec_pct >= 0.75))"
+
+tpia_supp_reg = tpia_reg_rec.query(condition_supp)
+tpia_rpt_reg = tpia_reg_rec.query(condition_rpt)
