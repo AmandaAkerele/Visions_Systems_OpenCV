@@ -1,9 +1,7 @@
-# LOS for admit without UCC
-ed_records_admit_22_bb_df = ed_records_22_aa_df.filter(col('VISIT_DISPOSITION').isin(['06', '07']))
-
-Note: Using this method of code below drop duplicate SUBMITTION_FISCAL_YEAR in the code above. Follow method of code below and functionality to solve this issue. 
-
 from pyspark.sql.functions import col
+
+# Assuming ed_records_22_aa_df is created from a join of ed_nodup_noucc_nosb_22 and df_fac
+# and you need to handle potential duplicate 'SUBMISSION_FISCAL_YEAR' column
 
 # Alias DataFrames
 ed_alias = ed_nodup_noucc_nosb_22.alias("ed")
@@ -21,7 +19,7 @@ ed_records_22_aa_df = ed_alias.join(
 selected_columns = [col(f"ed.{column_name}") for column_name in ed_nodup_noucc_nosb_22.columns]
 
 # Add columns from df_fac, renaming those that conflict
-conflicting_columns = ['FACILITY_AM_CARE_NUM']  # Add any other conflicting columns here
+conflicting_columns = ['FACILITY_AM_CARE_NUM', 'SUBMISSION_FISCAL_YEAR']  # Include 'SUBMISSION_FISCAL_YEAR' here
 for column_name in df_fac.columns:
     if column_name not in conflicting_columns:
         selected_columns.append(col(f"fac.{column_name}"))
@@ -32,3 +30,5 @@ for column_name in df_fac.columns:
 # Construct the final DataFrame with selected columns
 ed_records_22_aa_df = ed_records_22_aa_df.select(*selected_columns)
 
+# LOS for admit without UCC
+ed_records_admit_22_bb_df = ed_records_22_aa_df.filter(col('VISIT_DISPOSITION').isin(['06', '07']))
