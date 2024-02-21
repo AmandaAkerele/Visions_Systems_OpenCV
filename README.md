@@ -61,3 +61,19 @@ condition_rpt = "(tpia_calc_cnt >= 50) | ((tpia_calc_cnt < 50) & (tpia_rec_pct >
 
 tpia_supp_reg = tpia_reg_rec.query(condition_supp)
 tpia_rpt_reg = tpia_reg_rec.query(condition_rpt)
+
+
+
+# Save suppression reports for province 
+
+tpia_rpt_reg_v1_df = pd.merge(tpia_rpt_reg, df_fac[['NEW_REGION_ID', 'PROVINCE_NAME', 'REGION_E_DESC']],
+                              left_on='NEW_REGION_ID', right_on='NEW_REGION_ID', how = 'left').drop_duplicates()
+
+tpia_supp_reg_v1_df = pd.merge(tpia_supp_reg, df_fac[['NEW_REGION_ID', 'PROVINCE_NAME', 'REGION_E_DESC']],
+                              left_on='NEW_REGION_ID', right_on='NEW_REGION_ID', how ='left').drop_duplicates()
+
+tpia_rpt_org_v1_df = pd.merge(tpia_rpt_org, df_fac[['CORP_ID', 'PROVINCE_NAME', 'CORP_NAME']],
+                              left_on='CORP_ID', right_on='CORP_ID', how= 'left').drop_duplicates()
+tpia_supp_org_v1_df = pd.merge(tpia_supp_org, df_fac[['CORP_ID', 'PROVINCE_NAME', 'CORP_NAME']],
+                               left_on='CORP_ID', right_on='CORP_ID', how = 'left').drop_duplicates()
+
