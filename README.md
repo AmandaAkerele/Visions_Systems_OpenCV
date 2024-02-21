@@ -1,79 +1,63 @@
-# For Peer level
+# For Peer Level 
+from pyspark.sql import functions as F
 
-tpia_peer_cnt_a_df = ed_record_22_Peer.copy()
-tpia_peer_cnt_a_df['tpia_rec'] = 'B'
-tpia_peer_cnt_a_df.loc[tpia_peer_cnt_a_df['TIME_PHYSICAN_INIT_ASSESSMENT'].str.strip() == '', 'tpia_rec'] = 'B'
-tpia_peer_cnt_a_df.loc[tpia_peer_cnt_a_df['TIME_PHYSICAN_INIT_ASSESSMENT'] == '9999', 'tpia_rec'] = 'N'
-tpia_peer_cnt_a_df.loc[~tpia_peer_cnt_a_df['TIME_PHYSICAN_INIT_ASSESSMENT'].isin(['9999', '']), 'tpia_rec'] = 'Y'
+# Create 'tpia_rec' column with conditions
+tpia_peer_cnt_a_df = ed_record_22_Peer.withColumn(
+    'tpia_rec', 
+    F.when(F.col('TIME_PHYSICAN_INIT_ASSESSMENT').isNull() | (F.trim(F.col('TIME_PHYSICAN_INIT_ASSESSMENT')) == ''), 'B')
+     .when(F.col('TIME_PHYSICAN_INIT_ASSESSMENT') == '9999', 'N')
+     .otherwise('Y')
+)
 
-tpia_peer_cnt_df = tpia_peer_cnt_a_df[tpia_peer_cnt_a_df['tpia_rec'] !='B']
+# Filter out rows with 'tpia_rec' equal to 'B'
+tpia_peer_cnt_df = tpia_peer_cnt_a_df.filter(F.col('tpia_rec') != 'B')
 
-tpia_peer_rec_df = tpia_peer_cnt_df.groupby(['SUBMISSION_FISCAL_YEAR', 'SITE_PEER']).agg(
-    tpia_calc_cnt = pd.NamedAgg(column='tpia_rec', aggfunc=lambda x: (x == 'Y').sum()),
-    tpia_elig_cnt= pd.NamedAgg(column='tpia_rec', aggfunc=lambda x: (x.isin(['Y', 'N'])).sum()),
-    tpia_rec_pct=pd.NamedAgg(column='tpia_rec', aggfunc=lambda x: (x == 'Y').sum() / len(x))
-).reset_index()
+# Aggregating data for tpia_peer_rec_df
+tpia_peer_rec_df = tpia_peer_cnt_df.groupBy('SUBMISSION_FISCAL_YEAR', 'SITE_PEER').agg(
+    F.sum(F.when(F.col('tpia_rec') == 'Y', 1).otherwise(0)).alias('tpia_calc_cnt'),
+    F.sum(F.when(F.col('tpia_rec').isin(['Y', 'N']), 1).otherwise(0)).alias('tpia_elig_cnt')
+).withColumn('tpia_rec_pct', F.col('tpia_calc_cnt') / F.count(F.lit(1)))
 
-tpia_supp_peer_df = tpia_peer_rec_df[(tpia_peer_rec_df['tpia_calc_cnt'] < 50)]
-
-# If the DataFrame is empty, there's no suppression at the "peer" level 
-
-if tpia_peer_rec_df.empty:
-    print("No suppression at peer level.")
-    
-if tpia_supp_peer_df.empty:
-    print("No suppression at peer level.")
-
+# Creating tpia_supp_peer_df Dataframe
+tpia_supp_peer_df = tpia_peer_rec_df.filter(
+    (F.col('tpia_calc_cnt') < 50) | ((F.col('tpia_calc_cnt') > 50) & (F.col('tpia_rec_pct') < 0.75))
+)
 
 
+For Region
+from pyspark.sql import functions as F
+import numpy as np
 
-# For Region 
-conditions = [
-    pd.isna(ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT']) | (ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT'].str.strip() == ''),
-    ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT'] == '9999',
-    ~ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT'].isin(['9999', ''])
-]  
+# Create 'tpia_rec' column with conditions
+ed_record_with_ucc_22 = ed_record_with_ucc_22.withColumn(
+    'tpia_rec',
+    F.when(F.col('TIME_PHYSICAN_INIT_ASSESSMENT').isNull() | (F.trim(F.col('TIME_PHYSICAN_INIT_ASSESSMENT')) == ''), 'B')
+     .when(F.col('TIME_PHYSICAN_INIT_ASSESSMENT') == '9999', 'N')
+     .otherwise('Y')
+)
 
-choices = ['B', 'N', 'Y']
-ed_record_with_ucc_22['tpia_rec'] = np.select(conditions, choices, default=None)
+# Filter out rows with 'tpia_rec' equal to 'B'
+tpia_reg_cnt = ed_record_with_ucc_22.filter(F.col('tpia_rec') != 'B')
 
-# Filtering for tpia_reg_cnt
-tpia_reg_cnt = ed_record_with_ucc_22[ed_record_with_ucc_22['tpia_rec'] != 'B']
+# Aggregating data for tpia_reg_rec
+tpia_reg_rec = tpia_reg_cnt.groupBy('SUBMISSION_FISCAL_YEAR', 'NEW_REGION_ID').agg(
+    F.count('AM_CARE_KEY').alias('Total_CASE'),
+    F.sum(F.when(F.col('tpia_rec') == 'Y', 1).otherwise(0)).alias('tpia_calc_cnt'),
+    F.sum(F.when(F.col('tpia_rec').isin(['Y', 'N']), 1).otherwise(0)).alias('tpia_elig_cnt'),
+    (F.sum(F.when(F.col('tpia_rec') == 'Y', 1).otherwise(0)) / F.count(F.lit(1))).alias('tpia_rec_pct')
+)
 
-#Aggregating data for tpia_reg_rec
-aggregation = {
-    'AM_CARE_KEY': 'count',
-    'tpia_rec': [
-        lambda x: (x == 'Y').sum(),
-        lambda x: (x.isin(['Y', 'N'])).sum(),
-        lambda x: (x == 'Y').mean()
-    ]
-}
-
-tpia_reg_rec = tpia_reg_cnt.groupby(['SUBMISSION_FISCAL_YEAR', 'NEW_REGION_ID']).agg(aggregation)
-tpia_reg_rec.columns = ['Total_CASE', 'tpia_calc_cnt', 'tpia_elig_cnt', 'tpia_rec_pct']
-tpia_reg_rec.reset_index(inplace=True)
-
-# Creating tpia_supp_reg and tpia_rpt_reg Dataframe using query method
-
-condition_supp = "(tpia_calc_cnt < 50) | ((tpia_calc_cnt > 50) & (tpia_rec_pct < 0.75))"
-condition_rpt = "(tpia_calc_cnt >= 50) | ((tpia_calc_cnt < 50) & (tpia_rec_pct >= 0.75))"
-
-tpia_supp_reg = tpia_reg_rec.query(condition_supp)
-tpia_rpt_reg = tpia_reg_rec.query(condition_rpt)
-
-
+# Creating tpia_supp_reg and tpia_rpt_reg Dataframe using filter
+tpia_supp_reg = tpia_reg_rec.filter(
+    (F.col('tpia_calc_cnt') < 50) | ((F.col('tpia_calc_cnt') > 50) & (F.col('tpia_rec_pct') < 0.75))
+)
+tpia_rpt_reg = tpia_reg_rec.filter(
+    (F.col('tpia_calc_cnt') >= 50) | ((F.col('tpia_calc_cnt') < 50) & (F.col('tpia_rec_pct') >= 0.75))
+)
 
 # Save suppression reports for province 
-
-tpia_rpt_reg_v1_df = pd.merge(tpia_rpt_reg, df_fac[['NEW_REGION_ID', 'PROVINCE_NAME', 'REGION_E_DESC']],
-                              left_on='NEW_REGION_ID', right_on='NEW_REGION_ID', how = 'left').drop_duplicates()
-
-tpia_supp_reg_v1_df = pd.merge(tpia_supp_reg, df_fac[['NEW_REGION_ID', 'PROVINCE_NAME', 'REGION_E_DESC']],
-                              left_on='NEW_REGION_ID', right_on='NEW_REGION_ID', how ='left').drop_duplicates()
-
-tpia_rpt_org_v1_df = pd.merge(tpia_rpt_org, df_fac[['CORP_ID', 'PROVINCE_NAME', 'CORP_NAME']],
-                              left_on='CORP_ID', right_on='CORP_ID', how= 'left').drop_duplicates()
-tpia_supp_org_v1_df = pd.merge(tpia_supp_org, df_fac[['CORP_ID', 'PROVINCE_NAME', 'CORP_NAME']],
-                               left_on='CORP_ID', right_on='CORP_ID', how = 'left').drop_duplicates()
+tpia_rpt_reg_v1_df = tpia_rpt_reg.join(df_fac, tpia_rpt_reg['NEW_REGION_ID'] == df_fac['NEW_REGION_ID'], 'left').dropDuplicates()
+tpia_supp_reg_v1_df = tpia_supp_reg.join(df_fac, tpia_supp_reg['NEW_REGION_ID'] == df_fac['NEW_REGION_ID'], 'left').dropDuplicates()
+tpia_rpt_org_v1_df = tpia_rpt_org.join(df_fac, tpia_rpt_org['CORP_ID'] == df_fac['CORP_ID'], 'left').dropDuplicates()
+tpia_supp_org_v1_df = tpia_supp_org.join(df_fac, tpia_supp_org['CORP_ID'] == df_fac['CORP_ID'], 'left').dropDuplicates()
 
