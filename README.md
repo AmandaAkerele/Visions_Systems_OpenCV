@@ -1,3 +1,18 @@
+from pyspark.sql.functions import col, percentile_approx
+from pyspark.sql import Window
+
+def calculate_percentile_spark(df, column, percentiles, bycols=None):
+    if bycols:
+        windowSpec = Window.partitionBy(*bycols)
+        for percentile in percentiles:
+            percentile_col_name = f'percentile_{percentile}'
+            df = df.withColumn(percentile_col_name, percentile_approx(col(column), percentile, 10000).over(windowSpec))
+    else:
+        for percentile in percentiles:
+            percentile_col_name = f'percentile_{percentile}'
+            df = df.withColumn(percentile_col_name, percentile_approx(col(column), percentile, 10000))
+
+    return df
 # Calculation for los_nt_22
 los_nt_22 = calculate_percentile_spark(los_nt_record_ucc_22, 'LOS_HOURS', [0, 0.5, 0.9, 0.999, 1])
 
