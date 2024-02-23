@@ -1,37 +1,43 @@
-AnalysisException                         Traceback (most recent call last)
-/tmp/ipykernel_2055/1680917666.py in <cell line: 17>()
-     15     return df
-     16 # Calculation for los_nt_22
----> 17 los_nt_22 = calculate_percentile_spark(los_nt_record_ucc_22, 'LOS_HOURS', [0, 0.5, 0.9, 0.999, 1])
-     18 
-     19 # Calculation for los_reg_22
+from pyspark.sql.functions import col, percentile_approx
+from pyspark.sql.window import Window
 
-/tmp/ipykernel_2055/1680917666.py in calculate_percentile_spark(df, column, percentiles, bycols)
-     11         for percentile in percentiles:
-     12             percentile_col_name = f'percentile_{percentile}'
----> 13             df = df.withColumn(percentile_col_name, percentile_approx(col(column), percentile, 10000))
-     14 
-     15     return df
+def calculate_percentile_spark(df, column, percentiles, bycols=None):
+    if bycols:
+        windowSpec = Window.partitionBy(*bycols)
+        for percentile in percentiles:
+            percentile_col_name = f'percentile_{percentile}'
+            df = df.withColumn(percentile_col_name, percentile_approx(col(column), percentile, 10000).over(windowSpec))
+    else:
+        for percentile in percentiles:
+            percentile_col_name = f'percentile_{percentile}'
+            df = df.withColumn(percentile_col_name, percentile_approx(col(column), percentile, 10000))
 
-/usr/local/lib/python3.10/dist-packages/pyspark/sql/dataframe.py in withColumn(self, colName, col)
-   5168                 message_parameters={"arg_name": "col", "arg_type": type(col).__name__},
-   5169             )
--> 5170         return DataFrame(self._jdf.withColumn(colName, col._jc), self.sparkSession)
-   5171 
-   5172     def withColumnRenamed(self, existing: str, new: str) -> "DataFrame":
+    return df
 
-/usr/local/lib/python3.10/dist-packages/py4j/java_gateway.py in __call__(self, *args)
-   1320 
-   1321         answer = self.gateway_client.send_command(command)
--> 1322         return_value = get_return_value(
-   1323             answer, self.gateway_client, self.target_id, self.name)
-   1324 
+# Calculation for los_nt_22
+los_nt_22 = calculate_percentile_spark(los_nt_record_ucc_22, 'LOS_HOURS', [0, 0.5, 0.9, 0.999, 1])
 
-/usr/local/lib/python3.10/dist-packages/pyspark/errors/exceptions/captured.py in deco(*a, **kw)
-    183                 # Hide where the exception came from that shows a non-Pythonic
-    184                 # JVM exception message.
---> 185                 raise converted from None
-    186             else:
-    187                 raise
+# Calculation for los_reg_22
+los_reg_22 = calculate_percentile_spark(los_nt_record_ucc_22, 'LOS_HOURS', [0.9], ['SUBMISSION_FISCAL_YEAR', 'FACILITY_PROVINCE', 'NEW_REGION_ID', 'REGION_E_DESC'])
 
-AnalysisException: [MISSING_GROUP_BY] The query does not include a GROUP BY clause. Add GROUP BY or turn it into the window functions using OVER clauses.;
+# Calculation for los_prov_22
+los_prov_22 = calculate_percentile_spark(los_nt_record_ucc_22, 'LOS_HOURS', [0.9], ['SUBMISSION_FISCAL_YEAR', 'FACILITY_PROVINCE', 'PROVINCE_ID', 'PROVINCE_NAME'])
+
+# Calculation for los_peer_22
+los_peer_22 = calculate_percentile_spark(ed_record_admit_22_Peer, 'LOS_HOURS', [0.9], ['SUBMISSION_FISCAL_YEAR', 'SITE_PEER'])
+
+# Calculation for los_org_22
+los_org_22 = calculate_percentile_spark(ed_record_admit_22, 'LOS_HOURS', [0.9], ['SUBMISSION_FISCAL_YEAR', 'CORP_ID', 'CORP_NAME', 'CORP_PEER'])
+
+# Calculation for los_site_22
+los_site_22 = calculate_percentile_spark(ed_record_admit_22, 'LOS_HOURS', [0.9], ['SUBMISSION_FISCAL_YEAR', 'SITE_ID', 'SITE_NAME', 'SITE_PEER'])
+
+# Additional operations for LOS_site_Huron_Perth
+LOS_site_Huron_Perth = los_site_22.filter(col('SITE_ID').isin([5096, 5099, 5103, 5209]))
+
+# Additional filtering for filtered_rows
+filtered_rows = los_site_22.filter(col('SITE_ID').isin([5096, 5099, 5103, 5209]))
+filtered_rows = filtered_rows.select('SUBMISSION_FISCAL_YEAR', col('SITE_ID').alias('CORP_ID'), col('SITE_NAME').alias('CORP_NAME'), col('SITE_PEER').alias('CORP_PEER'), 'PERCENTILE_0.9')
+
+# Concatenate DataFrames
+los_org_22 = los_org_22.unionByName(filtered_rows)
