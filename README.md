@@ -1,28 +1,31 @@
+los_nt_22=calculate_percentile(los_nt_record_ucc_22, 'LOS_HOURS', [0,0.5,0.9,0.999,1],confidence_interval=True)
+los_nt_22=los_nt_22.rename(columns=lambda x: x.upper())
 
-def percentile_ci_optimized(indata, percentile, confidence_interval=False):
-    # Remove NaN values and sort if not already sorted
-    clean_data = np.sort(indata[~np.isnan(indata)])
+los_reg_22=calculate_percentile(los_nt_record_ucc_22, 'LOS_HOURS',ppt= [0.9],bycols=['SUBMISSION_FISCAL_YEAR','FACILITY_PROVINCE','NEW_REGION_ID','REGION_E_DESC'])
+los_reg_22=los_reg_22.rename(columns=lambda x: x.upper())
 
-    ct = clean_data.size
-    if ct > 0:
-        kf = (ct - 1) * percentile
-        pt_low_n = max(int(np.floor(kf)), 0)
-        pt_upp_n = min(int(np.ceil(kf)), ct - 1)
+los_prov_22=calculate_percentile(los_nt_record_ucc_22, 'LOS_HOURS',ppt= [0.9],bycols=['SUBMISSION_FISCAL_YEAR','FACILITY_PROVINCE','PROVINCE_ID','PROVINCE_NAME'])
+los_prov_22=los_prov_22.rename(columns=lambda x: x.upper())
 
-        d = kf - np.floor(kf)
-        point_est = clean_data[pt_low_n] * (1 - d) + clean_data[pt_upp_n] * d
-        point_est = round(point_est * 10000) / 10000
+los_peer_22=calculate_percentile(ed_record_admit_22_Peer, 'LOS_HOURS',ppt= [0.9],bycols=['SUBMISSION_FISCAL_YEAR','SITE_PEER'])
+los_peer_22=los_peer_22.rename(columns=lambda x: x.upper())
 
-        if confidence_interval:
-            ci_index = 1.96 * np.sqrt(ct * percentile * (1 - percentile))
-            ci_low_n = max(int(np.floor(ct * percentile - ci_index)) - 1, 0)
-            ci_upp_n = min(int(np.ceil(ct * percentile + ci_index)) - 1, ct - 1)
-            
-            ci_low = clean_data[ci_low_n] if percentile not in [0, 1] else np.NaN
-            ci_upp = clean_data[ci_upp_n] if percentile not in [0, 1] else np.NaN
+los_org_22=calculate_percentile(ed_record_admit_22, 'LOS_HOURS',ppt= [0.9],bycols=['SUBMISSION_FISCAL_YEAR','CORP_ID','CORP_NAME','CORP_PEER'])
+los_org_22=los_org_22.rename(columns=lambda x: x.upper())
 
-            return point_est, ci_low, ci_upp
-    else:
-        point_est = ci_low = ci_upp = np.NaN
+los_site_22=calculate_percentile(ed_record_admit_22, 'LOS_HOURS',ppt= [0.9],bycols=['SUBMISSION_FISCAL_YEAR','SITE_ID','SITE_NAME','SITE_PEER'])
+los_site_22=los_site_22.rename(columns=lambda x: x.upper())
 
-    return point_est if not confidence_interval else (point_est, ci_low, ci_upp)
+LOS_site_Huron_Perth = los_site_22[los_site_22['SITE_ID'].isin([5096,5099,5103,5209])]
+LOS_site_Huron_Perth=LOS_site_Huron_Perth.rename(columns=lambda x: x.upper())
+
+# Filter tpia_site DataFrame based on the condition
+filtered_rows = los_site_22[los_site_22['SITE_ID'].isin([5096, 5099, 5103, 5209])]
+
+# Select only the required columns
+filtered_rows = filtered_rows[['SUBMISSION_FISCAL_YEAR', 'SITE_ID','SITE_NAME', 'SITE_PEER', 'PERCENTILE_90']]
+
+# Rename columns to match the tpia_org DataFrame structure
+filtered_rows = filtered_rows.rename(columns={'SITE_ID': 'CORP_ID', 'SITE_NAME':'CORP_NAME', 'SITE_PEER':'CORP_PEER'})
+
+los_org_22=pd.concat([los_org_22, filtered_rows], ignore_index=True)
