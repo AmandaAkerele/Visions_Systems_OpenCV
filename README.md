@@ -1,15 +1,3 @@
-from pyspark.sql import functions as F
-
-# Continue with your previous steps...
-
-# Aggregating data for tpia_peer_rec_df
-tpia_peer_rec_df = tpia_peer_cnt_df.groupBy('SUBMISSION_FISCAL_YEAR', 'SITE_PEER').agg(
-    F.sum(F.when(F.col('tpia_rec') == 'Y', 1).otherwise(0)).alias('tpia_calc_cnt'),
-    F.sum(F.when(F.col('tpia_rec').isin(['Y', 'N']), 1).otherwise(0)).alias('tpia_elig_cnt'),
-    (F.sum(F.when(F.col('tpia_rec') == 'Y', 1).otherwise(0)) / F.count(F.lit(1))).alias('tpia_rec_pct')
-)
-
-# Creating tpia_supp_peer_df DataFrame
-tpia_supp_peer_df = tpia_peer_rec_df.filter(
-    (F.col('tpia_calc_cnt') < 50) | ((F.col('tpia_calc_cnt') > 50) & (F.col('tpia_rec_pct') < 0.75))
-)
+# Exclusion Rule for Region, Province and National
+tpia_org_supp_for_natprovreg_df = tpia_supp_org_ucc_22[tpia_supp_org_ucc_22['tpia_calc_cnt'] <5]
+TPIA_nt_record_ucc_df = ed_record_with_ucc_22[~ed_record_with_ucc_22['CORP_ID'].isin(tpia_org_supp_for_natprovreg_df['CORP_ID'])]
