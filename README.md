@@ -11,6 +11,7 @@ def calculate_percentile_spark(df, column, percentiles, bycols=None):
     return df
 
 
+
 # Calculation for los_reg_22 with grouping
 los_reg_22 = calculate_percentile_spark(los_nt_record_ucc_22, 'LOS_HOURS', [0.9], ['SUBMISSION_FISCAL_YEAR', 'FACILITY_PROVINCE', 'NEW_REGION_ID', 'REGION_E_DESC'])
 
@@ -29,4 +30,12 @@ los_site_22 = calculate_percentile_spark(ed_record_admit_22, 'LOS_HOURS', [0.9],
 # Note: For los_nt_22, assuming no grouping is needed
 los_nt_22 = calculate_percentile_spark(los_nt_record_ucc_22, 'LOS_HOURS', [0, 0.5, 0.9, 0.999, 1])
 
-# Addi
+# Additional operations for LOS_site_Huron_Perth
+LOS_site_Huron_Perth = los_site_22.filter(col('SITE_ID').isin([5096, 5099, 5103, 5209]))
+
+# Additional filtering for filtered_rows
+filtered_rows = los_site_22.filter(col('SITE_ID').isin([5096, 5099, 5103, 5209]))
+filtered_rows = filtered_rows.select('SUBMISSION_FISCAL_YEAR', col('SITE_ID').alias('CORP_ID'), col('SITE_NAME').alias('CORP_NAME'), col('SITE_PEER').alias('CORP_PEER'), 'PERCENTILE_0.9')
+
+# Concatenate DataFrames
+los_org_22 = los_org_22.unionByName(filtered_rows)
