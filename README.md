@@ -1,51 +1,28 @@
-from pyspark.sql.window import Window
-from pyspark.sql.functions import col, ntile
-import pyspark.sql.functions as F
 
-def calculate_percentile_spark(df, metric, percentiles, bycols=''):
-    windowSpec = Window.partitionBy(bycols).orderBy(metric) if bycols else Window.orderBy(metric)
-    final_df = None
+def percentile_ci_optimized(indata, percentile, confidence_interval=False):
+    # Remove NaN values and sort if not already sorted
+    clean_data = np.sort(indata[~np.isnan(indata)])
 
-    for percentile in percentiles:
-        percentile_col_name = f'percentile_{percentile}'
-        df_with_percentile = df.withColumn(percentile_col_name, ntile(int(100 * percentile)).over(windowSpec))
+    ct = clean_data.size
+    if ct > 0:
+        kf = (ct - 1) * percentile
+        pt_low_n = max(int(np.floor(kf)), 0)
+        pt_upp_n = min(int(np.ceil(kf)), ct - 1)
 
-        # Getting the specific percentile value
-        df_percentile = df_with_percentile.filter(col(percentile_col_name) == int(100 * percentile)).groupBy(bycols).agg(F.first(metric).alias(percentile_col_name))
+        d = kf - np.floor(kf)
+        point_est = clean_data[pt_low_n] * (1 - d) + clean_data[pt_upp_n] * d
+        point_est = round(point_est * 10000) / 10000
 
-        if final_df is None:
-            final_df = df_percentile
-        else:
-            final_df = final_df.join(df_percentile, on=bycols, how='inner')
+        if confidence_interval:
+            ci_index = 1.96 * np.sqrt(ct * percentile * (1 - percentile))
+            ci_low_n = max(int(np.floor(ct * percentile - ci_index)) - 1, 0)
+            ci_upp_n = min(int(np.ceil(ct * percentile + ci_index)) - 1, ct - 1)
+            
+            ci_low = clean_data[ci_low_n] if percentile not in [0, 1] else np.NaN
+            ci_upp = clean_data[ci_upp_n] if percentile not in [0, 1] else np.NaN
 
-    return final_df
-import numpy as np
-import pandas as pd
+            return point_est, ci_low, ci_upp
+    else:
+        point_est = ci_low = ci_upp = np.NaN
 
-def altman_confidence_interval(data, percentile):
-    ct = len(data)
-    if ct == 0:
-        return np.nan, np.nan
-
-    ci_low_n = round(ct * percentile - 1.96 * np.sqrt(ct * percentile * (1 - percentile))) - 1
-    ci_low_n = max(min(ci_low_n, ct - 1), 0)
-    ci_upp_n = round(1 + ct * percentile + 1.96 * np.sqrt(ct * percentile * (1 - percentile))) - 1
-    ci_upp_n = max(min(ci_upp_n, ct - 1), 0)
-    
-    ci_low = np.nan if percentile in (1, 0) else data.iloc[ci_low_n]
-    ci_upp = np.nan if percentile in (1, 0) else data.iloc[ci_upp_n]
-
-    return ci_low, ci_upp
-
-# Example Usage (Assuming df is your PySpark DataFrame and 'metric' is the column you're analyzing)
-percentile = 0.5  # Example percentile
-bycols = 'your_grouping_column'  # Replace with your actual grouping column
-
-# Calculate Percentiles in PySpark
-percentile_df = calculate_percentile_spark(df, 'metric', [percentile], bycols)
-
-# Collect Data to Driver for Confidence Interval Calculation
-collected_data = percentile_df.toPandas()
-
-# Apply the Confidence Interval UDF
-collected_data[['ci_lower', 'ci_upper']] = collected_data.apply(lambda row: altman_confidence_interval(row['metric'], percentile), axis=1, result_type='expand')
+    return point_est if not confidence_interval else (point_est, ci_low, ci_upp)
