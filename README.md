@@ -1,104 +1,78 @@
-from pyspark.sql.functions import col
+# Sort the resulting DataFrame by CORP_ID
+ed_nacrs_flg_1_22.sort_values(by ='CORP_ID', inplace=True)
 
-# Alias the DataFrames
-tpia_org_22_alias = tpia_org_22.alias("tpia22")
-ed_nacrs_flg_1_22_alias = ed_nacrs_flg_1_22.alias("ednacrs22")
-tpia_supp_org_alias = tpia_supp_org.alias("tpiasupp")
-ed_facility_org_alias = ed_facility_org.alias("edfo")
+# Remove suppressed corp and non-reported corps
+tpia_corp_conditions = ~tpia_org_22['CORP_ID'].isin(ed_nacrs_flg_1_22['CORP_ID']) & \
+                       ~tpia_org_22['CORP_ID'].isin(tpia_supp_org['CORP_ID']) & \
+                       ~tpia_org_22['CORP_ID'].isin(
+                           ed_facility_org[(ed_facility_org['SUBMISSION_FISCAL_YEAR'] == "2022") &
+                                           ((ed_facility_org['TYPE'] == 'PS') & (ed_facility_org['CORP_CNT'] == 1) |
+                                            (ed_facility_org['TYPE'] == 'DQ') & (ed_facility_org['CORP_CNT'] == 1) & (ed_facility_org['IND'] == 'TPIA'))]['CORP_ID']
+                       )
+tpia_org_ta = tpia_org_22[tpia_corp_conditions]
 
-# Join with ed_nacrs_flg_1_22 and filter out matching 'CORP_ID's
-tpia_org_filtered_1 = tpia_org_22_alias.join(
-    ed_nacrs_flg_1_22_alias, col("tpia22.CORP_ID") == col("ednacrs22.CORP_ID"), "left_anti"
-)
+# Remove suppressed corp and non-reported corps for ELOS 
+los_corp_conditions = ~los_org_22['CORP_ID'].isin(ed_nacrs_flg_1_22['CORP_ID']) & \
+                      ~los_org_22['CORP_ID'].isin(los_supp_org_22['CORP_ID']) & \
+                      ~los_org_22['CORP_ID'].isin(
+                          ed_facility_org[(ed_facility_org['SUBMISSION_FISCAL_YEAR'] == "2022") &
+                                          ((ed_facility_org['TYPE'] == 'PS') & (ed_facility_org['CORP_CNT'] == 1) |
+                                           (ed_facility_org['TYPE'] == 'DQ') & (ed_facility_org['CORP_CNT'] == 1) & (ed_facility_org['IND'] == 'ELOS'))]['CORP_ID']
+                      )
+los_org_ta = los_org_22[los_corp_conditions]
 
-# Join with tpia_supp_org and filter out matching 'CORP_ID's
-tpia_org_filtered_2 = tpia_org_filtered_1.join(
-    tpia_supp_org_alias, col("tpia22.CORP_ID") == col("tpiasupp.CORP_ID"), "left_anti"
-)
+# Remove Huron Perth Healthcare Alliance, corp_id = 80228 from TPIA and ELOS
+tpia_org_ta = tpia_org_ta[(tpia_org_ta['CORP_ID'] != 80228) & tpia_org_ta['CORP_PEER'].notna()]
+los_org_ta = los_org_ta[(los_org_ta['CORP_ID'] != 80228) & los_org_ta['CORP_PEER'].notna()]
 
-# Filter ed_facility_org for the specific conditions and select 'CORP_ID'
-edfo_filtered = ed_facility_org_alias.filter(
-    (col("edfo.SUBMISSION_FISCAL_YEAR") == "2022") &
-    ((col("edfo.TYPE") == 'PS') & (col("edfo.CORP_CNT") == 1) |
-     (col("edfo.TYPE") == 'DQ') & (col("edfo.CORP_CNT") == 1) & (col("edfo.IND") == 'TPIA'))
-).select("edfo.CORP_ID")
+# Sort DataFrames
+tpia_org_ta = tpia_org_ta.sort_values(by='CORP_ID')
+los_org_ta = los_org_ta.sort_values(by='CORP_ID')
 
-# Further filter by joining with the filtered edfo and using left_anti
-tpia_org_ta = tpia_org_filtered_2.join(edfo_filtered, col("tpia22.CORP_ID") == col("edfo.CORP_ID"), "left_anti")
+# Sort the resulting DataFrame by CORP_ID
+ed_nacrs_flg_1_22.sort_values(by ='CORP_ID', inplace=True)
 
+# Remove suppressed corp and non-reported corps
+tpia_corp_conditions = ~tpia_org_22['CORP_ID'].isin(ed_nacrs_flg_1_22['CORP_ID']) & \
+                       ~tpia_org_22['CORP_ID'].isin(tpia_supp_org['CORP_ID']) & \
+                       ~tpia_org_22['CORP_ID'].isin(
+                           ed_facility_org[(ed_facility_org['SUBMISSION_FISCAL_YEAR'] == "2022") &
+                                           ((ed_facility_org['TYPE'] == 'PS') & (ed_facility_org['CORP_CNT'] == 1) |
+                                            (ed_facility_org['TYPE'] == 'DQ') & (ed_facility_org['CORP_CNT'] == 1) & (ed_facility_org['IND'] == 'TPIA'))]['CORP_ID']
+                       )
+tpia_org_ta = tpia_org_22[tpia_corp_conditions]
 
-or 
+# Remove suppressed corp and non-reported corps for ELOS 
+los_corp_conditions = ~los_org_22['CORP_ID'].isin(ed_nacrs_flg_1_22['CORP_ID']) & \
+                      ~los_org_22['CORP_ID'].isin(los_supp_org_22['CORP_ID']) & \
+                      ~los_org_22['CORP_ID'].isin(
+                          ed_facility_org[(ed_facility_org['SUBMISSION_FISCAL_YEAR'] == "2022") &
+                                          ((ed_facility_org['TYPE'] == 'PS') & (ed_facility_org['CORP_CNT'] == 1) |
+                                           (ed_facility_org['TYPE'] == 'DQ') & (ed_facility_org['CORP_CNT'] == 1) & (ed_facility_org['IND'] == 'ELOS'))]['CORP_ID']
+                      )
+los_org_ta = los_org_22[los_corp_conditions]
 
-from pyspark.sql.functions import col
+# Remove Huron Perth Healthcare Alliance, corp_id = 80228 from TPIA and ELOS
+tpia_org_ta = tpia_org_ta[(tpia_org_ta['CORP_ID'] != 80228) & tpia_org_ta['CORP_PEER'].notna()]
+los_org_ta = los_org_ta[(los_org_ta['CORP_ID'] != 80228) & los_org_ta['CORP_PEER'].notna()]
 
-# Alias the DataFrames for clarity
-tpia_org_22_alias = tpia_org_22.alias("tpia22")
-ed_nacrs_flg_1_22_alias = ed_nacrs_flg_1_22.alias("ednacrs22")
-tpia_supp_org_alias = tpia_supp_org.alias("tpiasupp")
-ed_facility_org_alias = ed_facility_org.alias("edfo")
+# Sort DataFrames
+tpia_org_ta = tpia_org_ta.sort_values(by='CORP_ID')
+los_org_ta = los_org_ta.sort_values(by='CORP_ID')
 
-# Filter ed_facility_org for the specific conditions
-edfo_filtered = ed_facility_org_alias.filter(
-    (col("edfo.SUBMISSION_FISCAL_YEAR") == "2022") &
-    ((col("edfo.TYPE") == 'PS') & (col("edfo.CORP_CNT") == 1) |
-     (col("edfo.TYPE") == 'DQ') & (col("edfo.CORP_CNT") == 1) & (col("edfo.IND") == 'TPIA'))
-).select("edfo.CORP_ID")
+# Calculate percentile for TPIA
+prct_20_80_tpia_org_22_ta = tpia_org_ta.groupby('CORP_PEER')['PERCENTILE_90'].quantile([0.2, 0.8]).unstack()
 
-# Perform a left anti-join to exclude 'CORP_ID's present in ed_nacrs_flg_1_22
-tpia_org_excluding_ednacrs = tpia_org_22_alias.join(
-    ed_nacrs_flg_1_22_alias, col("tpia22.CORP_ID") == col("ednacrs22.CORP_ID"), "left_anti"
-)
-
-# Perform a left anti-join to exclude 'CORP_ID's present in tpia_supp_org
-tpia_org_excluding_supp = tpia_org_excluding_ednacrs.join(
-    tpia_supp_org_alias, col("tpia22.CORP_ID") == col("tpiasupp.CORP_ID"), "left_anti"
-)
-
-# Perform a final left anti-join to exclude 'CORP_ID's based on the edfo_filtered condition
-tpia_org_ta = tpia_org_excluding_supp.join(
-    edfo_filtered, col("tpia22.CORP_ID") == col("edfo.CORP_ID"), "left_anti"
-)
-
-
-
-or 
-
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col
-
-# Initialize Spark session
-spark = SparkSession.builder \
-    .appName("DataFrame Alias Resolution") \
-    .getOrCreate()
-
-# Assuming tpia_org_22, ed_nacrs_flg_1_22, tpia_supp_org, ed_facility_org are already defined DataFrames
-
-# Alias the DataFrames
-tpia_org_22_alias = tpia_org_22.alias("tpia22")
-ed_nacrs_flg_1_22_alias = ed_nacrs_flg_1_22.alias("ednacrs22")
-tpia_supp_org_alias = tpia_supp_org.alias("tpiasupp")
-ed_facility_org_alias = ed_facility_org.alias("edfo")
-
-# Prepare the set of conditions for filtering
-tpia_corp_conditions = (
-    ~col("tpia22.CORP_ID").isin([row.tpia22_CORP_ID for row in ed_nacrs_flg_1_22_alias.select("CORP_ID").collect()]) &
-    ~col("tpia22.CORP_ID").isin([row.tpia22_CORP_ID for row in tpia_supp_org_alias.select("CORP_ID").collect()]) &
-    ~col("tpia22.CORP_ID").isin(
-        [row.edfo_CORP_ID for row in ed_facility_org_alias.filter(
-            (col("edfo.SUBMISSION_FISCAL_YEAR") == "2022") &
-            ((col("edfo.TYPE") == 'PS') & (col("edfo.CORP_CNT") == 1) |
-             (col("edfo.TYPE") == 'DQ') & (col("edfo.CORP_CNT") == 1) & (col("edfo.IND") == 'TPIA'))
-        ).select("edfo.CORP_ID").collect()]
-    )
-)
-
-# Apply the filter conditions
-tpia_org_ta = tpia_org_22_alias.filter(tpia_corp_conditions)
-
-# Stop Spark session
-spark.stop()
+# Calculate percentile for ELOS
+prct_20_80_los_org_22_ta= los_org_ta.groupby('CORP_PEER')['PERCENTILE_90'].quantile([0.2, 0.8]).unstack()
 
 
+# *Regional Level Baseline - National: Since the regional values contain all UCC and stand-alone then the national one should include UCC and stand-alone;
+# *Update on baselines: 20% tile and 80%tile of national regional value;
 
+# Calculate percentile for national regional values for TPIA
+prct_20_80_tpia_reg_22_ta= tpia_reg_22_ta.groupby('SUBMISSION_FISCAL_YEAR')['PERCENTILE_90'].quantile([0.2, 0.8]).unstack().reset_index()
 
-or 
+# Calculate percentile for national regional values for ELOS
+prct_20_80_los_reg_22_ta= los_reg_22_ta.groupby('SUBMISSION_FISCAL_YEAR')['PERCENTILE_90'].quantile([0.2, 0.8]).unstack().reset_index()
+
