@@ -1,102 +1,51 @@
-from pyspark.sql.functions import col
+# # Create standalone DataFrame
+stand_alone = df_fac.filter(df_fac['NACRS_ED_FLG'] == 1).select('CORP_ID').distinct()
 
-# Sort the DataFrame by CORP_ID
-ed_nacrs_flg_1_22 = ed_nacrs_flg_1_22.orderBy('CORP_ID')
+# Create multiple_sites DataFrame
+multiple_sites = df_fac.join(stand_alone, 'CORP_ID', 'inner') \
+    .groupBy('CORP_ID').agg(count('*').alias('cnt_sites')) \
+    .filter(col('cnt_sites') > 1)
 
-# Create DataFrame of excluded CORP_IDs
-excluded_corp_ids = ed_nacrs_flg_1_22.select('CORP_ID').union(
-    tpia_supp_org.select('CORP_ID')
-).union(
-    ed_facility_org.filter(
-        (col('SUBMISSION_FISCAL_YEAR') == "2022") &
-        (((col('TYPE') == 'PS') & (col('CORP_CNT') == 1)) |
-         ((col('TYPE') == 'DQ') & (col('CORP_CNT') == 1) & (col('IND') == 'TPIA')))
-    ).select('CORP_ID')
-).distinct()
+# Alias the datasets 
 
-# Remove suppressed corp and non-reported corps for TPIA
-tpia_org_ta = tpia_org_22.join(excluded_corp_ids, 'CORP_ID', 'left_anti')
+df_fac_alias = df_fac.alias("fac")
+ed_facility_org_alias = ed_facility_org.alias("edfo")
 
-# Remove suppressed corp and non-reported corps for ELOS
-los_org_ta = los_org_22.join(excluded_corp_ids, 'CORP_ID', 'left_anti')
+# Filter ed_facility_org for specific conditions and alias the result
+ed_facility_org_filtered = ed_facility_org_alias.filter(
+    (col("edfo.TYPE") == 'SL') & (col("edfo.CORP_CNT") == 1)
+).select("edfo.CORP_ID")
 
-# Remove specific CORP_ID and check for not null in CORP_PEER
-tpia_org_ta = tpia_org_ta.filter((col('CORP_ID') != 80228) & col('CORP_PEER').isNotNull())
-los_org_ta = los_org_ta.filter((col('CORP_ID') != 80228) & col('CORP_PEER').isNotNull())
+# Perform the join operation
 
-# Sort DataFrames
-tpia_org_ta = tpia_org_ta.orderBy('CORP_ID')
-los_org_ta = los_org_ta.orderBy('CORP_ID')
-
-# For the percentile calculations, assuming the percentile function is available (e.g., using a UDF or built-in function)
-from pyspark.sql.functions import expr
-
-# Calculate percentile for TPIA
-prct_20_80_tpia_org_22_ta = tpia_org_ta.groupBy('CORP_PEER') \
-    .agg(expr('percentile_approx(PERCENTILE_90, array(0.2, 0.8))').alias('percentiles')) \
-    .selectExpr('CORP_PEER', 'percentiles[0] as 20th_Percentile', 'percentiles[1] as 80th_Percentile')
-
-# Calculate percentile for ELOS
-prct_20_80_los_org_22_ta = los_org_ta.groupBy('CORP_PEER') \
-    .agg(expr('percentile_approx(PERCENTILE_90, array(0.2, 0.8))').alias('percentiles')) \
-    .selectExpr('CORP_PEER', 'percentiles[0] as 20th_Percentile', 'percentiles[1] as 80th_Percentile')
-
-# Similar approach for regional values
+ed_nacrs_flg_1_22 = df_fac_alias.join(
+    ed_facility_org_filtered, 
+    col("fac.CORP_ID") == col("edfo.CORP_ID")
+).filter(col("fac.NACRS_ED_FLG") == 1)
+    
 
 
+# Alias the DataFrames
+tpia_org_22_alias = tpia_org_22.alias("tpia22")
+ed_nacrs_flg_1_22_alias = ed_nacrs_flg_1_22.alias("ednacrs22")
+tpia_supp_org_alias = tpia_supp_org.alias("tpiasupp")
+ed_facility_org_alias = ed_facility_org.alias("edfo")
 
-orr
+# Prepare the set of conditions for filtering
+tpia_corp_conditions = (
+    ~col("tpia22.CORP_ID").isin([row.CORP_ID for row in ed_nacrs_flg_1_22_alias.select("CORP_ID").collect()]) &
+    ~col("tpia22.CORP_ID").isin([row.CORP_ID for row in tpia_supp_org_alias.select("CORP_ID").collect()]) &
+    ~col("tpia22.CORP_ID").isin(
+        [row.CORP_ID for row in ed_facility_org_alias.filter(
+            (col("edfo.SUBMISSION_FISCAL_YEAR") == "2022") &
+            ((col("edfo.TYPE") == 'PS') & (col("edfo.CORP_CNT") == 1) |
+             (col("edfo.TYPE") == 'DQ') & (col("edfo.CORP_CNT") == 1) & (col("edfo.IND") == 'TPIA'))
+        ).select("edfo.CORP_ID").collect()]
+    )
+)
 
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col
+# Apply the filter conditions
+# tpia_org_ta = tpia_org_22_alias.filter(tpia_corp_conditions)
 
-# Initialize Spark session
-spark = SparkSession.builder \
-    .appName("DataFrame Transformation") \
-    .getOrCreate()
 
-# Assuming tpia_org_22, ed_nacrs_flg_1_22, tpia_supp_org, ed_facility_org, los_org_22, los_supp_org_22, tpia_reg_22_ta, and los_reg_22_ta are already defined DataFrames
 
-# Sort the resulting DataFrame by CORP_ID
-ed_nacrs_flg_1_22 = ed_nacrs_flg_1_22.orderBy('CORP_ID')
-
-# Remove suppressed corp and non-reported corps for TPIA
-tpia_corp_conditions = ~tpia_org_22['CORP_ID'].isin(ed_nacrs_flg_1_22.select('CORP_ID')) & \
-                       ~tpia_org_22['CORP_ID'].isin(tpia_supp_org.select('CORP_ID')) & \
-                       ~tpia_org_22['CORP_ID'].isin(
-                           ed_facility_org.filter(
-                               (col("SUBMISSION_FISCAL_YEAR") == "2022") &
-                               ((col("TYPE") == 'PS') & (col("CORP_CNT") == 1) |
-                                (col("TYPE") == 'DQ') & (col("CORP_CNT") == 1) & (col("IND") == 'TPIA'))
-                           ).select("CORP_ID")
-                       )
-tpia_org_ta = tpia_org_22.filter(tpia_corp_conditions)
-
-# Remove suppressed corp and non-reported corps for ELOS
-los_corp_conditions = ~los_org_22['CORP_ID'].isin(ed_nacrs_flg_1_22.select('CORP_ID')) & \
-                      ~los_org_22['CORP_ID'].isin(los_supp_org_22.select('CORP_ID')) & \
-                      ~los_org_22['CORP_ID'].isin(
-                          ed_facility_org.filter(
-                              (col("SUBMISSION_FISCAL_YEAR") == "2022") &
-                              ((col("TYPE") == 'PS') & (col("CORP_CNT") == 1) |
-                               (col("TYPE") == 'DQ') & (col("CORP_CNT") == 1) & (col("IND") == 'ELOS'))
-                          ).select("CORP_ID")
-                      )
-los_org_ta = los_org_22.filter(los_corp_conditions)
-
-# Remove Huron Perth Healthcare Alliance, corp_id = 80228 from TPIA and ELOS
-tpia_org_ta = tpia_org_ta.filter((col('CORP_ID') != 80228) & tpia_org_ta['CORP_PEER'].isNotNull())
-los_org_ta = los_org_ta.filter((col('CORP_ID') != 80228) & los_org_ta['CORP_PEER'].isNotNull())
-
-# Sort DataFrames
-tpia_org_ta = tpia_org_ta.orderBy('CORP_ID')
-los_org_ta = los_org_ta.orderBy('CORP_ID')
-
-# Calculate percentile for TPIA
-prct_20_80_tpia_org_22_ta = tpia_org_ta.groupBy('CORP_PEER').agg({'PERCENTILE_90': 'quantile'}).alias('prct_20_80_tpia_org_22_ta')
-
-# Calculate percentile for ELOS
-prct_20_80_los_org_22_ta = los_org_ta.groupBy('CORP_PEER').agg({'PERCENTILE_90': 'quantile'}).alias('prct_20_80_los_org_22_ta')
-
-# Stop Spark session
-spark.stop()
