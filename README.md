@@ -1,3 +1,11 @@
+days_of_the_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+for day in days_of_the_week:
+    for hour in range(8, 17):
+        print(f"It's {hour}:00 on {day} and I'm at work.")
+///////
+
+
 # Alias the datasets 
 
 df_fac_alias = df_fac.alias("fac")
