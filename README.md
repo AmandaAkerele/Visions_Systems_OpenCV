@@ -1,22 +1,26 @@
-from pyspark.sql.functions import col
+# Filter los_org_ta DataFrame based on the corrected conditions
+los_org_ta = los_org_22.join(ed_nacrs_corp_ids, 'CORP_ID', 'left_anti') \
+    .join(los_supp_corp_ids, 'CORP_ID', 'left_anti') \
+    .join(ed_facility_filtered_corp_ids, 'CORP_ID', 'left_anti') \
+    .filter(
+        (col('TYPE') == 'PS') & (col('CORP_CNT') == 1) |
+        (col('TYPE') == 'DQ') & (col('CORP_CNT') == 1) & (col('IND') == 'ELOS')
+    )
 
-# Alias the datasets 
-df_fac_alias = df_fac.alias("fac")
-ed_facility_org_alias = ed_facility_org.alias("edfo")
+# Remove suppressed corp and non-reported corps for ELOS 
+los_corp_conditions = ~los_org_22['CORP_ID'].isin(ed_nacrs_flg_1_22['CORP_ID']) & \
+                      ~los_org_22['CORP_ID'].isin(los_supp_org_22['CORP_ID']) & \
+                      ~los_org_22['CORP_ID'].isin(
+                          ed_facility_org[(ed_facility_org['SUBMISSION_FISCAL_YEAR'] == "2022") &
+                                          ((ed_facility_org['TYPE'] == 'PS') & (ed_facility_org['CORP_CNT'] == 1) |
+                                           (ed_facility_org['TYPE'] == 'DQ') & (ed_facility_org['CORP_CNT'] == 1) & (ed_facility_org['IND'] == 'ELOS'))]['CORP_ID']
+                      )
+los_org_ta = los_org_ta[los_corp_conditions]
 
-# Filter ed_facility_org for specific conditions and alias the result
-ed_facility_org_filtered = ed_facility_org_alias.filter(
-    (col("edfo.TYPE") == 'SL') & (col("edfo.CORP_CNT") == 1)
-).select(col("edfo.CORP_ID").alias("CORP_ID_edfo"))
+# Remove Huron Perth Healthcare Alliance, corp_id = 80228 from TPIA and ELOS
+tpia_org_ta = tpia_org_ta[(tpia_org_ta['CORP_ID'] != 80228) & tpia_org_ta['CORP_PEER'].notna()]
+los_org_ta = los_org_ta[(los_org_ta['CORP_ID'] != 80228) & los_org_ta['CORP_PEER'].notna()]
 
-# Perform the join operation
-ed_nacrs_flg_1_22 = df_fac_alias.join(
-    ed_facility_org_filtered, 
-    col("fac.CORP_ID") == col("CORP_ID_edfo")
-).filter(col("fac.NACRS_ED_FLG") == 1)
-
-# Recreate duplicates
-ed_nacrs_flg_1_22_with_duplicates = ed_nacrs_flg_1_22.union(ed_nacrs_flg_1_22.withColumnRenamed("CORP_ID", "CORP_ID_2"))
-
-# Drop duplicates
-ed_nacrs_flg_1_22 = ed_nacrs_flg_1_22_with_duplicates.dropDuplicates()
+# Sort DataFrames
+tpia_org_ta = tpia_org_ta.sort_values(by='CORP_ID')
+los_org_ta = los_org_ta.sort_values(by='CORP_ID')
