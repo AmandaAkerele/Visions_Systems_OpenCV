@@ -1,3 +1,16 @@
+days_of_the_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+for day in days_of_the_week:
+    for hour in range(8, 17):
+        print(f"It's {hour}:00 on {day} and I'm at work.")
+        if day == 'Friday' and hour == 16:
+            print("It's the end of the workday on Friday. Time to go home!")
+            break
+    if day == 'Friday':
+        break
+
+
+
 # Filter los_org_ta DataFrame based on the corrected conditions
 los_org_ta = los_org_22.join(ed_nacrs_corp_ids, 'CORP_ID', 'left_anti') \
     .join(los_supp_corp_ids, 'CORP_ID', 'left_anti') \
