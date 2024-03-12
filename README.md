@@ -1,3 +1,41 @@
+# Create file for shallow slice pilot 
+# Contextual Measure: Patients Admitted Through the Emergency Department
+IP_admit_ED_CORP_All_File =IP_admit_ED_CORP_All[["ORGANIZATION_ID",  "PCT_ADMT_ED"]]
+IP_admit_ED_CORP_All_File.rename(columns={"ORGANIZATION_ID":"reporting_entity_code", "PCT_ADMT_ED": "metric_result"}, inplace=True)
+
+IP_admit_ED_CORP_All_File['reporting_period_code'] = 'FY20' + yr
+IP_admit_ED_CORP_All_File['reporting_entity_type_code'] = 'ORG'
+IP_admit_ED_CORP_All_File['indicator_code'] = '815'
+IP_admit_ED_CORP_All_File['metric_code'] = 'PERCENT'
+IP_admit_ED_CORP_All_File['breakdown_type_code_l1'] = 'N/A'
+IP_admit_ED_CORP_All_File['breakdown_value_code_l1'] = 'N/A'
+IP_admit_ED_CORP_All_File['breakdown_type_code_l2'] = 'N/A'
+IP_admit_ED_CORP_All_File['breakdown_value_code_l2'] = 'N/A'
+IP_admit_ED_CORP_All_File['metric_descriptor_group_code'] = ''
+IP_admit_ED_CORP_All_File['metric_descriptor_code'] = ''
+IP_admit_ED_CORP_All_File['missing_reason_code'] = ''
+IP_admit_ED_CORP_All_File['public_metric_result'] = IP_admit_ED_CORP_All_File['metric_result']
+
+IP_admit_ED_CORP_All_File = IP_admit_ED_CORP_All_File[['reporting_period_code',	'reporting_entity_code','reporting_entity_type_code', \
+                    'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', \
+                   'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
+                   'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
+IP_admit_ED_CORP_All_File.to_csv('815_agg_20' + yr + '.csv', index=False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 days_of_the_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 for day in days_of_the_week:
