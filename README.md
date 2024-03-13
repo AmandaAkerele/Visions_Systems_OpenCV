@@ -1,44 +1,102 @@
-KeyError: "['public_metric_result'] not in index"
+import pandas as pd
+import numpy as np
 
----------------------------------------------------------------------------
-KeyError                                  Traceback (most recent call last)
-~/.local/lib/python3.10/site-packages/pandas/core/indexes/base.py in get_loc(self, key)
-   3651         try:
--> 3652             return self._engine.get_loc(casted_key)
-   3653         except KeyError as err:
+# Create file for shallow slice pilot 
+# Contextual Measure: Patients Admitted Through the Emergency Department
+IP_admit_ED_CORP_All_File = IP_admit_ED_CORP_All[["ORGANIZATION_ID",  "PCT_ADMT_ED"]]
+IP_admit_ED_CORP_All_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", "PCT_ADMT_ED": "metric_result"}, inplace=True)
 
-~/.local/lib/python3.10/site-packages/pandas/_libs/index.pyx in pandas._libs.index.IndexEngine.get_loc()
+# Additional columns added
+IP_admit_ED_CORP_All_File['reporting_period_code'] = 'FY20' + yr
+IP_admit_ED_CORP_All_File['reporting_entity_type_code'] = 'ORG'
+IP_admit_ED_CORP_All_File['indicator_code'] = '815'
+IP_admit_ED_CORP_All_File['metric_code'] = 'PERCENT'
+IP_admit_ED_CORP_All_File['breakdown_type_code_l1'] = 'N/A'
+IP_admit_ED_CORP_All_File['breakdown_value_code_l1'] = 'N/A'
+IP_admit_ED_CORP_All_File['breakdown_type_code_l2'] = 'N/A'
+IP_admit_ED_CORP_All_File['breakdown_value_code_l2'] = 'N/A'
+IP_admit_ED_CORP_All_File['metric_descriptor_group_code'] = ''
+IP_admit_ED_CORP_All_File['metric_descriptor_code'] = ''
 
-~/.local/lib/python3.10/site-packages/pandas/_libs/index.pyx in pandas._libs.index.IndexEngine.get_loc()
+# Fill NaN values with "M02" in missing_reason_code column and highlight rows with NaN values
+IP_admit_ED_CORP_All_File['missing_reason_code'] = ''
+nan_rows = IP_admit_ED_CORP_All_File[IP_admit_ED_CORP_All_File['metric_result'].isna()]
+nan_indices = nan_rows.index
+IP_admit_ED_CORP_All_File.loc[nan_indices, 'missing_reason_code'] = 'M02'
 
-pandas/_libs/hashtable_class_helper.pxi in pandas._libs.hashtable.PyObjectHashTable.get_item()
+# Ensure rows with NaN values are not filled with randomly generated numbers
+IP_admit_ED_CORP_All_File.loc[nan_indices, 'metric_result'] = np.nan
 
-pandas/_libs/hashtable_class_helper.pxi in pandas._libs.hashtable.PyObjectHashTable.get_item()
+# Generate random percentages for metric_result for non-NaN rows
+non_nan_rows = IP_admit_ED_CORP_All_File.drop(nan_indices)
+num_samples = len(non_nan_rows)
+non_nan_rows['metric_result'] = np.random.uniform(0, 100, size=num_samples)
 
-KeyError: 'public_metric_result'
+# Combine NaN and non-NaN rows
+IP_admit_ED_CORP_All_File = pd.concat([nan_rows, non_nan_rows]).sort_index()
 
-The above exception was the direct cause of the following exception:
+# Reorder columns to ensure all columns are present
+all_columns = ['reporting_period_code', 'reporting_entity_code', 'reporting_entity_type_code',
+               'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1',
+               'breakdown_type_code_l2', 'breakdown_value_code_l2', 'metric_result',
+               'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code']
 
-KeyError                                  Traceback (most recent call last)
-/tmp/ipykernel_280/1692326656.py in <cell line: 24>()
-     22 IP_admit_ED_CORP_All_File['missing_reason_code'] = ''
-     23 
----> 24 nan_rows = IP_admit_ED_CORP_All_File[IP_admit_ED_CORP_All_File['metric_result'].isna() | IP_admit_ED_CORP_All_File['public_metric_result'].isna()]
-     25 nan_indices = nan_rows.index
-     26 IP_admit_ED_CORP_All_File.loc[nan_indices, 'missing_reason_code'] = 'M02'
+IP_admit_ED_CORP_All_File = IP_admit_ED_CORP_All_File.reindex(columns=all_columns)
 
-~/.local/lib/python3.10/site-packages/pandas/core/frame.py in __getitem__(self, key)
-   3759             if self.columns.nlevels > 1:
-   3760                 return self._getitem_multilevel(key)
--> 3761             indexer = self.columns.get_loc(key)
-   3762             if is_integer(indexer):
-   3763                 indexer = [indexer]
+# Write to CSV
+IP_admit_ED_CORP_All_File.to_csv('815_agg_20' + yr + '.csv', index=False)
 
-~/.local/lib/python3.10/site-packages/pandas/core/indexes/base.py in get_loc(self, key)
-   3652             return self._engine.get_loc(casted_key)
-   3653         except KeyError as err:
--> 3654             raise KeyError(key) from err
-   3655         except TypeError:
-   3656             # If we have a listlike key, _check_indexing_error will raise
 
-KeyError: 'public_metric_result'
+
+
+
+
+
+or 
+
+import pandas as pd
+import numpy as np
+
+# Create file for shallow slice pilot 
+# Contextual Measure: Patients Admitted Through the Emergency Department
+IP_admit_ED_CORP_All_File = IP_admit_ED_CORP_All[["ORGANIZATION_ID",  "PCT_ADMT_ED"]]
+IP_admit_ED_CORP_All_File.rename(columns={"ORGANIZATION_ID":"reporting_entity_code", "PCT_ADMT_ED": "metric_result"}, inplace=True)
+
+# Additional columns added
+IP_admit_ED_CORP_All_File['reporting_period_code'] = 'FY20' + yr
+IP_admit_ED_CORP_All_File['reporting_entity_type_code'] = 'ORG'
+IP_admit_ED_CORP_All_File['indicator_code'] = '815'
+IP_admit_ED_CORP_All_File['metric_code'] = 'PERCENT'
+IP_admit_ED_CORP_All_File['breakdown_type_code_l1'] = 'N/A'
+IP_admit_ED_CORP_All_File['breakdown_value_code_l1'] = 'N/A'
+IP_admit_ED_CORP_All_File['breakdown_type_code_l2'] = 'N/A'
+IP_admit_ED_CORP_All_File['breakdown_value_code_l2'] = 'N/A'
+IP_admit_ED_CORP_All_File['metric_descriptor_group_code'] = ''
+IP_admit_ED_CORP_All_File['metric_descriptor_code'] = ''
+
+# Fill NaN values with "M02" in missing_reason_code column and highlight rows with NaN values
+IP_admit_ED_CORP_All_File['missing_reason_code'] = ''
+nan_rows = IP_admit_ED_CORP_All_File[IP_admit_ED_CORP_All_File['metric_result'].isna()]
+nan_indices = nan_rows.index
+IP_admit_ED_CORP_All_File.loc[nan_indices, 'missing_reason_code'] = 'M02'
+
+# Ensure rows with NaN values are not filled with randomly generated numbers
+IP_admit_ED_CORP_All_File.loc[nan_indices, 'metric_result'] = np.nan
+
+# Generate random percentages for metric_result for non-NaN rows
+non_nan_rows = IP_admit_ED_CORP_All_File.drop(nan_indices)
+num_samples = len(non_nan_rows)
+non_nan_rows['metric_result'] = np.random.uniform(0, 100, size=num_samples)
+
+# Combine NaN and non-NaN rows
+IP_admit_ED_CORP_All_File = pd.concat([nan_rows, non_nan_rows]).sort_index()
+
+# Reorder columns
+IP_admit_ED_CORP_All_File = IP_admit_ED_CORP_All_File[['reporting_period_code', 'reporting_entity_code', 'reporting_entity_type_code', \
+                    'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', \
+                   'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
+                   'metric_descriptor_code', 'missing_reason_code']]
+
+# Write to CSV
+IP_admit_ED_CORP_All_File.to_csv('815_agg_20' + yr + '.csv', index=False)
+
