@@ -1,7 +1,60 @@
-To ensure that any NaN values derived in the `metric_result` and `public_metric_result` columns have a `missing_reason_code` of "M02", you can use the `fillna()` method provided by pandas. Here's how you can modify your code to achieve this:
+# Create file for shallow slice piolt 
+# Contextual Measure: Patient Days in Alternate Level of Care (Percentage)
+ALC_LOS_CORP_1 = ALC_LOS_CORP[["ORGANIZATION_ID", "PCT_ALC_LOS"]]
+ALC_LOS_CORP_1.rename(columns={"ORGANIZATION_ID":"reporting_entity_code", "PCT_ALC_LOS": "metric_result"}, inplace=True)
 
-```python
-import pandas as pd
+ALC_REG_1 = ALC_REG[["REGIONAL_ORGANIZATION_ID", "PCT_ALC_LOS"]]
+ALC_REG_1.rename(columns={"REGIONAL_ORGANIZATION_ID":"reporting_entity_code", "PCT_ALC_LOS": "metric_result"}, inplace=True)
+
+ALC_PROV_1 = ALC_PROV[["PROVINCIAL_ORGANIZATION_ID", "PCT_ALC_LOS"]]
+ALC_PROV_1.rename(columns={"PROVINCIAL_ORGANIZATION_ID":"reporting_entity_code", "PCT_ALC_LOS": "metric_result"}, inplace=True)
+
+ALC_File = pd.concat([ALC_LOS_CORP_1, ALC_REG_1, ALC_PROV_1], ignore_index=True)
+
+ALC_File['reporting_period_code'] = 'FY20' + yr
+ALC_File['reporting_entity_type_code'] = 'ORG'
+ALC_File['indicator_code'] = '816'
+ALC_File['metric_code'] = 'PERCENT'
+ALC_File['breakdown_type_code_l1'] = 'N/A'
+ALC_File['breakdown_value_code_l1'] = 'N/A'
+ALC_File['breakdown_type_code_l2'] = 'N/A'
+ALC_File['breakdown_value_code_l2'] = 'N/A'
+ALC_File['metric_descriptor_group_code'] = ''
+ALC_File['metric_descriptor_code'] = ''
+ALC_File['missing_reason_code'] = ''
+ALC_File['public_metric_result'] = ALC_File['metric_result']
+
+ALC_File = ALC_File[['reporting_period_code',	'reporting_entity_code','reporting_entity_type_code', \
+                    'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', \
+                   'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
+                   'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
+# ALC_File.to_csv('816_agg_20' + yr + '.csv', index=False)
+
+
+
+# Create file for shallow slice piolt 
+# Contextual Measure: Number of Emergency Department Visits
+ED_CORP_File =ED_CORP[["CORP_ID", "ED_CORP_CNT"]]
+ED_CORP_File.rename(columns={"CORP_ID":"reporting_entity_code", "ED_CORP_CNT": "metric_result"}, inplace=True)
+
+ED_CORP_File['reporting_period_code'] = 'FY20' + yr
+ED_CORP_File['reporting_entity_type_code'] = 'ORG'
+ED_CORP_File['indicator_code'] = '814'
+ED_CORP_File['metric_code'] = 'NUMBER_OF_CASES'
+ED_CORP_File['breakdown_type_code_l1'] = 'N/A'
+ED_CORP_File['breakdown_value_code_l1'] = 'N/A'
+ED_CORP_File['breakdown_type_code_l2'] = 'N/A'
+ED_CORP_File['breakdown_value_code_l2'] = 'N/A'
+ED_CORP_File['metric_descriptor_group_code'] = ''
+ED_CORP_File['metric_descriptor_code'] = ''
+ED_CORP_File['missing_reason_code'] = ''
+ED_CORP_File['public_metric_result'] = ED_CORP_File['metric_result']
+
+ED_CORP_File = ED_CORP_File[['reporting_period_code',	'reporting_entity_code','reporting_entity_type_code', \
+                    'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', \
+                   'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
+                   'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
+# ED_CORP_File.to_csv('814_agg_20' + yr + '.csv', index=False)
 
 # Create file for shallow slice pilot 
 # Contextual Measure: Patients Admitted Through the Emergency Department
@@ -31,124 +84,107 @@ IP_admit_ED_CORP_All_File = IP_admit_ED_CORP_All_File[['reporting_period_code', 
 
 # Write to CSV
 IP_admit_ED_CORP_All_File.to_csv('815_agg_20' + yr + '.csv', index=False)
-```
-
-This code checks for NaN values in the `metric_result` column and assigns "M02" to the `missing_reason_code` column accordingly. Make sure to replace `yr` with the appropriate value.
 
 
 
+# Create file for shallow slice pilot 
+# Contextual Measure: Total Acute Care Resource Use Intensity
+IP_RIW_CORP_TOTAL_File =IP_RIW_CORP_All[["ORGANIZATION_ID",  "RIW_SUM"]]
+IP_RIW_CORP_TOTAL_File.rename(columns={"ORGANIZATION_ID":"reporting_entity_code", "RIW_SUM": "metric_result"}, inplace=True)
+
+IP_RIW_CORP_TOTAL_File['reporting_period_code'] = 'FY20' + yr
+IP_RIW_CORP_TOTAL_File['reporting_entity_type_code'] = 'ORG'
+IP_RIW_CORP_TOTAL_File['indicator_code'] = '817'
+IP_RIW_CORP_TOTAL_File['metric_code'] = 'TOTAL'
+IP_RIW_CORP_TOTAL_File['breakdown_type_code_l1'] = 'N/A'
+IP_RIW_CORP_TOTAL_File['breakdown_value_code_l1'] = 'N/A'
+IP_RIW_CORP_TOTAL_File['breakdown_type_code_l2'] = 'N/A'
+IP_RIW_CORP_TOTAL_File['breakdown_value_code_l2'] = 'N/A'
+IP_RIW_CORP_TOTAL_File['metric_descriptor_group_code'] = ''
+IP_RIW_CORP_TOTAL_File['metric_descriptor_code'] = ''
+IP_RIW_CORP_TOTAL_File['missing_reason_code'] = ''
+IP_RIW_CORP_TOTAL_File['public_metric_result'] = IP_RIW_CORP_TOTAL_File['metric_result']
+
+IP_RIW_CORP_TOTAL_File = IP_RIW_CORP_TOTAL_File[['reporting_period_code',	'reporting_entity_code','reporting_entity_type_code', \
+                    'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', \
+                   'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
+                   'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
+IP_RIW_CORP_TOTAL_File.to_csv('817_agg_20' + yr + '.csv', index=False)
+
+
+# Create file for shallow slice pilot 
+# Contextual Measure: Average Acute Care Resource Use Intensity
+IP_RIW_CORP_AVG_File =IP_RIW_CORP_All[["ORGANIZATION_ID",  "RIW_AVG"]]
+IP_RIW_CORP_AVG_File.rename(columns={"ORGANIZATION_ID":"reporting_entity_code", "RIW_AVG": "metric_result"}, inplace=True)
+
+IP_RIW_CORP_AVG_File['reporting_period_code'] = 'FY20' + yr
+IP_RIW_CORP_AVG_File['reporting_entity_type_code'] = 'ORG'
+IP_RIW_CORP_AVG_File['indicator_code'] = '818'
+IP_RIW_CORP_AVG_File['metric_code'] = 'AVERAGE'
+IP_RIW_CORP_AVG_File['breakdown_type_code_l1'] = 'N/A'
+IP_RIW_CORP_AVG_File['breakdown_value_code_l1'] = 'N/A'
+IP_RIW_CORP_AVG_File['breakdown_type_code_l2'] = 'N/A'
+IP_RIW_CORP_AVG_File['breakdown_value_code_l2'] = 'N/A'
+IP_RIW_CORP_AVG_File['metric_descriptor_group_code'] = ''
+IP_RIW_CORP_AVG_File['metric_descriptor_code'] = ''
+IP_RIW_CORP_AVG_File['missing_reason_code'] = ''
+IP_RIW_CORP_AVG_File['public_metric_result'] = IP_RIW_CORP_AVG_File['metric_result']
+
+IP_RIW_CORP_AVG_File = IP_RIW_CORP_AVG_File[['reporting_period_code',	'reporting_entity_code','reporting_entity_type_code', \
+                    'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', \
+                   'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
+                   'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
+IP_RIW_CORP_AVG_File.to_csv('818_agg_20' + yr + '.csv', index=False)
+
+
+# Create file for shallow slice pilot 
+# Contextual Measure: Number of Acute Care Hospital Stays
+IP_LOS_CORP_TOTAL_File =ip_los_corp_All[["ORGANIZATION_ID",  "SUM_TOTAL_LOS"]]
+IP_LOS_CORP_TOTAL_File.rename(columns={"ORGANIZATION_ID":"reporting_entity_code", "SUM_TOTAL_LOS": "metric_result"}, inplace=True)
+
+IP_LOS_CORP_TOTAL_File['reporting_period_code'] = 'FY20' + yr
+IP_LOS_CORP_TOTAL_File['reporting_entity_type_code'] = 'ORG'
+IP_LOS_CORP_TOTAL_File['indicator_code'] = '812'
+IP_LOS_CORP_TOTAL_File['metric_code'] = 'TOTAL'
+IP_LOS_CORP_TOTAL_File['breakdown_type_code_l1'] = 'N/A'
+IP_LOS_CORP_TOTAL_File['breakdown_value_code_l1'] = 'N/A'
+IP_LOS_CORP_TOTAL_File['breakdown_type_code_l2'] = 'N/A'
+IP_LOS_CORP_TOTAL_File['breakdown_value_code_l2'] = 'N/A'
+IP_LOS_CORP_TOTAL_File['metric_descriptor_group_code'] = ''
+IP_LOS_CORP_TOTAL_File['metric_descriptor_code'] = ''
+IP_LOS_CORP_TOTAL_File['missing_reason_code'] = ''
+IP_LOS_CORP_TOTAL_File['public_metric_result'] = IP_LOS_CORP_TOTAL_File['metric_result']
+
+IP_LOS_CORP_TOTAL_File = IP_LOS_CORP_TOTAL_File[['reporting_period_code',	'reporting_entity_code','reporting_entity_type_code', \
+                    'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', \
+                   'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
+                   'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
+IP_LOS_CORP_TOTAL_File.to_csv('812_agg_20' + yr + '.csv', index=False)
 
 
 
+# Create file for shallow slice pilot 
+# Contextual Measure: Average Length of a Hospital Stay (Days)
+IP_LOS_CORP_AVG_File =ip_los_corp_All[["ORGANIZATION_ID",  "AVG_LOS"]]
+IP_LOS_CORP_AVG_File.rename(columns={"ORGANIZATION_ID":"reporting_entity_code", "AVG_LOS": "metric_result"}, inplace=True)
 
+IP_LOS_CORP_AVG_File['reporting_period_code'] = 'FY20' + yr
+IP_LOS_CORP_AVG_File['reporting_entity_type_code'] = 'ORG'
+IP_LOS_CORP_AVG_File['indicator_code'] = '813'
+IP_LOS_CORP_AVG_File['metric_code'] = 'AVERAGE'
+IP_LOS_CORP_AVG_File['breakdown_type_code_l1'] = 'N/A'
+IP_LOS_CORP_AVG_File['breakdown_value_code_l1'] = 'N/A'
+IP_LOS_CORP_AVG_File['breakdown_type_code_l2'] = 'N/A'
+IP_LOS_CORP_AVG_File['breakdown_value_code_l2'] = 'N/A'
+IP_LOS_CORP_AVG_File['metric_descriptor_group_code'] = ''
+IP_LOS_CORP_AVG_File['metric_descriptor_code'] = ''
+IP_LOS_CORP_AVG_File['missing_reason_code'] = ''
+IP_LOS_CORP_AVG_File['public_metric_result'] = IP_LOS_CORP_AVG_File['metric_result']
 
-
-
-
-
-
-
-
-days_of_the_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-
-for day in days_of_the_week:
-    for hour in range(8, 17):
-        print(f"It's {hour}:00 on {day} and I'm at work.")
-        if day == 'Friday' and hour == 16:
-            print("It's the end of the workday on Friday. Time to go home!")
-            break
-    if day == 'Friday':
-        break
-
-
-
-# Filter los_org_ta DataFrame based on the corrected conditions
-los_org_ta = los_org_22.join(ed_nacrs_corp_ids, 'CORP_ID', 'left_anti') \
-    .join(los_supp_corp_ids, 'CORP_ID', 'left_anti') \
-    .join(ed_facility_filtered_corp_ids, 'CORP_ID', 'left_anti') \
-    .filter(
-        (col('TYPE') == 'PS') & (col('CORP_CNT') == 1) |
-        (col('TYPE') == 'DQ') & (col('CORP_CNT') == 1) & (col('IND') == 'ELOS')
-    )
-
-# Remove suppressed corp and non-reported corps for ELOS 
-los_corp_conditions = ~los_org_22['CORP_ID'].isin(ed_nacrs_flg_1_22['CORP_ID']) & \
-                      ~los_org_22['CORP_ID'].isin(los_supp_org_22['CORP_ID']) & \
-                      ~los_org_22['CORP_ID'].isin(
-                          ed_facility_org[(ed_facility_org['SUBMISSION_FISCAL_YEAR'] == "2022") &
-                                          ((ed_facility_org['TYPE'] == 'PS') & (ed_facility_org['CORP_CNT'] == 1) |
-                                           (ed_facility_org['TYPE'] == 'DQ') & (ed_facility_org['CORP_CNT'] == 1) & (ed_facility_org['IND'] == 'ELOS'))]['CORP_ID']
-                      )
-los_org_ta = los_org_ta[los_corp_conditions]
-
-# Remove Huron Perth Healthcare Alliance, corp_id = 80228 from TPIA and ELOS
-tpia_org_ta = tpia_org_ta[(tpia_org_ta['CORP_ID'] != 80228) & tpia_org_ta['CORP_PEER'].notna()]
-los_org_ta = los_org_ta[(los_org_ta['CORP_ID'] != 80228) & los_org_ta['CORP_PEER'].notna()]
-
-# Sort DataFrames
-tpia_org_ta = tpia_org_ta.sort_values(by='CORP_ID')
-los_org_ta = los_org_ta.sort_values(by='CORP_ID')
-
-
-
-
-orrrrr
-
-
-from pyspark.sql.functions import col
-
-# Filter ed_facility_org for specific conditions and alias the result
-ed_facility_org_filtered = ed_facility_org_alias.filter(
-    (col("edfo.TYPE") == 'SL') & (col("edfo.CORP_CNT") == 1)
-).select("edfo.CORP_ID")
-
-# Perform the join operation
-ed_nacrs_flg_1_22 = df_fac_alias.join(
-    ed_facility_org_filtered, 
-    df_fac_alias["CORP_ID"] == ed_facility_org_filtered["CORP_ID"]
-).filter(df_fac_alias["NACRS_ED_FLG"] == 1)
-
-# Remove suppressed corp and non-reported corps
-tpia_corp_conditions = (
-    ~tpia_org_22_alias['CORP_ID'].isin(ed_nacrs_flg_1_22['CORP_ID']) &
-    ~tpia_org_22_alias['CORP_ID'].isin(tpia_supp_org_alias['CORP_ID']) &
-    ~tpia_org_22_alias['CORP_ID'].isin(
-        ed_facility_org_alias.filter(
-            (col("edfo.SUBMISSION_FISCAL_YEAR") == "2022") &
-            (
-                (col("edfo.TYPE") == 'PS') & (col("edfo.CORP_CNT") == 1) |
-                (col("edfo.TYPE") == 'DQ') & (col("edfo.CORP_CNT") == 1) & (col("edfo.IND") == 'TPIA')
-            )
-        ).select("edfo.CORP_ID")
-    )
-)
-
-# Apply the filter conditions
-tpia_org_ta = tpia_org_22_alias.filter(tpia_corp_conditions)
-
-# Remove suppressed corp and non-reported corps for ELOS 
-los_corp_conditions = (
-    ~los_org_22['CORP_ID'].isin(ed_nacrs_flg_1_22['CORP_ID']) &
-    ~los_org_22['CORP_ID'].isin(los_supp_org_22['CORP_ID']) &
-    ~los_org_22['CORP_ID'].isin(
-        ed_facility_org_alias.filter(
-            (col("edfo.SUBMISSION_FISCAL_YEAR") == "2022") &
-            (
-                (col("edfo.TYPE") == 'PS') & (col("edfo.CORP_CNT") == 1) |
-                (col("edfo.TYPE") == 'DQ') & (col("edfo.CORP_CNT") == 1) & (col("edfo.IND") == 'ELOS')
-            )
-        ).select("edfo.CORP_ID")
-    )
-)
-
-los_org_ta = los_org_22[los_corp_conditions]
-
-# Remove Huron Perth Healthcare Alliance, corp_id = 80228 from TPIA and ELOS
-tpia_org_ta = tpia_org_ta.filter((tpia_org_ta['CORP_ID'] != 80228) & tpia_org_ta['CORP_PEER'].isNotNull())
-los_org_ta = los_org_ta.filter((los_org_ta['CORP_ID'] != 80228) & los_org_ta['CORP_PEER'].isNotNull())
-
-# Sort DataFrames
-tpia_org_ta = tpia_org_ta.orderBy('CORP_ID')
-los_org_ta = los_org_ta.orderBy('CORP_ID')
+IP_LOS_CORP_AVG_File = IP_LOS_CORP_AVG_File[['reporting_period_code',	'reporting_entity_code','reporting_entity_type_code', \
+                    'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', \
+                   'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
+                   'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
+IP_LOS_CORP_AVG_File.to_csv('813_agg_20' + yr + '.csv', index=False)
 
 
