@@ -6,106 +6,17 @@ spark = SparkSession.builder \
     .getOrCreate()
 
 # Define path to SAS file
-sas_file_path = "path/to/your/sas/file.sas7bdat"
+sas_file_path = sas.saslib('hsp_ext', path=r"L:\Groups\CAD\YHS InDepth\YHS In-Depth 2023 Nov Release\FACILITY_FILES\ED_FACILITY_LIST")
 
-# Read SAS file into a PySpark DataFrame
-df = spark.read.format("com.github.saurfang.sas.spark") \
-    .load(sas_file_path)
+df = pd.read_sas(sas_file_path)
+
+df_spark = spark.createDataFrame(df)
+
+# # Read SAS file into a PySpark DataFrame
+# df = spark.read.format(r"L:\Groups\CAD\YHS InDepth\YHS In-Depth 2023 Nov Release\FACILITY_FILES\ED_FACILITY_LIST") \
+#     .load(sas_file_path)
 
 # Show DataFrame schema and sample rows
-df.printSchema()
-df.show(5)
-
-# Stop SparkSession
-spark.stop()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-from pyspark.sql import SparkSession
-
-# Initialize SparkSession
-spark = SparkSession.builder \
-    .appName("Read SAS file") \
-    .getOrCreate()
-
-# Specify the path to your SAS file
-sas_file_path = "path/to/your/sas/file.sas7bdat"
-
-# Read the SAS file into a DataFrame
-sas_df = spark.read.format("sas7bdat").load(sas_file_path)
-
-# Show the DataFrame schema and some sample rows
-sas_df.printSchema()
-sas_df.show(5)
-
-# Stop SparkSession
-spark.stop()
-
-hhh
-
-from pyspark.sql import SparkSession
-
-# Initialize SparkSession
-spark = SparkSession.builder \
-    .appName("Read SAS file") \
-    .getOrCreate()
-
-# Specify the path to your SAS file
-sas_file_path = "path/to/your/sas/file.sas7bdat"
-
-# Read the SAS file into a DataFrame
-sas_df = spark.read.format("com.github.saurfang.sas.spark").load(sas_file_path)
-
-# Show the DataFrame schema and some sample rows
-sas_df.printSchema()
-sas_df.show(5)
-
-# Stop SparkSession
-spark.stop()
-
-
-
+df_spark .printSchema()
+df_spark .show(5)
 
