@@ -1,11 +1,43 @@
-from pyspark.sql import functions as F
+from pyspark.sql.functions import expr
 
-# Calculate percentile for TPIA
-percentiles_tpia = tpia_org_ta.stat.approxQuantile("PERCENTILE_90", [0.2, 0.8], 0.01)
-prct_20_80_tpia_org_22_ta = spark.createDataFrame([(corp, percentiles_tpia[0], percentiles_tpia[1]) for corp in tpia_org_ta.select("CORP_PEER").distinct()],
-                                                  ["CORP_PEER", "20th_Percentile", "80th_Percentile"])
+# Define a user-defined function (UDF) to calculate percentiles
+def calculate_percentiles(values):
+    sorted_values = sorted(values)
+    percentile_20 = sorted_values[int(len(sorted_values) * 0.2)]
+    percentile_80 = sorted_values[int(len(sorted_values) * 0.8)]
+    return percentile_20, percentile_80
 
-# Calculate percentile for ELOS
-percentiles_los = los_org_ta.stat.approxQuantile("PERCENTILE_90", [0.2, 0.8], 0.01)
-prct_20_80_los_org_22_ta = spark.createDataFrame([(corp, percentiles_los[0], percentiles_los[1]) for corp in los_org_ta.select("CORP_PEER").distinct()],
-                                                  ["CORP_PEER", "20th_Percentile", "80th_Percentile"])
+calculate_percentiles_udf = F.udf(calculate_percentiles, returnType="struct<double,double>")
+
+# Calculate percentiles for TPIA
+prct_20_80_tpia_org_22_ta = tpia_org_ta \
+    .groupBy("CORP_PEER") \
+    .agg(expr("percentile_approx(PERCENTILE_90, 0.2)").alias("20th_Percentile"),
+         expr("percentile_approx(PERCENTILE_90, 0.8)").alias("80th_Percentile"))
+
+# Calculate percentiles for ELOS
+prct_20_80_los_org_22_ta = los_org_ta \
+    .groupBy("CORP_PEER") \
+    .agg(expr("percentile_approx(PERCENTILE_90, 0.2)").alias("20th_Percentile"),
+         expr("percentile_approx(PERCENTILE_90, 0.8)").alias("80th_Percentile"))
+
+
+
+orr 
+
+
+from pyspark.sql.functions import expr
+
+# Calculate percentiles for TPIA
+prct_20_80_tpia_org_22_ta = tpia_org_ta \
+    .groupBy("CORP_PEER") \
+    .agg(expr("percentile(PERCENTILE_90, 0.2)").alias("20th_Percentile"),
+         expr("percentile(PERCENTILE_90, 0.8)").alias("80th_Percentile"))
+
+# Calculate percentiles for ELOS
+prct_20_80_los_org_22_ta = los_org_ta \
+    .groupBy("CORP_PEER") \
+    .agg(expr("percentile(PERCENTILE_90, 0.2)").alias("20th_Percentile"),
+         expr("percentile(PERCENTILE_90, 0.8)").alias("80th_Percentile"))
+
+
