@@ -32,15 +32,13 @@ EDWT_Indicator_File['metric_descriptor_group_code'] = EDWT_Indicator_File['impro
 EDWT_Indicator_File['metric_descriptor_group_code'] = EDWT_Indicator_File['metric_descriptor_group_code'].fillna(EDWT_Indicator_File['compare_code'].replace(performance_comparison_mapping))
 
 # Map metric_descriptor_group_code to metric_descriptor_code
-performance_trend_mapping['999'] = ''  # Add 999 to the mapping with an empty string
-performance_comparison_mapping['999'] = ''  # Add 999 to the mapping with an empty string
-EDWT_Indicator_File['metric_descriptor_code'] = EDWT_Indicator_File['metric_descriptor_group_code'].map(lambda x: performance_trend_mapping.get(x, performance_comparison_mapping.get(x, '')))
-
-# Drop rows where metric_descriptor_group_code is 999
-EDWT_Indicator_File = EDWT_Indicator_File[EDWT_Indicator_File['metric_descriptor_group_code'] != '999']
+EDWT_Indicator_File['metric_descriptor_code'] = EDWT_Indicator_File['metric_descriptor_group_code'].map(lambda x: performance_trend_mapping[x] if x in performance_trend_mapping else performance_comparison_mapping[x])
 
 # Drop the original columns
 EDWT_Indicator_File.drop(columns=['improvement_code', 'compare_code'], inplace=True)
+
+# Filter out rows with metric_descriptor_code as 999
+EDWT_Indicator_File = EDWT_Indicator_File[EDWT_Indicator_File['metric_descriptor_code'] != '999']
 
 # Stack the rows
 stacked_data = []
