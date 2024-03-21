@@ -22,9 +22,8 @@ EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", 
 # Drop rows with NaN values in the 'metric_result' column
 EDWT_Indicator_File.dropna(subset=['metric_result'], inplace=True)
 
-# Drop rows with '999' values for improvement_code and compare_code
-EDWT_Indicator_File = EDWT_Indicator_File[EDWT_Indicator_File['improvement_code'] != '999']
-EDWT_Indicator_File = EDWT_Indicator_File[EDWT_Indicator_File['compare_code'] != '999']
+# Drop rows where both IMPROVEMENT_IND_CODE and COMPARE_IND_CODE are 999
+EDWT_Indicator_File = EDWT_Indicator_File[~((EDWT_Indicator_File['improvement_code'] == '999') & (EDWT_Indicator_File['compare_code'] == '999'))]
 
 # Round the non-NaN values
 EDWT_Indicator_File['metric_result'] = EDWT_Indicator_File['metric_result'].round(1)
@@ -47,7 +46,6 @@ for index, row in EDWT_Indicator_File.iterrows():
 stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code'])
 
 # Add remaining columns
-yr = '22'  # Set the year variable
 stacked_df['reporting_period_code'] = 'FY20' + yr
 stacked_df['reporting_entity_type_code'] = 'ORG'
 stacked_df['indicator_code'] = '811'
