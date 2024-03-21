@@ -1,33 +1,72 @@
----------------------------------------------------------------------------
-KeyError                                  Traceback (most recent call last)
-/tmp/ipykernel_1073/3384990878.py in <cell line: 106>()
-    104 
-    105 # Map metric_descriptor_group_code to metric_descriptor_code
---> 106 EDWT_Indicator_File['metric_descriptor_code'] = EDWT_Indicator_File['metric_descriptor_group_code'].map(lambda x: performance_trend_mapping[x] if x in performance_trend_mapping else performance_comparison_mapping[x])
-    107 
-    108 # Drop rows where metric_descriptor_code is 999 for both PerformanceTrend and PerformanceComparison
+import pandas as pd
 
-~/.local/lib/python3.10/site-packages/pandas/core/series.py in map(self, arg, na_action)
-   4395         dtype: object
-   4396         """
--> 4397         new_values = self._map_values(arg, na_action=na_action)
-   4398         return self._constructor(new_values, index=self.index, copy=False).__finalize__(
-   4399             self, method="map"
+# Define mapping for PerformanceTrend values
+performance_trend_mapping = {
+    '1': 'Improving',
+    '2': 'No Change',
+    '3': 'Weakening'
+}
 
-~/.local/lib/python3.10/site-packages/pandas/core/base.py in _map_values(self, mapper, na_action)
-    922 
-    923         # mapper is a function
---> 924         new_values = map_f(values, mapper)
-    925 
-    926         return new_values
+# Define mapping for PerformanceComparison values
+performance_comparison_mapping = {
+    '1': 'Above average',
+    '2': 'Same as average',
+    '3': 'Below average'
+}
 
-~/.local/lib/python3.10/site-packages/pandas/_libs/lib.pyx in pandas._libs.lib.map_infer()
+# Create file for shallow slice pilot
+# Indicator: Emergency Department Wait Time for Physician Initial Assessment (90% Spent Less, in Hours)
+EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID",  "INDICATOR_VALUE", "IMPROVEMENT_IND_CODE", "COMPARE_IND_CODE"]]
+EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", "INDICATOR_VALUE": "metric_result", "IMPROVEMENT_IND_CODE": "improvement_code", "COMPARE_IND_CODE": "compare_code"}, inplace=True)
 
-/tmp/ipykernel_1073/3384990878.py in <lambda>(x)
-    104 
-    105 # Map metric_descriptor_group_code to metric_descriptor_code
---> 106 EDWT_Indicator_File['metric_descriptor_code'] = EDWT_Indicator_File['metric_descriptor_group_code'].map(lambda x: performance_trend_mapping[x] if x in performance_trend_mapping else performance_comparison_mapping[x])
-    107 
-    108 # Drop rows where metric_descriptor_code is 999 for both PerformanceTrend and PerformanceComparison
+# Drop rows with NaN values in the 'metric_result' column
+EDWT_Indicator_File.dropna(subset=['metric_result'], inplace=True)
 
-KeyError: 999
+# Round the non-NaN values
+EDWT_Indicator_File['metric_result'] = EDWT_Indicator_File['metric_result'].round(1)
+
+# Map IMPROVEMENT_IND_CODE to improvement_mapping
+EDWT_Indicator_File['metric_descriptor_group_code'] = EDWT_Indicator_File['improvement_code'].replace(performance_trend_mapping)
+
+# Map COMPARE_IND_CODE to compare_mapping
+EDWT_Indicator_File['metric_descriptor_group_code'] = EDWT_Indicator_File['metric_descriptor_group_code'].fillna(EDWT_Indicator_File['compare_code'].replace(performance_comparison_mapping))
+
+# Map metric_descriptor_group_code to metric_descriptor_code
+performance_trend_mapping['999'] = ''  # Add 999 to the mapping with an empty string
+performance_comparison_mapping['999'] = ''  # Add 999 to the mapping with an empty string
+EDWT_Indicator_File['metric_descriptor_code'] = EDWT_Indicator_File['metric_descriptor_group_code'].map(lambda x: performance_trend_mapping.get(x, performance_comparison_mapping.get(x, '')))
+
+# Drop rows where metric_descriptor_group_code is 999
+EDWT_Indicator_File = EDWT_Indicator_File[EDWT_Indicator_File['metric_descriptor_group_code'] != '999']
+
+# Drop the original columns
+EDWT_Indicator_File.drop(columns=['improvement_code', 'compare_code'], inplace=True)
+
+# Stack the rows
+stacked_data = []
+for index, row in EDWT_Indicator_File.iterrows():
+    stacked_data.append([row['reporting_entity_code'], row['metric_result'], row['metric_descriptor_group_code'], row['metric_descriptor_code']])
+
+stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code'])
+
+# Add remaining columns
+yr = "22" # Define yr variable
+stacked_df['reporting_period_code'] = 'FY20' + yr
+stacked_df['reporting_entity_type_code'] = 'ORG'
+stacked_df['indicator_code'] = '811'
+stacked_df['metric_code'] = 'PCTL_90'
+stacked_df['breakdown_type_code_l1'] = 'N/A'
+stacked_df['breakdown_value_code_l1'] = 'N/A'
+stacked_df['breakdown_type_code_l2'] = 'N/A'
+stacked_df['breakdown_value_code_l2'] = 'N/A'
+stacked_df['missing_reason_code'] = ''
+stacked_df['public_metric_result'] = stacked_df['metric_result']
+
+# Reorder columns
+stacked_df = stacked_df[['reporting_period_code', 'reporting_entity_code', 'reporting_entity_type_code', \
+                    'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', \
+                   'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
+                   'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
+
+# Write to CSV
+# stacked_df.to_csv('811_agg.csv', index=False)
