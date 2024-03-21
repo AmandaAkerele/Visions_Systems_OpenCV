@@ -16,30 +16,32 @@ compare_mapping = {
 
 # Create file for shallow slice pilot
 # Indicator: Emergency Department Wait Time for Physician Initial Assessment (90% Spent Less, in Hours)
-EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID",  "INDICATOR_VALUE", "IMPROVEMENT_IND_CODE", "COMPARE_IND_CODE"]]
+EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "INDICATOR_VALUE", "IMPROVEMENT_IND_CODE", "COMPARE_IND_CODE"]]
 EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", "INDICATOR_VALUE": "metric_result", "IMPROVEMENT_IND_CODE": "improvement_code", "COMPARE_IND_CODE": "compare_code"}, inplace=True)
 
 # Drop rows with NaN values in the 'metric_result' column
 EDWT_Indicator_File.dropna(subset=['metric_result'], inplace=True)
 
+# Drop rows where either IMPROVEMENT_IND_CODE or COMPARE_IND_CODE is '999'
+EDWT_Indicator_File = EDWT_Indicator_File[(EDWT_Indicator_File['improvement_code'] != '999') & (EDWT_Indicator_File['compare_code'] != '999')]
+
 # Round the non-NaN values
 EDWT_Indicator_File['metric_result'] = EDWT_Indicator_File['metric_result'].round(1)
 
-# Map IMPROVEMENT_IND_CODE to improvement_mapping
-EDWT_Indicator_File['metric_descriptor_code'] = EDWT_Indicator_File['improvement_code'].replace(improvement_mapping)
-
-# Map COMPARE_IND_CODE to compare_mapping
-EDWT_Indicator_File['metric_descriptor_code'] = EDWT_Indicator_File['metric_descriptor_code'].fillna(EDWT_Indicator_File['compare_code'].replace(compare_mapping))
-
-# Drop the original columns
-EDWT_Indicator_File.drop(columns=['improvement_code', 'compare_code'], inplace=True)
-
-# Stack the rows
+# Initialize an empty list to store stacked data
 stacked_data = []
-for index, row in EDWT_Indicator_File.iterrows():
-    stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceTrend', row['metric_descriptor_code']])
-    stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceComparison', row['metric_descriptor_code']])
 
+# Iterate through rows of the DataFrame
+for index, row in EDWT_Indicator_File.iterrows():
+    if row['improvement_code'] != '999':
+        if row['metric_descriptor_group_code'] == 'PerformanceTrend':
+            metric_descriptor_code = improvement_mapping.get(row['improvement_code'])
+            stacked_data.append([row['reporting_entity_code'], row['metric_result'], row['metric_descriptor_group_code'], metric_descriptor_code])
+        elif row['metric_descriptor_group_code'] == 'PerformanceComparison':
+            metric_descriptor_code = compare_mapping.get(row['compare_code'])
+            stacked_data.append([row['reporting_entity_code'], row['metric_result'], row['metric_descriptor_group_code'], metric_descriptor_code])
+
+# Create DataFrame from stacked data
 stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code'])
 
 # Add remaining columns
