@@ -28,22 +28,13 @@ EDWT_Indicator_File = EDWT_Indicator_File[(EDWT_Indicator_File['improvement_code
 # Round the non-NaN values
 EDWT_Indicator_File['metric_result'] = EDWT_Indicator_File['metric_result'].round(1)
 
-# Map IMPROVEMENT_IND_CODE to improvement_mapping
-EDWT_Indicator_File['improvement'] = EDWT_Indicator_File['improvement_code'].replace(improvement_mapping)
-
-# Map COMPARE_IND_CODE to compare_mapping
-EDWT_Indicator_File['compare'] = EDWT_Indicator_File['compare_code'].replace(compare_mapping)
-
-# Drop the original columns
-EDWT_Indicator_File.drop(columns=['improvement_code', 'compare_code'], inplace=True)
-
 # Stack the rows
 stacked_data = []
 for index, row in EDWT_Indicator_File.iterrows():
     if row['metric_descriptor_group_code'] == 'PerformanceTrend':
-        metric_descriptor_code = improvement_mapping.get(row['improvement'])
+        metric_descriptor_code = improvement_mapping.get(row['improvement_code'])
     elif row['metric_descriptor_group_code'] == 'PerformanceComparison':
-        metric_descriptor_code = compare_mapping.get(row['compare'])
+        metric_descriptor_code = compare_mapping.get(row['compare_code'])
     else:
         metric_descriptor_code = ''
         
