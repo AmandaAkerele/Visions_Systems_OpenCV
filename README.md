@@ -34,17 +34,22 @@ stacked_data = []
 # Iterate through rows of the DataFrame
 for index, row in EDWT_Indicator_File.iterrows():
     if row['improvement_code'] != '999':
-        if row['metric_descriptor_group_code'] == 'PerformanceTrend':
-            metric_descriptor_code = improvement_mapping.get(row['improvement_code'])
-            stacked_data.append([row['reporting_entity_code'], row['metric_result'], row['metric_descriptor_group_code'], metric_descriptor_code])
-        elif row['metric_descriptor_group_code'] == 'PerformanceComparison':
-            metric_descriptor_code = compare_mapping.get(row['compare_code'])
-            stacked_data.append([row['reporting_entity_code'], row['metric_result'], row['metric_descriptor_group_code'], metric_descriptor_code])
+        if row['improvement_code'] in improvement_mapping:
+            metric_descriptor_group_code = 'PerformanceTrend'
+            metric_descriptor_code = improvement_mapping[row['improvement_code']]
+            stacked_data.append([row['reporting_entity_code'], row['metric_result'], metric_descriptor_group_code, metric_descriptor_code])
+
+    if row['compare_code'] != '999':
+        if row['compare_code'] in compare_mapping:
+            metric_descriptor_group_code = 'PerformanceComparison'
+            metric_descriptor_code = compare_mapping[row['compare_code']]
+            stacked_data.append([row['reporting_entity_code'], row['metric_result'], metric_descriptor_group_code, metric_descriptor_code])
 
 # Create DataFrame from stacked data
 stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code'])
 
 # Add remaining columns
+yr = '22'
 stacked_df['reporting_period_code'] = 'FY20' + yr
 stacked_df['reporting_entity_type_code'] = 'ORG'
 stacked_df['indicator_code'] = '811'
