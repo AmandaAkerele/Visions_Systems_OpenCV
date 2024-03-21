@@ -23,24 +23,30 @@ compare_mapping = {
     'MAP2': 'Second Map'
 }
 
-# Stack the metric_descriptor_group_code column
-stacked_EDWT_Indicator_File = EDWT_Indicator_File.melt(id_vars=['reporting_entity_code', 'metric_result', 'reporting_period_code', 'reporting_entity_type_code', 'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', 'breakdown_value_code_l2', 'missing_reason_code', 'public_metric_result'],
-                                                       value_vars=['metric_descriptor_group_code'],
-                                                       var_name='descriptor_type', value_name='metric_descriptor_group_code')
+# Create copies of the DataFrame for each descriptor group
+improvement_df = EDWT_Indicator_File.copy()
+compare_df = EDWT_Indicator_File.copy()
+
+# Apply mappings for each descriptor group
+improvement_df['metric_descriptor_code'] = improvement_df['metric_descriptor_group_code'].map(improvement_mapping)
+compare_df['metric_descriptor_code'] = compare_df['metric_descriptor_group_code'].map(compare_mapping)
+
+# Concatenate the DataFrames
+stacked_EDWT_Indicator_File = pd.concat([improvement_df, compare_df], ignore_index=True)
 
 # Remove duplicate rows
 stacked_EDWT_Indicator_File.drop_duplicates(inplace=True)
 
-# Reset index
-stacked_EDWT_Indicator_File.reset_index(drop=True, inplace=True)
-
-# Map metric_descriptor_code based on metric_descriptor_group_code
-stacked_EDWT_Indicator_File['metric_descriptor_code'] = stacked_EDWT_Indicator_File.apply(
-    lambda row: improvement_mapping.get(row['metric_descriptor_group_code'], '') if row['descriptor_type'] == 'IMPROVEMENT_IND_CODE' else compare_mapping.get(row['metric_descriptor_group_code'], ''),
-    axis=1
-)
-
 # Rest of your code...
+stacked_EDWT_Indicator_File['reporting_period_code'] = 'FY20' + yr
+stacked_EDWT_Indicator_File['reporting_entity_type_code'] = 'ORG'
+stacked_EDWT_Indicator_File['indicator_code'] = '811'
+stacked_EDWT_Indicator_File['metric_code'] = 'PCTL_90'
+stacked_EDWT_Indicator_File['breakdown_type_code_l1'] = 'N/A'
+stacked_EDWT_Indicator_File['breakdown_value_code_l1'] = 'N/A'
+stacked_EDWT_Indicator_File['breakdown_type_code_l2'] = 'N/A'
+stacked_EDWT_Indicator_File['breakdown_value_code_l2'] = 'N/A'
+stacked_EDWT_Indicator_File['missing_reason_code'] = ''
 stacked_EDWT_Indicator_File['public_metric_result'] = stacked_EDWT_Indicator_File['metric_result']
 
 # Reorder columns
