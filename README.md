@@ -19,8 +19,8 @@ compare_mapping = {
 EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "INDICATOR_VALUE", "IMPROVEMENT_IND_CODE", "COMPARE_IND_CODE"]]
 EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", "INDICATOR_VALUE": "metric_result", "IMPROVEMENT_IND_CODE": "improvement_code", "COMPARE_IND_CODE": "compare_code"}, inplace=True)
 
-# Drop rows with '999' values in either improvement_code or compare_code
-EDWT_Indicator_File = EDWT_Indicator_File[(EDWT_Indicator_File['improvement_code'] != '999') & (EDWT_Indicator_File['compare_code'] != '999')]
+# Drop rows where both IMPROVEMENT_IND_CODE and COMPARE_IND_CODE are '999'
+EDWT_Indicator_File = EDWT_Indicator_File[~((EDWT_Indicator_File['improvement_code'] == '999') & (EDWT_Indicator_File['compare_code'] == '999'))]
 
 # Round the non-NaN values
 EDWT_Indicator_File['metric_result'] = EDWT_Indicator_File['metric_result'].round(1)
