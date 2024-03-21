@@ -1,14 +1,14 @@
 import pandas as pd
 
-# Define mapping for IMPROVEMENT_IND_CODE values
-improvement_mapping = {
+# Define mapping for PerformanceTrend values
+performance_trend_mapping = {
     '1': 'Improving',
     '2': 'No Change',
     '3': 'Weakening'
 }
 
-# Define mapping for COMPARE_IND_CODE values
-compare_mapping = {
+# Define mapping for PerformanceComparison values
+performance_comparison_mapping = {
     '1': 'Above average',
     '2': 'Same as average',
     '3': 'Below average'
@@ -16,7 +16,7 @@ compare_mapping = {
 
 # Create file for shallow slice pilot
 # Indicator: Emergency Department Wait Time for Physician Initial Assessment (90% Spent Less, in Hours)
-EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "INDICATOR_VALUE", "IMPROVEMENT_IND_CODE", "COMPARE_IND_CODE"]]
+EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID",  "INDICATOR_VALUE", "IMPROVEMENT_IND_CODE", "COMPARE_IND_CODE"]]
 EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", "INDICATOR_VALUE": "metric_result", "IMPROVEMENT_IND_CODE": "improvement_code", "COMPARE_IND_CODE": "compare_code"}, inplace=True)
 
 # Drop rows with NaN values in the 'metric_result' column
@@ -26,30 +26,29 @@ EDWT_Indicator_File.dropna(subset=['metric_result'], inplace=True)
 EDWT_Indicator_File['metric_result'] = EDWT_Indicator_File['metric_result'].round(1)
 
 # Map IMPROVEMENT_IND_CODE to improvement_mapping
-EDWT_Indicator_File['improvement'] = EDWT_Indicator_File['improvement_code'].replace(improvement_mapping)
+EDWT_Indicator_File['metric_descriptor_group_code'] = EDWT_Indicator_File['improvement_code'].replace(performance_trend_mapping)
 
 # Map COMPARE_IND_CODE to compare_mapping
-EDWT_Indicator_File['compare'] = EDWT_Indicator_File['compare_code'].replace(compare_mapping)
+EDWT_Indicator_File['metric_descriptor_group_code'] = EDWT_Indicator_File['metric_descriptor_group_code'].fillna(EDWT_Indicator_File['compare_code'].replace(performance_comparison_mapping))
+
+# Map metric_descriptor_group_code to metric_descriptor_code
+EDWT_Indicator_File['metric_descriptor_code'] = EDWT_Indicator_File['metric_descriptor_group_code'].map(lambda x: performance_trend_mapping[x] if x in performance_trend_mapping else performance_comparison_mapping[x])
 
 # Drop the original columns
 EDWT_Indicator_File.drop(columns=['improvement_code', 'compare_code'], inplace=True)
 
+# Filter out rows with metric_descriptor_code as 999
+EDWT_Indicator_File = EDWT_Indicator_File[EDWT_Indicator_File['metric_descriptor_code'] != '999']
+
 # Stack the rows
 stacked_data = []
 for index, row in EDWT_Indicator_File.iterrows():
-    if row['metric_descriptor_group_code'] != '999':
-        if row['metric_descriptor_group_code'] == 'PerformanceTrend':
-            descriptor_code = improvement_mapping.get(row['improvement'], '')
-        elif row['metric_descriptor_group_code'] == 'PerformanceComparison':
-            descriptor_code = compare_mapping.get(row['compare'], '')
-        else:
-            descriptor_code = ''
-        if descriptor_code:
-            stacked_data.append([row['reporting_entity_code'], row['metric_result'], row['metric_descriptor_group_code'], descriptor_code])
+    stacked_data.append([row['reporting_entity_code'], row['metric_result'], row['metric_descriptor_group_code'], row['metric_descriptor_code']])
 
 stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code'])
 
 # Add remaining columns
+yr = "22" # Define yr variable
 stacked_df['reporting_period_code'] = 'FY20' + yr
 stacked_df['reporting_entity_type_code'] = 'ORG'
 stacked_df['indicator_code'] = '811'
@@ -68,4 +67,4 @@ stacked_df = stacked_df[['reporting_period_code', 'reporting_entity_code', 'repo
                    'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
 
 # Write to CSV
-stacked_df.to_csv('811_agg.csv', index=False)
+# stacked_df.to_csv('811_agg.csv', index=False)
