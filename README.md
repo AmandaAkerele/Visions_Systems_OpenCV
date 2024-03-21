@@ -1,86 +1,30 @@
-import pandas as pd
+KeyError                                  Traceback (most recent call last)
+/tmp/ipykernel_1073/2947733991.py in <cell line: 19>()
+     17 # Create file for shallow slice pilot
+     18 # Indicator: Emergency Department Wait Time for Physician Initial Assessment (90% Spent Less, in Hours)
+---> 19 EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID",  "INDICATOR_VALUE", "IMPROVEMENT_IND_CODE", "COMPARE_IND_CODE", "PerformanceTrend", "PerformanceComparison"]]
+     20 EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", "INDICATOR_VALUE": "metric_result", "IMPROVEMENT_IND_CODE": "improvement_code", "COMPARE_IND_CODE": "compare_code"}, inplace=True)
+     21 
 
-# Define mapping for IMPROVEMENT_IND_CODE values
-improvement_mapping = {
-    '1': 'Improving',
-    '2': 'No Change',
-    '3': 'Weakening'
-}
+~/.local/lib/python3.10/site-packages/pandas/core/frame.py in __getitem__(self, key)
+   3765             if is_iterator(key):
+   3766                 key = list(key)
+-> 3767             indexer = self.columns._get_indexer_strict(key, "columns")[1]
+   3768 
+   3769         # take() does not accept boolean indexers
 
-# Define mapping for COMPARE_IND_CODE values
-compare_mapping = {
-    '1': 'Above average',
-    '2': 'Same as average',
-    '3': 'Below average'
-}
+~/.local/lib/python3.10/site-packages/pandas/core/indexes/base.py in _get_indexer_strict(self, key, axis_name)
+   5874             keyarr, indexer, new_indexer = self._reindex_non_unique(keyarr)
+   5875 
+-> 5876         self._raise_if_missing(keyarr, indexer, axis_name)
+   5877 
+   5878         keyarr = self.take(indexer)
 
-# Create file for shallow slice pilot
-# Indicator: Emergency Department Wait Time for Physician Initial Assessment (90% Spent Less, in Hours)
-EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID",  "INDICATOR_VALUE", "IMPROVEMENT_IND_CODE", "COMPARE_IND_CODE", "PerformanceTrend", "PerformanceComparison"]]
-EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", "INDICATOR_VALUE": "metric_result", "IMPROVEMENT_IND_CODE": "improvement_code", "COMPARE_IND_CODE": "compare_code"}, inplace=True)
+~/.local/lib/python3.10/site-packages/pandas/core/indexes/base.py in _raise_if_missing(self, key, indexer, axis_name)
+   5936 
+   5937             not_found = list(ensure_index(key)[missing_mask.nonzero()[0]].unique())
+-> 5938             raise KeyError(f"{not_found} not in index")
+   5939 
+   5940     @overload
 
-# Drop rows with NaN values in the 'metric_result' column
-EDWT_Indicator_File.dropna(subset=['metric_result'], inplace=True)
-
-# Round the non-NaN values
-EDWT_Indicator_File['metric_result'] = EDWT_Indicator_File['metric_result'].round(1)
-
-# Map IMPROVEMENT_IND_CODE to improvement_mapping
-EDWT_Indicator_File['metric_descriptor_code'] = EDWT_Indicator_File['improvement_code'].replace(improvement_mapping)
-
-# Map COMPARE_IND_CODE to compare_mapping
-EDWT_Indicator_File['metric_descriptor_code'] = EDWT_Indicator_File['metric_descriptor_code'].fillna(EDWT_Indicator_File['compare_code'].replace(compare_mapping))
-
-# Map PerformanceTrend to metric descriptor codes
-trend_mapping = {
-    '1': 'Improving',
-    '2': 'No Change',
-    '3': 'Weakening'
-}
-
-EDWT_Indicator_File.loc[EDWT_Indicator_File['PerformanceTrend'] == '1', 'metric_descriptor_code'] = 'Improving'
-EDWT_Indicator_File.loc[EDWT_Indicator_File['PerformanceTrend'] == '2', 'metric_descriptor_code'] = 'No Change'
-EDWT_Indicator_File.loc[EDWT_Indicator_File['PerformanceTrend'] == '3', 'metric_descriptor_code'] = 'Weakening'
-
-# Map PerformanceComparison to metric descriptor codes
-comparison_mapping = {
-    '1': 'Above average',
-    '2': 'Same as average',
-    '3': 'Below average'
-}
-
-EDWT_Indicator_File.loc[EDWT_Indicator_File['PerformanceComparison'] == '1', 'metric_descriptor_code'] = 'Above average'
-EDWT_Indicator_File.loc[EDWT_Indicator_File['PerformanceComparison'] == '2', 'metric_descriptor_code'] = 'Same as average'
-EDWT_Indicator_File.loc[EDWT_Indicator_File['PerformanceComparison'] == '3', 'metric_descriptor_code'] = 'Below average'
-
-# Drop the original columns
-EDWT_Indicator_File.drop(columns=['improvement_code', 'compare_code', 'PerformanceTrend', 'PerformanceComparison'], inplace=True)
-
-# Stack the rows
-stacked_data = []
-for index, row in EDWT_Indicator_File.iterrows():
-    stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceTrend', row['metric_descriptor_code']])
-    stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceComparison', row['metric_descriptor_code']])
-
-stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code'])
-
-# Add remaining columns
-stacked_df['reporting_period_code'] = 'FY20' + yr
-stacked_df['reporting_entity_type_code'] = 'ORG'
-stacked_df['indicator_code'] = '811'
-stacked_df['metric_code'] = 'PCTL_90'
-stacked_df['breakdown_type_code_l1'] = 'N/A'
-stacked_df['breakdown_value_code_l1'] = 'N/A'
-stacked_df['breakdown_type_code_l2'] = 'N/A'
-stacked_df['breakdown_value_code_l2'] = 'N/A'
-stacked_df['missing_reason_code'] = ''
-stacked_df['public_metric_result'] = stacked_df['metric_result']
-
-# Reorder columns
-stacked_df = stacked_df[['reporting_period_code', 'reporting_entity_code', 'reporting_entity_type_code', \
-                    'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', \
-                   'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
-                   'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
-
-# Write to CSV
-# stacked_df.to_csv('811_agg.csv', index=False)
+KeyError: "['PerformanceTrend', 'PerformanceComparison'] not in index"
