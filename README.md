@@ -1,21 +1,3 @@
-import math
-
-def round_half_up(n, decimals):
-    if math.isnan(n):
-        return float('nan')  # Return NaN if input is NaN
-    multiplier = 10 ** decimals
-    value_1 = n * multiplier
-    if value_1 - math.floor(value_1) >= 0.5:
-        value_2 = math.ceil(value_1)
-    else:
-        value_2 = math.floor(value_1)
-    return (value_2 / multiplier)
-
-
-and 
-
-import pandas as pd
-
 # Create file for shallow slice pilot
 # Indicator: Emergency Department Wait Time for Physician Initial Assessment (90% Spent Less, in Hours)
 EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID",  "INDICATOR_VALUE"]]
@@ -27,8 +9,29 @@ EDWT_Indicator_File.dropna(subset=['metric_result'], inplace=True)
 # Round the non-NaN values
 EDWT_Indicator_File['metric_result'] = EDWT_Indicator_File['metric_result'].round(1)
 
-# Rest of your code remains unchanged...
+# Map metric_descriptor_group_code based on specific strings
+EDWT_Indicator_File['metric_descriptor_group_code'] = np.where(
+    EDWT_Indicator_File['metric_descriptor_group_code'].str.contains('IMPROVEMENT_IND_CODE', case=False, na=False),
+    'IMPROVEMENT_IND_CODE',
+    np.where(
+        EDWT_Indicator_File['metric_descriptor_group_code'].str.contains('COMPARE_IND_CODE', case=False, na=False),
+        'COMPARE_IND_CODE',
+        ''
+    )
+)
 
+# Map metric_descriptor_code based on metric_descriptor_group_code
+EDWT_Indicator_File['metric_descriptor_code'] = np.where(
+    EDWT_Indicator_File['metric_descriptor_group_code'] == 'IMPROVEMENT_IND_CODE',
+    'WRITE UNDER',
+    np.where(
+        EDWT_Indicator_File['metric_descriptor_group_code'] == 'COMPARE_IND_CODE',
+        'MAPI ON',
+        ''
+    )
+)
+
+# Rest of your code...
 EDWT_Indicator_File['reporting_period_code'] = 'FY20' + yr
 EDWT_Indicator_File['reporting_entity_type_code'] = 'ORG'
 EDWT_Indicator_File['indicator_code'] = '811'
@@ -37,8 +40,6 @@ EDWT_Indicator_File['breakdown_type_code_l1'] = 'N/A'
 EDWT_Indicator_File['breakdown_value_code_l1'] = 'N/A'
 EDWT_Indicator_File['breakdown_type_code_l2'] = 'N/A'
 EDWT_Indicator_File['breakdown_value_code_l2'] = 'N/A'
-EDWT_Indicator_File['metric_descriptor_group_code'] = ''
-EDWT_Indicator_File['metric_descriptor_code'] = ''
 EDWT_Indicator_File['missing_reason_code'] = ''
 EDWT_Indicator_File['public_metric_result'] = EDWT_Indicator_File['metric_result']
 
