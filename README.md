@@ -16,35 +16,33 @@ compare_mapping = {
 
 # Create file for shallow slice pilot
 # Indicator: Emergency Department Wait Time for Physician Initial Assessment (90% Spent Less, in Hours)
-EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "INDICATOR_VALUE", "IMPROVEMENT_IND_CODE", "COMPARE_IND_CODE"]]
+EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID",  "INDICATOR_VALUE", "IMPROVEMENT_IND_CODE", "COMPARE_IND_CODE"]]
 EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", "INDICATOR_VALUE": "metric_result", "IMPROVEMENT_IND_CODE": "improvement_code", "COMPARE_IND_CODE": "compare_code"}, inplace=True)
 
-# Drop rows where both IMPROVEMENT_IND_CODE and COMPARE_IND_CODE are '999'
-EDWT_Indicator_File = EDWT_Indicator_File[~((EDWT_Indicator_File['improvement_code'] == '999') & (EDWT_Indicator_File['compare_code'] == '999'))]
+# Drop rows with NaN values in the 'metric_result' column
+EDWT_Indicator_File.dropna(subset=['metric_result'], inplace=True)
 
 # Round the non-NaN values
 EDWT_Indicator_File['metric_result'] = EDWT_Indicator_File['metric_result'].round(1)
 
-# Create an empty list to store the stacked data
+# Map IMPROVEMENT_IND_CODE to improvement_mapping
+EDWT_Indicator_File['metric_descriptor_code'] = EDWT_Indicator_File['improvement_code'].replace(improvement_mapping)
+
+# Map COMPARE_IND_CODE to compare_mapping
+EDWT_Indicator_File['metric_descriptor_code'] = EDWT_Indicator_File['metric_descriptor_code'].fillna(EDWT_Indicator_File['compare_code'].replace(compare_mapping))
+
+# Drop the original columns
+EDWT_Indicator_File.drop(columns=['improvement_code', 'compare_code'], inplace=True)
+
+# Stack the rows
 stacked_data = []
-
-# Iterate through each row of the DataFrame
 for index, row in EDWT_Indicator_File.iterrows():
-    if row['improvement_code'] != '999':
-        metric_descriptor_code = improvement_mapping.get(row['improvement_code'])
-        if metric_descriptor_code:
-            stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceTrend', metric_descriptor_code])
+    stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceTrend', row['metric_descriptor_code']])
+    stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceComparison', row['metric_descriptor_code']])
 
-    if row['compare_code'] != '999':
-        metric_descriptor_code = compare_mapping.get(row['compare_code'])
-        if metric_descriptor_code:
-            stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceComparison', metric_descriptor_code])
-
-# Create a DataFrame from the stacked data
 stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code'])
 
 # Add remaining columns
-yr = '22'
 stacked_df['reporting_period_code'] = 'FY20' + yr
 stacked_df['reporting_entity_type_code'] = 'ORG'
 stacked_df['indicator_code'] = '811'
