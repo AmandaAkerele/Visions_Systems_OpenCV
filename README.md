@@ -19,33 +19,28 @@ compare_mapping = {
 EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "INDICATOR_VALUE", "IMPROVEMENT_IND_CODE", "COMPARE_IND_CODE"]]
 EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", "INDICATOR_VALUE": "metric_result", "IMPROVEMENT_IND_CODE": "improvement_code", "COMPARE_IND_CODE": "compare_code"}, inplace=True)
 
-# Drop rows with NaN values in the 'metric_result' column
-EDWT_Indicator_File.dropna(subset=['metric_result'], inplace=True)
-
-# Drop rows where either IMPROVEMENT_IND_CODE or COMPARE_IND_CODE is '999'
+# Drop rows with '999' values in either improvement_code or compare_code
 EDWT_Indicator_File = EDWT_Indicator_File[(EDWT_Indicator_File['improvement_code'] != '999') & (EDWT_Indicator_File['compare_code'] != '999')]
 
 # Round the non-NaN values
 EDWT_Indicator_File['metric_result'] = EDWT_Indicator_File['metric_result'].round(1)
 
-# Initialize an empty list to store stacked data
+# Create an empty list to store the stacked data
 stacked_data = []
 
-# Iterate through rows of the DataFrame
+# Iterate through each row of the DataFrame
 for index, row in EDWT_Indicator_File.iterrows():
     if row['improvement_code'] != '999':
-        if row['improvement_code'] in improvement_mapping:
-            metric_descriptor_group_code = 'PerformanceTrend'
-            metric_descriptor_code = improvement_mapping[row['improvement_code']]
-            stacked_data.append([row['reporting_entity_code'], row['metric_result'], metric_descriptor_group_code, metric_descriptor_code])
+        metric_descriptor_code = improvement_mapping.get(row['improvement_code'])
+        if metric_descriptor_code:
+            stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceTrend', metric_descriptor_code])
 
     if row['compare_code'] != '999':
-        if row['compare_code'] in compare_mapping:
-            metric_descriptor_group_code = 'PerformanceComparison'
-            metric_descriptor_code = compare_mapping[row['compare_code']]
-            stacked_data.append([row['reporting_entity_code'], row['metric_result'], metric_descriptor_group_code, metric_descriptor_code])
+        metric_descriptor_code = compare_mapping.get(row['compare_code'])
+        if metric_descriptor_code:
+            stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceComparison', metric_descriptor_code])
 
-# Create DataFrame from stacked data
+# Create a DataFrame from the stacked data
 stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code'])
 
 # Add remaining columns
