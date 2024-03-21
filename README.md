@@ -40,8 +40,14 @@ EDWT_Indicator_File.drop(columns=['improvement_code', 'compare_code'], inplace=T
 # Stack the rows
 stacked_data = []
 for index, row in EDWT_Indicator_File.iterrows():
-    stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceTrend', row['improvement']])
-    stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceComparison', row['compare']])
+    if row['metric_descriptor_group_code'] == 'PerformanceTrend':
+        metric_descriptor_code = improvement_mapping.get(row['improvement'])
+    elif row['metric_descriptor_group_code'] == 'PerformanceComparison':
+        metric_descriptor_code = compare_mapping.get(row['compare'])
+    else:
+        metric_descriptor_code = ''
+        
+    stacked_data.append([row['reporting_entity_code'], row['metric_result'], row['metric_descriptor_group_code'], metric_descriptor_code])
 
 stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code'])
 
