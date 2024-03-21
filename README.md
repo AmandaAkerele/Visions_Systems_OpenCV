@@ -16,7 +16,7 @@ compare_mapping = {
 
 # Create file for shallow slice pilot
 # Indicator: Emergency Department Wait Time for Physician Initial Assessment (90% Spent Less, in Hours)
-EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID",  "INDICATOR_VALUE", "IMPROVEMENT_IND_CODE", "COMPARE_IND_CODE"]]
+EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "INDICATOR_VALUE", "IMPROVEMENT_IND_CODE", "COMPARE_IND_CODE"]]
 EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", "INDICATOR_VALUE": "metric_result", "IMPROVEMENT_IND_CODE": "improvement_code", "COMPARE_IND_CODE": "compare_code"}, inplace=True)
 
 # Drop rows with NaN values in the 'metric_result' column
@@ -34,15 +34,21 @@ EDWT_Indicator_File['metric_descriptor_code'] = EDWT_Indicator_File['metric_desc
 # Drop the original columns
 EDWT_Indicator_File.drop(columns=['improvement_code', 'compare_code'], inplace=True)
 
+# Filter out rows where metric_descriptor_code is '999'
+EDWT_Indicator_File = EDWT_Indicator_File[EDWT_Indicator_File['metric_descriptor_code'] != '999']
+
 # Stack the rows
 stacked_data = []
 for index, row in EDWT_Indicator_File.iterrows():
-    stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceTrend', row['metric_descriptor_code']])
-    stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceComparison', row['metric_descriptor_code']])
+    if row['metric_descriptor_group_code'] == 'PerformanceTrend':
+        stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceTrend', improvement_mapping.get(row['metric_descriptor_code'])])
+    elif row['metric_descriptor_group_code'] == 'PerformanceComparison':
+        stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceComparison', compare_mapping.get(row['metric_descriptor_code'])])
 
 stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code'])
 
 # Add remaining columns
+yr = '22'
 stacked_df['reporting_period_code'] = 'FY20' + yr
 stacked_df['reporting_entity_type_code'] = 'ORG'
 stacked_df['indicator_code'] = '811'
