@@ -1,14 +1,14 @@
 import pandas as pd
 
-# Define mapping for IMPROVEMENT_IND_CODE values
-improvement_mapping = {
+# Define mapping for PerformanceTrend values
+performance_trend_mapping = {
     '1': 'Improving',
     '2': 'No Change',
     '3': 'Weakening'
 }
 
-# Define mapping for COMPARE_IND_CODE values
-compare_mapping = {
+# Define mapping for PerformanceComparison values
+performance_comparison_mapping = {
     '1': 'Above average',
     '2': 'Same as average',
     '3': 'Below average'
@@ -26,10 +26,13 @@ EDWT_Indicator_File.dropna(subset=['metric_result'], inplace=True)
 EDWT_Indicator_File['metric_result'] = EDWT_Indicator_File['metric_result'].round(1)
 
 # Map IMPROVEMENT_IND_CODE to improvement_mapping
-EDWT_Indicator_File['metric_descriptor_code'] = EDWT_Indicator_File['improvement_code'].replace(improvement_mapping)
+EDWT_Indicator_File['metric_descriptor_group_code'] = EDWT_Indicator_File['improvement_code'].replace(performance_trend_mapping)
 
 # Map COMPARE_IND_CODE to compare_mapping
-EDWT_Indicator_File['metric_descriptor_code'] = EDWT_Indicator_File['metric_descriptor_code'].fillna(EDWT_Indicator_File['compare_code'].replace(compare_mapping))
+EDWT_Indicator_File['metric_descriptor_group_code'] = EDWT_Indicator_File['metric_descriptor_group_code'].fillna(EDWT_Indicator_File['compare_code'].replace(performance_comparison_mapping))
+
+# Map metric_descriptor_group_code to metric_descriptor_code
+EDWT_Indicator_File['metric_descriptor_code'] = EDWT_Indicator_File['metric_descriptor_group_code'].map(lambda x: performance_trend_mapping[x] if x in performance_trend_mapping else performance_comparison_mapping[x])
 
 # Drop the original columns
 EDWT_Indicator_File.drop(columns=['improvement_code', 'compare_code'], inplace=True)
@@ -37,12 +40,12 @@ EDWT_Indicator_File.drop(columns=['improvement_code', 'compare_code'], inplace=T
 # Stack the rows
 stacked_data = []
 for index, row in EDWT_Indicator_File.iterrows():
-    stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceTrend', row['metric_descriptor_code']])
-    stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceComparison', row['metric_descriptor_code']])
+    stacked_data.append([row['reporting_entity_code'], row['metric_result'], row['metric_descriptor_group_code'], row['metric_descriptor_code']])
 
 stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code'])
 
 # Add remaining columns
+yr = "22" # Define yr variable
 stacked_df['reporting_period_code'] = 'FY20' + yr
 stacked_df['reporting_entity_type_code'] = 'ORG'
 stacked_df['indicator_code'] = '811'
