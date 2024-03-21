@@ -22,8 +22,8 @@ EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", 
 # Drop rows with NaN values in the 'metric_result' column
 EDWT_Indicator_File.dropna(subset=['metric_result'], inplace=True)
 
-# Drop rows where both IMPROVEMENT_IND_CODE and COMPARE_IND_CODE are 999
-EDWT_Indicator_File = EDWT_Indicator_File[~((EDWT_Indicator_File['improvement_code'] == '999') & (EDWT_Indicator_File['compare_code'] == '999'))]
+# Drop rows where either IMPROVEMENT_IND_CODE or COMPARE_IND_CODE is 999
+EDWT_Indicator_File = EDWT_Indicator_File[(EDWT_Indicator_File['improvement_code'] != '999') & (EDWT_Indicator_File['compare_code'] != '999')]
 
 # Round the non-NaN values
 EDWT_Indicator_File['metric_result'] = EDWT_Indicator_File['metric_result'].round(1)
