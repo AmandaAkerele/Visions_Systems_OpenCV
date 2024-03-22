@@ -1,3 +1,14 @@
+if metric_descriptor_code = 999 where metric_descriptor_group_code = PerformanceTrend then drop that row
+
+
+
+# Drop rows where metric_descriptor_code is 999 and metric_descriptor_group_code is PerformanceTrend
+EDWT_Indicator_File = EDWT_Indicator_File[~((EDWT_Indicator_File['metric_descriptor_code'] == '999') & (EDWT_Indicator_File['metric_descriptor_group_code'] == 'PerformanceTrend'))]
+
+
+
+
+
 import pandas as pd
 
 # Define mapping for IMPROVEMENT_IND_CODE values
