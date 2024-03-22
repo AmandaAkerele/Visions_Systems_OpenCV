@@ -1,43 +1,13 @@
-import pandas as pd
-import numpy as np
-from scipy.stats import expon
-
-# Define mapping for IMPROVEMENT_IND_CODE values
-improvement_mapping = {
-    '1': 'Improving',
-    '2': 'No Change',
-    '3': 'Weakening'
-}
-
-# Define mapping for COMPARE_IND_CODE values
-compare_mapping = {
-    '1': 'Above',
-    '2': 'Same',
-    '3': 'Below'
-}
-
-# Define mapping for INDICATOR_SUPPRESSION_CODE values 
-suppression_mapping = {
-    '7': '',
-    '2': 'S03',
-    '3': 'S10',
-    '6': 'S10',
-    '901': 'S08'
-}
-
-# Convert COMPARE_IND_CODE column to numeric type
-EDWT_Indicators["COMPARE_IND_CODE"] = pd.to_numeric(EDWT_Indicators["COMPARE_IND_CODE"], errors='coerce')
-EDWT_Indicators['compare_descriptor_code'] = EDWT_Indicators['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
-
-# Convert IMPROVEMENT_IND_CODE column to numeric type
-EDWT_Indicators["IMPROVEMENT_IND_CODE"] = pd.to_numeric(EDWT_Indicators["IMPROVEMENT_IND_CODE"], errors='coerce')
-EDWT_Indicators['improvement_descriptor_code'] = EDWT_Indicators['IMPROVEMENT_IND_CODE'].astype(str).replace(improvement_mapping)
+# ...
 
 # Convert INDICATOR_SUPPRESSION_CODE column to numeric type
 EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
+
+# Map INDICATOR_SUPPRESSION_CODE to missing_reason_code using suppression_mapping
 EDWT_Indicators['missing_reason_code'] = EDWT_Indicators['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
 
-# Define a function to generate data for a specific year
+# ...
+
 def generate_data_for_year(year):
     # Create file for shallow slice pilot
     # Indicator: Emergency Department Wait Time for Physician Initial Assessment (90% Spent Less, in Hours)
