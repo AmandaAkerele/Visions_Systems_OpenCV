@@ -11,22 +11,16 @@ improvement_mapping = {
 
 # Define mapping for COMPARE_IND_CODE values
 compare_mapping = {
-    '1': 'Above average',
-    '2': 'Same as average',
-    '3': 'Below average'
-}
-
-# Define mapping for INDICATOR_SUPPRESSION_CODE values 
-suppression_mapping = {
-    '7': '',
-    '2': 'S03',
-    '3': 'S10',
-    '6': 'S10',
-    '901': 'S08'
+    '1': 'Above',
+    '2': 'Same',
+    '3': 'Below'
 }
 
 # Convert COMPARE_IND_CODE column to numeric type
 EDWT_Indicators["COMPARE_IND_CODE"] = pd.to_numeric(EDWT_Indicators["COMPARE_IND_CODE"], errors='coerce')
+
+# Drop rows with NaN and '999' in the COMPARE_IND_CODE column
+EDWT_Indicators = EDWT_Indicators[(EDWT_Indicators["COMPARE_IND_CODE"].notna()) & (EDWT_Indicators["COMPARE_IND_CODE"] != 999)]
 
 # Map COMPARE_IND_CODE to compare_mapping
 EDWT_Indicators['compare_descriptor_code'] = EDWT_Indicators['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
@@ -34,19 +28,17 @@ EDWT_Indicators['compare_descriptor_code'] = EDWT_Indicators['COMPARE_IND_CODE']
 # Convert IMPROVEMENT_IND_CODE column to numeric type
 EDWT_Indicators["IMPROVEMENT_IND_CODE"] = pd.to_numeric(EDWT_Indicators["IMPROVEMENT_IND_CODE"], errors='coerce')
 
+# Drop rows with NaN and '999' in the IMPROVEMENT_IND_CODE column
+EDWT_Indicators = EDWT_Indicators[(EDWT_Indicators["IMPROVEMENT_IND_CODE"].notna()) & (EDWT_Indicators["IMPROVEMENT_IND_CODE"] != 999)]
+
 # Map IMPROVEMENT_IND_CODE to improvement_mapping
 EDWT_Indicators['improvement_descriptor_code'] = EDWT_Indicators['IMPROVEMENT_IND_CODE'].astype(str).replace(improvement_mapping)
-
-# Convert INDICATOR_SUPPRESSION_CODE column to numeric type
-EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
-
-# Map INDICATOR_SUPPRESSION_CODE to suppression_mapping
-EDWT_Indicators['missing_reason_code'] = EDWT_Indicators['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
 
 # Define a function to generate data for a specific year
 def generate_data_for_year(year):
     # Create file for shallow slice pilot
-    EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
+    # Indicator: Emergency Department Wait Time for Physician Initial Assessment (90% Spent Less, in Hours)
+    EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code"]]
     EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code"}, inplace=True)
 
     # Generate random data for metric_result based on the 90th percentile using exponential distribution
@@ -71,6 +63,7 @@ def generate_data_for_year(year):
     for index, row in EDWT_Indicator_File.iterrows():
         stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceTrend', row['improvement_descriptor_code']])
         stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceComparison', row['compare_descriptor_code']])
+
     stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code'])
 
     # Add remaining columns
@@ -82,6 +75,7 @@ def generate_data_for_year(year):
     stacked_df['breakdown_value_code_l1'] = 'N/A'
     stacked_df['breakdown_type_code_l2'] = 'N/A'
     stacked_df['breakdown_value_code_l2'] = 'N/A'
+    stacked_df['missing_reason_code'] = ''
     stacked_df['public_metric_result'] = stacked_df['metric_result']
 
     # Reorder columns
@@ -92,4 +86,8 @@ def generate_data_for_year(year):
 
     return stacked_df
 
-# Generate data
+# Generate data for each year from FY2018 to FY2022
+all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
+
+# Write to CSV
+# all_years_data.to_csv('DELETE_agg_all_years.csv', index=False)
