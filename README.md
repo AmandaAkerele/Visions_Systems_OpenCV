@@ -52,8 +52,11 @@ EDWT_Indicators['missing_reason_code'] = EDWT_Indicators['INDICATOR_SUPPRESSION_
 # Create a list to store the distributed data
 distributed_data = []
 
-# Iterate through each unique reporting_period_code
-for period_code in stacked_df['reporting_period_code'].unique():
+# List of reporting years
+reporting_years = [f"FY20{x}" for x in range(18, 23)]  # FY2018 to FY2022
+
+# Iterate through each reporting year
+for period_code in reporting_years:
     period_data = stacked_df[stacked_df['reporting_period_code'] == period_code]
     
     for _, row in period_data.iterrows():
@@ -95,13 +98,4 @@ distributed_df = pd.DataFrame(distributed_data)
 
 # Reorder columns
 distributed_df = distributed_df[['reporting_period_code', 'reporting_entity_code', 'reporting_entity_type_code', \
-                                 'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', \
-                                 'breakdown_type_code_l2', 'breakdown_value_code_l2', 'metric_result', \
-                                 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', \
-                                 'public_metric_result']]
-
-# Sort by reporting_period_code
-distributed_df = distributed_df.sort_values(by=['reporting_period_code', 'reporting_entity_code'])
-
-# Write to CSV
-# distributed_df.to_csv('DELETE_agg_distributed.csv', index=False)
+                                 '
