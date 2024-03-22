@@ -38,4 +38,4 @@ distributed_df = distributed_df[['reporting_period_code', 'reporting_entity_code
 distributed_df = distributed_df.sort_values(by=['reporting_period_code', 'reporting_entity_code'])
 
 # Write to CSV
-# distributed_df.to_csv('811_agg_distributed.csv', index=False)
+distributed_df.to_csv('DELETE_agg_distributed.csv', index=False)
