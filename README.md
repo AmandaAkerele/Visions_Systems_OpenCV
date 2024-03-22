@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from scipy.stats import norm
+from scipy.stats import expon
 
 # Define mapping for IMPROVEMENT_IND_CODE values
 improvement_mapping = {
@@ -39,14 +39,13 @@ EDWT_Indicators['improvement_descriptor_code'] = EDWT_Indicators['IMPROVEMENT_IN
 EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code"]]
 EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code"}, inplace=True)
 
-# Generate random data for metric_result based on the 90th percentile
+# Generate random data for metric_result based on the 90th percentile using exponential distribution
 np.random.seed(0)  # Setting seed for reproducibility
-mean = 100  # Mean value
-std_dev = 20  # Standard deviation
+scale_param = 50  # Scale parameter for exponential distribution
 size = len(EDWT_Indicator_File)
 
-# Generate random data that corresponds to the 90th percentile
-random_data = norm.ppf(np.random.rand(size), mean, std_dev)
+# Generate random data based on the 90th percentile
+random_data = expon.ppf(np.random.rand(size), scale=scale_param)
 
 # Ensure the generated data is non-negative
 random_data = np.maximum(0, random_data)
@@ -86,36 +85,3 @@ stacked_df = stacked_df[['reporting_period_code', 'reporting_entity_code', 'repo
 
 # Write to CSV
 # stacked_df.to_csv('811_agg.csv', index=False)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Convert INDICATOR_SUPPRESSION_CODE column to numeric type
-EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
-
-# Drop rows with NaN and '999' in the COMPARE_IND_CODE column
-EDWT_Indicators = EDWT_Indicators[(EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"].notna()) & (EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"] != 999)]
-
-# Check the column again to confirm if the rows with '999' are dropped
-EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"].value_counts()
-
-New column 
-add mapping for INDICATOR_SUPPRESSION_CODE
-7: NA (The indicator value is not suppressed)
-2: Data not available due to data quality issues
-6: Data not reported due to incomplete data submission
-901: Indicator data manually suppressed at Program Area’s request
