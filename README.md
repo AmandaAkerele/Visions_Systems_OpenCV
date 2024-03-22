@@ -1,5 +1,8 @@
 import pandas as pd
 
+# Sample data
+# Assuming EDWT_Indicators is your original dataframe
+
 # Define mapping for IMPROVEMENT_IND_CODE values
 improvement_mapping = {
     '1': 'Improving',
@@ -50,12 +53,14 @@ for period_code in stacked_df['reporting_period_code'].unique():
         trend_row = row.copy()
         trend_row['metric_result'] = None
         trend_row['metric_descriptor_group_code'] = 'PerformanceTrend'
+        trend_row['metric_descriptor_code'] = row['improvement_descriptor_code']
         distributed_data.append(trend_row)
         
         # Add PerformanceComparison row
         comparison_row = row.copy()
         comparison_row['metric_result'] = None
         comparison_row['metric_descriptor_group_code'] = 'PerformanceComparison'
+        comparison_row['metric_descriptor_code'] = row['compare_descriptor_code']
         distributed_data.append(comparison_row)
 
 # Convert the list of dictionaries to a dataframe
