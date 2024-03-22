@@ -1,112 +1,32 @@
-solve this error 
-AssertionError                            Traceback (most recent call last)
-~/.local/lib/python3.10/site-packages/pandas/core/internals/construction.py in _finalize_columns_and_data(content, columns, dtype)
-    933     try:
---> 934         columns = _validate_or_indexify_columns(contents, columns)
-    935     except AssertionError as err:
+The error you encountered is due to a mismatch between the number of columns you're trying to create in the DataFrame (`stacked_df`) and the actual number of columns in the `stacked_data` you're providing.
 
-~/.local/lib/python3.10/site-packages/pandas/core/internals/construction.py in _validate_or_indexify_columns(content, columns)
-    980             # caller's responsibility to check for this...
---> 981             raise AssertionError(
-    982                 f"{len(columns)} columns passed, passed data had "
+Let's break down the issue:
 
+The error says:
+```
 AssertionError: 5 columns passed, passed data had 4 columns
+```
 
-The above exception was the direct cause of the following exception:
+This means that you're trying to create a DataFrame with 5 columns (`['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code']`), but the data you're providing (`stacked_data`) only has 4 columns.
 
-ValueError                                Traceback (most recent call last)
-/tmp/ipykernel_369/2052094697.py in <cell line: 93>()
-     91 
-     92 # Generate data for each year from FY2018 to FY2022
----> 93 all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
-     94 
-     95 # Write to CSV
+To fix this issue, you should only pass 4 columns when creating the DataFrame `stacked_df`:
 
-/tmp/ipykernel_369/2052094697.py in <listcomp>(.0)
-     91 
-     92 # Generate data for each year from FY2018 to FY2022
----> 93 all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
-     94 
-     95 # Write to CSV
+Replace this line:
 
-/tmp/ipykernel_369/2052094697.py in generate_data_for_year(year)
-     68         stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceComparison', row['compare_descriptor_code']])
-     69 
----> 70     stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code'])
-     71 
-     72     # Add remaining columns
+```python
+stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code'])
+```
 
-~/.local/lib/python3.10/site-packages/pandas/core/frame.py in __init__(self, data, index, columns, dtype, copy)
-    780                     if columns is not None:
-    781                         columns = ensure_index(columns)
---> 782                     arrays, columns, index = nested_data_to_arrays(
-    783                         # error: Argument 3 to "nested_data_to_arrays" has incompatible
-    784                         # type "Optional[Collection[Any]]"; expected "Optional[Index]"
+With this one:
 
-~/.local/lib/python3.10/site-packages/pandas/core/internals/construction.py in nested_data_to_arrays(data, columns, index, dtype)
-    496         columns = ensure_index(data[0]._fields)
-    497 
---> 498     arrays, columns = to_arrays(data, columns, dtype=dtype)
-    499     columns = ensure_index(columns)
-    500 
+```python
+stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code'])
+```
 
-~/.local/lib/python3.10/site-packages/pandas/core/internals/construction.py in to_arrays(data, columns, dtype)
-    838         arr = _list_to_arrays(data)
-    839 
---> 840     content, columns = _finalize_columns_and_data(arr, columns, dtype)
-    841     return content, columns
-    842 
+Here's the corrected code:
 
-~/.local/lib/python3.10/site-packages/pandas/core/internals/construction.py in _finalize_columns_and_data(content, columns, dtype)
-    935     except AssertionError as err:
-    936         # GH#26429 do not raise user-facing AssertionError
---> 937         raise ValueError(err) from err
-    938 
-    939     if len(contents) and contents[0].dtype == np.object_:
-
-ValueError: 5 columns passed, passed data had 4 columns
-
-
-code is below 
-
-import pandas as pd
-import numpy as np
-from scipy.stats import expon
-
-# Define mapping for IMPROVEMENT_IND_CODE values
-improvement_mapping = {
-    '1': 'Improving',
-    '2': 'No Change',
-    '3': 'Weakening'
-}
-
-# Define mapping for COMPARE_IND_CODE values
-compare_mapping = {
-    '1': 'Above',
-    '2': 'Same',
-    '3': 'Below'
-}
-
-# Define mapping for INDICATOR_SUPPRESSION_CODE values 
-suppression_mapping = {
-    '7': '',
-    '2': 'S03',
-    '3': 'S10',
-    '6': 'S10',
-    '901': 'S08'
-}
-
-# Convert COMPARE_IND_CODE column to numeric type
-EDWT_Indicators["COMPARE_IND_CODE"] = pd.to_numeric(EDWT_Indicators["COMPARE_IND_CODE"], errors='coerce')
-EDWT_Indicators['compare_descriptor_code'] = EDWT_Indicators['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
-
-# Convert IMPROVEMENT_IND_CODE column to numeric type
-EDWT_Indicators["IMPROVEMENT_IND_CODE"] = pd.to_numeric(EDWT_Indicators["IMPROVEMENT_IND_CODE"], errors='coerce')
-EDWT_Indicators['improvement_descriptor_code'] = EDWT_Indicators['IMPROVEMENT_IND_CODE'].astype(str).replace(improvement_mapping)
-
-# Convert INDICATOR_SUPPRESSION_CODE column to numeric type
-EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
-EDWT_Indicators['missing_reason_code'] = EDWT_Indicators['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
+```python
+# ...
 
 # Define a function to generate data for a specific year
 def generate_data_for_year(year):
@@ -138,7 +58,7 @@ def generate_data_for_year(year):
         stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceTrend', row['improvement_descriptor_code']])
         stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceComparison', row['compare_descriptor_code']])
 
-    stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code'])
+    stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code'])
 
     # Add remaining columns
     stacked_df['reporting_period_code'] = 'FY20' + str(year)
@@ -165,3 +85,6 @@ all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 2
 
 # Write to CSV
 # all_years_data.to_csv('DELETE_agg_all_years.csv', index=False)
+```
+
+This corrected code should resolve the `AssertionError` you encountered.
