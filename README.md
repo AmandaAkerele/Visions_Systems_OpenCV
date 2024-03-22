@@ -83,5 +83,8 @@ stacked_df = stacked_df[['reporting_period_code', 'reporting_entity_code', 'repo
                    'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
                    'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
 
+# Sort by reporting_period_code
+stacked_df = stacked_df.sort_values(by=['reporting_period_code', 'reporting_entity_code'])
+
 # Write to CSV
 # stacked_df.to_csv('811_agg.csv', index=False)
