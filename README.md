@@ -8,20 +8,22 @@ for period_code in stacked_df['reporting_period_code'].unique():
     for _, row in period_data.iterrows():
         # Add metric_result row
         metric_result_row = row.copy()
-        metric_result_row['metric_descriptor_group_code'] = 'PerformanceTrend'
+        metric_result_row['metric_descriptor_group_code'] = None
+        metric_result_row['metric_descriptor_code'] = None
         distributed_data.append(metric_result_row)
         
         # Add metric_descriptor_group_code row
         metric_descriptor_group_row = row.copy()
         metric_descriptor_group_row['metric_result'] = None
         metric_descriptor_group_row['metric_descriptor_code'] = None
-        metric_descriptor_group_row['metric_descriptor_group_code'] = 'PerformanceComparison'
+        metric_descriptor_group_row['metric_descriptor_group_code'] = 'PerformanceTrend'
         distributed_data.append(metric_descriptor_group_row)
         
         # Add metric_descriptor_code row
         metric_descriptor_code_row = row.copy()
         metric_descriptor_code_row['metric_result'] = None
         metric_descriptor_code_row['metric_descriptor_group_code'] = None
+        metric_descriptor_code_row['metric_descriptor_code'] = 'PerformanceComparison'
         distributed_data.append(metric_descriptor_code_row)
 
 # Convert the list of dictionaries to a dataframe
