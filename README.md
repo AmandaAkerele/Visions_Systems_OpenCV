@@ -34,54 +34,60 @@ EDWT_Indicators = EDWT_Indicators[(EDWT_Indicators["IMPROVEMENT_IND_CODE"].notna
 # Map IMPROVEMENT_IND_CODE to improvement_mapping
 EDWT_Indicators['improvement_descriptor_code'] = EDWT_Indicators['IMPROVEMENT_IND_CODE'].astype(str).replace(improvement_mapping)
 
-# Create file for shallow slice pilot
-# Indicator: Emergency Department Wait Time for Physician Initial Assessment (90% Spent Less, in Hours)
-EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code"]]
-EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code"}, inplace=True)
+# Define a function to generate data for a specific year
+def generate_data_for_year(year):
+    # Create file for shallow slice pilot
+    # Indicator: Emergency Department Wait Time for Physician Initial Assessment (90% Spent Less, in Hours)
+    EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code"]]
+    EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code"}, inplace=True)
 
-# Generate random data for metric_result based on the 90th percentile using exponential distribution
-np.random.seed(0)  # Setting seed for reproducibility
-scale_param = 50  # Scale parameter for exponential distribution
-size = len(EDWT_Indicator_File)
+    # Generate random data for metric_result based on the 90th percentile using exponential distribution
+    np.random.seed(0)  # Setting seed for reproducibility
+    scale_param = 50  # Scale parameter for exponential distribution
+    size = len(EDWT_Indicator_File)
 
-# Generate random data based on the 90th percentile
-random_data = expon.ppf(np.random.rand(size), scale=scale_param)
+    # Generate random data based on the 90th percentile
+    random_data = expon.ppf(np.random.rand(size), scale=scale_param)
 
-# Ensure the generated data is non-negative
-random_data = np.maximum(0, random_data)
+    # Shift the data to ensure none of the values are zero
+    random_data_shifted = random_data + 1
 
-# Assign the generated data to the dataframe
-EDWT_Indicator_File['metric_result'] = random_data.round(1)
+    # Assign the generated data to the dataframe
+    EDWT_Indicator_File['metric_result'] = random_data_shifted.round(1)
 
-# Drop rows with NaN values in the 'metric_result' column
-EDWT_Indicator_File.dropna(subset=['metric_result'], inplace=True)
+    # Drop rows with NaN values in the 'metric_result' column
+    EDWT_Indicator_File.dropna(subset=['metric_result'], inplace=True)
 
-# Stack the rows
-stacked_data = []
-for index, row in EDWT_Indicator_File.iterrows():
-    stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceTrend', row['improvement_descriptor_code']])
-    stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceComparison', row['compare_descriptor_code']])
+    # Stack the rows
+    stacked_data = []
+    for index, row in EDWT_Indicator_File.iterrows():
+        stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceTrend', row['improvement_descriptor_code']])
+        stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceComparison', row['compare_descriptor_code']])
 
-stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code'])
+    stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code'])
 
-# Add remaining columns
-yr = "24"
-stacked_df['reporting_period_code'] = 'FY20' + yr
-stacked_df['reporting_entity_type_code'] = 'ORG'
-stacked_df['indicator_code'] = '811'
-stacked_df['metric_code'] = 'PCTL_90'
-stacked_df['breakdown_type_code_l1'] = 'N/A'
-stacked_df['breakdown_value_code_l1'] = 'N/A'
-stacked_df['breakdown_type_code_l2'] = 'N/A'
-stacked_df['breakdown_value_code_l2'] = 'N/A'
-stacked_df['missing_reason_code'] = ''
-stacked_df['public_metric_result'] = stacked_df['metric_result']
+    # Add remaining columns
+    stacked_df['reporting_period_code'] = 'FY20' + str(year)
+    stacked_df['reporting_entity_type_code'] = 'ORG'
+    stacked_df['indicator_code'] = '811'
+    stacked_df['metric_code'] = 'PCTL_90'
+    stacked_df['breakdown_type_code_l1'] = 'N/A'
+    stacked_df['breakdown_value_code_l1'] = 'N/A'
+    stacked_df['breakdown_type_code_l2'] = 'N/A'
+    stacked_df['breakdown_value_code_l2'] = 'N/A'
+    stacked_df['missing_reason_code'] = ''
+    stacked_df['public_metric_result'] = stacked_df['metric_result']
 
-# Reorder columns
-stacked_df = stacked_df[['reporting_period_code', 'reporting_entity_code', 'reporting_entity_type_code', \
-                    'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', \
-                   'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
-                   'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
+    # Reorder columns
+    stacked_df = stacked_df[['reporting_period_code', 'reporting_entity_code', 'reporting_entity_type_code', \
+                        'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', \
+                       'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
+                       'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
+
+    return stacked_df
+
+# Generate data for each year from FY2018 to FY2022
+all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
 
 # Write to CSV
-# stacked_df.to_csv('811_agg.csv', index=False)
+# all_years_data.to_csv('811_agg_all_years.csv', index=False)
