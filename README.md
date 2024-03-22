@@ -1,3 +1,37 @@
+import pandas as pd
+
+# Define mapping for IMPROVEMENT_IND_CODE values
+improvement_mapping = {
+    '1': 'Improving',
+    '2': 'No Change',
+    '3': 'Weakening'
+}
+
+# Define mapping for COMPARE_IND_CODE values
+compare_mapping = {
+    '1': 'Above average',
+    '2': 'Same as average',
+    '3': 'Below average'
+}
+
+# Convert COMPARE_IND_CODE column to numeric type
+EDWT_Indicators["COMPARE_IND_CODE"] = pd.to_numeric(EDWT_Indicators["COMPARE_IND_CODE"], errors='coerce')
+
+# Drop rows with NaN and '999' in the COMPARE_IND_CODE column
+EDWT_Indicators = EDWT_Indicators[(EDWT_Indicators["COMPARE_IND_CODE"].notna()) & (EDWT_Indicators["COMPARE_IND_CODE"] != 999)]
+
+# Map COMPARE_IND_CODE to compare_mapping
+EDWT_Indicators['compare_descriptor_code'] = EDWT_Indicators['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
+
+# Convert IMPROVEMENT_IND_CODE column to numeric type
+EDWT_Indicators["IMPROVEMENT_IND_CODE"] = pd.to_numeric(EDWT_Indicators["IMPROVEMENT_IND_CODE"], errors='coerce')
+
+# Drop rows with NaN and '999' in the IMPROVEMENT_IND_CODE column
+EDWT_Indicators = EDWT_Indicators[(EDWT_Indicators["IMPROVEMENT_IND_CODE"].notna()) & (EDWT_Indicators["IMPROVEMENT_IND_CODE"] != 999)]
+
+# Map IMPROVEMENT_IND_CODE to improvement_mapping
+EDWT_Indicators['improvement_descriptor_code'] = EDWT_Indicators['IMPROVEMENT_IND_CODE'].astype(str).replace(improvement_mapping)
+
 # Create a list to store the distributed data
 distributed_data = []
 
