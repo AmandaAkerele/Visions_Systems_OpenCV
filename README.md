@@ -56,9 +56,8 @@ def generate_data_for_year(year):
     for index, row in EDWT_Indicator_File.iterrows():
         public_metric_result = '' if row['missing_reason_code'] else row['metric_result']
         
-        stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceTrend', row['improvement_descriptor_code'], row['missing_reason_code'], ''])
-        stacked_data.append([row['reporting_entity_code'], '', 'PerformanceComparison', '', '', public_metric_result])
-        stacked_data.append([row['reporting_entity_code'], '', '', '', '', public_metric_result])
+        stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceTrend', row['improvement_descriptor_code'], row['missing_reason_code'], public_metric_result])
+        stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceComparison', row['compare_descriptor_code'], row['missing_reason_code'], public_metric_result])
 
     stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
 
@@ -82,4 +81,4 @@ def generate_data_for_year(year):
 all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
 
 # Write to CSV
-all_years
+all_years_data.to_csv('DELETE_agg_all_years.csv', index=False)
