@@ -25,10 +25,6 @@ suppression_mapping = {
     '901': 'S08'
 }
 
-# Remove '999' from all mappings
-for mapping in [improvement_mapping, compare_mapping, suppression_mapping]:
-    mapping.pop('999', None)
-
 # Convert COMPARE_IND_CODE column to numeric type
 EDWT_Indicators["COMPARE_IND_CODE"] = pd.to_numeric(EDWT_Indicators["COMPARE_IND_CODE"], errors='coerce')
 EDWT_Indicators['compare_descriptor_code'] = EDWT_Indicators['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
@@ -40,6 +36,9 @@ EDWT_Indicators['improvement_descriptor_code'] = EDWT_Indicators['IMPROVEMENT_IN
 # Convert INDICATOR_SUPPRESSION_CODE column to numeric type
 EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
 EDWT_Indicators['missing_reason_code'] = EDWT_Indicators['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
+
+# Remove rows with value 999 in any column
+EDWT_Indicators = EDWT_Indicators[EDWT_Indicators.apply(lambda row: row.astype(str).str.contains('999').any(), axis=1) == False]
 
 # Define a function to generate data for a specific year
 def generate_data_for_year(year):
@@ -84,7 +83,7 @@ def generate_data_for_year(year):
     stacked_df['breakdown_value_code_l2'] = 'N/A'
     stacked_df['public_metric_result'] = stacked_df['metric_result']
 
-    # Reorder columns
+     # Reorder columns
     stacked_df = stacked_df[['reporting_period_code', 'reporting_entity_code', 'reporting_entity_type_code', \
                         'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', \
                        'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
