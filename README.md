@@ -38,7 +38,7 @@ EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(EDWT_Indicators["I
 EDWT_Indicators['missing_reason_code'] = EDWT_Indicators['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
 
 # Remove rows with value 999 in any column
-EDWT_Indicators = EDWT_Indicators[EDWT_Indicators.apply(lambda row: row.astype(str).str.contains('999').any(), axis=1) == False]
+EDWT_Indicators = EDWT_Indicators[~EDWT_Indicators.eq(999).any(1)]
 
 # Define a function to generate data for a specific year
 def generate_data_for_year(year):
