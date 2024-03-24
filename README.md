@@ -1,16 +1,44 @@
-# ...
+import pandas as pd
+import numpy as np
+from scipy.stats import expon
 
-# Convert INDICATOR_SUPPRESSION_CODE column to numeric type
-EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
+# Define mapping for IMPROVEMENT_IND_CODE values
+improvement_mapping = {
+    '1': 'Improving',
+    '2': 'No Change',
+    '3': 'Weakening'
+}
+
+# Define mapping for COMPARE_IND_CODE values
+compare_mapping = {
+    '1': 'Above',
+    '2': 'Same',
+    '3': 'Below'
+}
+
+# Define mapping for INDICATOR_SUPPRESSION_CODE values 
+suppression_mapping = {
+    '7': '',
+    '2': 'S03',
+    '3': 'S10',
+    '6': 'S10',
+    '901': 'S08'
+}
+
+# Convert COMPARE_IND_CODE column to numeric type
+EDWT_Indicators["COMPARE_IND_CODE"] = pd.to_numeric(EDWT_Indicators["COMPARE_IND_CODE"], errors='coerce')
+EDWT_Indicators['compare_descriptor_code'] = EDWT_Indicators['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
+
+# Convert IMPROVEMENT_IND_CODE column to numeric type
+EDWT_Indicators["IMPROVEMENT_IND_CODE"] = pd.to_numeric(EDWT_Indicators["IMPROVEMENT_IND_CODE"], errors='coerce')
+EDWT_Indicators['improvement_descriptor_code'] = EDWT_Indicators['IMPROVEMENT_IND_CODE'].astype(str).replace(improvement_mapping)
 
 # Map INDICATOR_SUPPRESSION_CODE to missing_reason_code using suppression_mapping
-EDWT_Indicators['missing_reason_code'] = EDWT_Indicators['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
+EDWT_Indicators['missing_reason_code'] = EDWT_Indicators['INDICATOR_SUPPRESSION_CODE'].astype(str).map(suppression_mapping)
 
-# ...
-
+# Define a function to generate data for a specific year
 def generate_data_for_year(year):
     # Create file for shallow slice pilot
-    # Indicator: Emergency Department Wait Time for Physician Initial Assessment (90% Spent Less, in Hours)
     EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
     EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code"}, inplace=True)
 
@@ -37,11 +65,7 @@ def generate_data_for_year(year):
         stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceTrend', row['improvement_descriptor_code']])
         stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceComparison', row['compare_descriptor_code']])
 
-    # Create DataFrame with correct columns
-    stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code'])
-
-    # Set 'missing_reason_code' separately
-    stacked_df['missing_reason_code'] = ''
+    stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code'])
 
     # Add remaining columns
     stacked_df['reporting_period_code'] = 'FY20' + str(year)
@@ -52,13 +76,14 @@ def generate_data_for_year(year):
     stacked_df['breakdown_value_code_l1'] = 'N/A'
     stacked_df['breakdown_type_code_l2'] = 'N/A'
     stacked_df['breakdown_value_code_l2'] = 'N/A'
+    stacked_df['missing_reason_code'] = ''
     stacked_df['public_metric_result'] = stacked_df['metric_result']
 
     # Reorder columns
     stacked_df = stacked_df[['reporting_period_code', 'reporting_entity_code', 'reporting_entity_type_code', \
                         'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', \
-                        'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
-                        'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
+                       'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
+                       'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
 
     return stacked_df
 
@@ -66,4 +91,4 @@ def generate_data_for_year(year):
 all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
 
 # Write to CSV
-all_years_data.to_csv('DELETE_agg_all_years.csv', index=False)
+# all_years_data.to_csv('DELETE_agg_all_years.csv', index=False)
