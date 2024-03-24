@@ -4,7 +4,7 @@ from scipy.stats import expon
 
 # ... (Your mapping dictionaries and other code)
 
-# Remove rows with value 999 in any column
-EDWT_Indicators = EDWT_Indicators[~EDWT_Indicators.eq(999).any(axis=1)]
+# Remove rows where '999' appears in 'metric_descriptor_code' or 'missing_reason_code'
+EDWT_Indicators = EDWT_Indicators[(EDWT_Indicators['metric_descriptor_code'] != 999) & (EDWT_Indicators['missing_reason_code'] != '999')]
 
 # ... (The rest of your code)
