@@ -37,6 +37,10 @@ EDWT_Indicators['improvement_descriptor_code'] = EDWT_Indicators['IMPROVEMENT_IN
 EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
 EDWT_Indicators['missing_reason_code'] = EDWT_Indicators['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
 
+# Remove rows with value 999 in metric_descriptor_code and missing_reason_code columns
+EDWT_Indicators = EDWT_Indicators[~EDWT_Indicators['metric_descriptor_code'].eq('999') & 
+                                  ~EDWT_Indicators['missing_reason_code'].eq('999')]
+
 # Define a function to generate data for a specific year
 def generate_data_for_year(year):
     # Create file for shallow slice pilot
@@ -80,7 +84,7 @@ def generate_data_for_year(year):
     stacked_df['breakdown_value_code_l2'] = 'N/A'
     stacked_df['public_metric_result'] = stacked_df['metric_result']
 
-     # Reorder columns
+    # Reorder columns
     stacked_df = stacked_df[['reporting_period_code', 'reporting_entity_code', 'reporting_entity_type_code', \
                         'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', \
                        'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
