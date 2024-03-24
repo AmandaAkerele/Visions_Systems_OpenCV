@@ -1,11 +1,3 @@
-To implement the additional filtering based on the conditions you provided:
-
-1. If the `missing_reason_code` is present, filter out the rows where `metric_descriptor_code` has a value of '999'.
-2. If `missing_reason_code` is present, keep it intact in the resulting DataFrame.
-
-Here's the modified code to achieve this:
-
-```python
 import pandas as pd
 import numpy as np
 from scipy.stats import expon
@@ -15,7 +7,6 @@ improvement_mapping = {'1': 'Improving', '2': 'No Change', '3': 'Weakening'}
 compare_mapping = {'1': 'Above', '2': 'Same', '3': 'Below'}
 suppression_mapping = {'7': '', '2': 'S03', '3': 'S10', '6': 'S10', '901': 'S08'}
 
-# Assuming you have loaded your EDWT_Indicators DataFrame somewhere above this code
 # Convert columns to appropriate types and apply mappings
 EDWT_Indicators["COMPARE_IND_CODE"] = pd.to_numeric(EDWT_Indicators["COMPARE_IND_CODE"], errors='coerce')
 EDWT_Indicators['compare_descriptor_code'] = EDWT_Indicators['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
@@ -27,7 +18,7 @@ EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(EDWT_Indicators["I
 EDWT_Indicators['missing_reason_code'] = EDWT_Indicators['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
 
 def generate_data_for_year(year):
-    EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
+    EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "IMPROVEMENT_IND_CODE", "COMPARE_IND_CODE", "INDICATOR_SUPPRESSION_CODE", "missing_reason_code"]]
     EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code"}, inplace=True)
 
     np.random.seed(0)
@@ -43,15 +34,13 @@ def generate_data_for_year(year):
     stacked_data = []
     for index, row in EDWT_Indicator_File.iterrows():
         # For Row 1
-        if row['missing_reason_code']:
-            if row['metric_descriptor_code'] != '999':
-                stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], ''])
-        
-        # For Row 2
-        stacked_data.append([row['reporting_entity_code'], '', 'PerformanceTrend', row['improvement_descriptor_code'], '', row['metric_result']])
-        
-        # For Row 3
-        stacked_data.append([row['reporting_entity_code'], '', 'PerformanceComparison', row['compare_descriptor_code'], '', row['metric_result']])
+        if row['INDICATOR_SUPPRESSION_CODE'] != 999:
+            improvement_code = row['IMPROVEMENT_IND_CODE'] if row['INDICATOR_SUPPRESSION_CODE'] != 999 else ''
+            compare_code = row['COMPARE_IND_CODE'] if row['INDICATOR_SUPPRESSION_CODE'] != 999 else ''
+            
+            stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['INDICATOR_SUPPRESSION_CODE'], ''])
+            stacked_data.append([row['reporting_entity_code'], '', 'PerformanceTrend', improvement_code, '', row['metric_result']])
+            stacked_data.append([row['reporting_entity_code'], '', 'PerformanceComparison', compare_code, '', row['metric_result']])
 
     stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
 
@@ -76,9 +65,3 @@ all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 2
 
 # Write to CSV
 all_years_data.to_csv('finalchekcingnowDELETE_agg_all_years.csv', index=False)
-```
-
-In this modified code:
-
-- I added an additional condition inside the loop for Row 1 to check if `missing_reason_code` is present and `metric_descriptor_code` is not '999'.
-- This ensures that if `missing_reason_code` exists, the row with `metric_descriptor_code` as '999' will be filtered out, but the `missing_reason_code` will be kept in the resulting DataFrame.
