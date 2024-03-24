@@ -1,3 +1,8 @@
+To stack the data such that Row 1 will have a `metric_result` but the `metric_descriptor_group_code` and `metric_descriptor_code` will be generated on Row 2 and Row 3, and vice-versa for the `missing_reason_code` and corresponding `public_metric_result`, you can adjust the loop in the `generate_data_for_year` function to append data accordingly.
+
+Here's the modified code:
+
+```python
 import pandas as pd
 import numpy as np
 from scipy.stats import expon
@@ -54,10 +59,14 @@ def generate_data_for_year(year):
 
     stacked_data = []
     for index, row in EDWT_Indicator_File.iterrows():
-        public_metric_result = '' if row['missing_reason_code'] else row['metric_result']
+        # For Row 1
+        stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], ''])
         
-        stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceTrend', row['improvement_descriptor_code'], row['missing_reason_code'], public_metric_result])
-        stacked_data.append([row['reporting_entity_code'], row['metric_result'], 'PerformanceComparison', row['compare_descriptor_code'], row['missing_reason_code'], public_metric_result])
+        # For Row 2
+        stacked_data.append([row['reporting_entity_code'], '', 'PerformanceTrend', row['improvement_descriptor_code'], '', row['metric_result']])
+        
+        # For Row 3
+        stacked_data.append([row['reporting_entity_code'], '', 'PerformanceComparison', row['compare_descriptor_code'], '', row['metric_result']])
 
     stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
 
@@ -81,4 +90,4 @@ def generate_data_for_year(year):
 all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
 
 # Write to CSV
-all_years_data.to_csv('DELETE_agg_all_years.csv', index=False)
+all_years_data.to_csv('DELETE_agg_all_years.csv', index=False
