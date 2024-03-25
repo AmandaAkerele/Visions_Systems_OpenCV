@@ -1,15 +1,32 @@
-Certainly! I'll modify the code to remove rows where `INDICATOR_SUPPRESSION_CODE` is 999:
+in the code below: In Row 1, Row 2 and Row 3 line of codes, remove values with 999 
 
-```python
 import pandas as pd
 import numpy as np
 from scipy.stats import expon
 
+
 # Define mapping for IMPROVEMENT_IND_CODE values
-improvement_mapping = {'1': 'Improving', '2': 'No Change', '3': 'Weakening'}
+improvement_mapping = {
+    '1': 'Improving',
+    '2': 'No Change',
+    '3': 'Weakening'
+}
 
 # Define mapping for COMPARE_IND_CODE values
-compare_mapping = {'1': 'Above', '2': 'Same', '3': 'Below'}
+compare_mapping = {
+    '1': 'Above',
+    '2': 'Same',
+    '3': 'Below'
+}
+
+# Define mapping for INDICATOR_SUPPRESSION_CODE values 
+suppression_mapping = {
+    '7': '',
+    '2': 'S03',
+    '3': 'S10',
+    '6': 'S10',
+    '901': 'S08'
+}
 
 # Convert COMPARE_IND_CODE column to numeric type
 EDWT_Indicators["COMPARE_IND_CODE"] = pd.to_numeric(EDWT_Indicators["COMPARE_IND_CODE"], errors='coerce')
@@ -21,11 +38,11 @@ EDWT_Indicators['improvement_descriptor_code'] = EDWT_Indicators['IMPROVEMENT_IN
 
 # Convert INDICATOR_SUPPRESSION_CODE column to numeric type
 EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
-EDWT_Indicators = EDWT_Indicators[EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"] != 999]  # Remove rows where INDICATOR_SUPPRESSION_CODE is 999
+EDWT_Indicators['missing_reason_code'] = EDWT_Indicators['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
 
 # Define a function to generate data for a specific year
 def generate_data_for_year(year):
-    EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "IMPROVEMENT_IND_CODE", "COMPARE_IND_CODE", "INDICATOR_SUPPRESSION_CODE"]]
+    EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
     EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code"}, inplace=True)
 
     np.random.seed(0)
@@ -41,7 +58,7 @@ def generate_data_for_year(year):
     stacked_data = []
     for index, row in EDWT_Indicator_File.iterrows():
         # For Row 1
-        stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['INDICATOR_SUPPRESSION_CODE'], ''])
+        stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], ''])
         
         # For Row 2
         stacked_data.append([row['reporting_entity_code'], '', 'PerformanceTrend', row['improvement_descriptor_code'], '', row['metric_result']])
@@ -72,6 +89,3 @@ all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 2
 
 # Write to CSV
 all_years_data.to_csv('finalchekcingnowDELETE_agg_all_years.csv', index=False)
-```
-
-In this modified code, rows where `INDICATOR_SUPPRESSION_CODE` is 999 are removed before generating the stacked data.
