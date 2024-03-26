@@ -5,7 +5,8 @@ from pyspark.sql import DataFrame
 def successive_inner_join(dataframes):
     # Define a function to perform inner join between two DataFrames
     def inner_join(df1, df2):
-        return df1.join(df2, on=list(set(df1.columns) & set(df2.columns)), how='inner')
+        common_columns = list(set(df1.columns) & set(df2.columns))
+        return df1.join(df2, on=common_columns, how='inner')
     
     # Use reduce to apply inner join function successively
     return reduce(inner_join, dataframes)
