@@ -22,3 +22,12 @@ los_reg_3x3 = successive_inner_join(los_reg_dfs)
 
 # Perform the successive joins for tpia_reg
 tpia_reg_3x3 = successive_inner_join(tpia_reg_dfs)
+
+
+
+---------------------------------------------------------------------------
+AttributeError                            Traceback (most recent call last)
+/tmp/ipykernel_299/4220268343.py in <cell line: 1>()
+----> 1 los_reg_dfs.show()
+
+AttributeError: 'list' object has no attribute 'show
