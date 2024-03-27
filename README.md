@@ -1,33 +1,35 @@
-from functools import reduce
-from pyspark.sql import DataFrame
+# Display each DataFrame in the los_reg_dfs list
+for df in los_reg_dfs:
+    df.show()
 
-# Function to perform successive inner joins on a list of DataFrames
-def successive_inner_join(dataframes):
-    # Define a function to perform inner join between two DataFrames
-    def inner_join(df1, df2):
-        common_columns = list(set(df1.columns) & set(df2.columns))
-        return df1.join(df2, on=common_columns, how='inner')
-    
-    # Use reduce to apply inner join function successively
-    return reduce(inner_join, dataframes)
+from pyspark.sql import SparkSession
 
-# Perform the successive joins for los_org
-los_org_3x3 = successive_inner_join(los_org_dfs)
+# Initialize Spark session
+spark = SparkSession.builder \
+    .appName("Join Example") \
+    .getOrCreate()
 
-# Perform the successive joins for tpia_org
-tpia_org_3x3 = successive_inner_join(tpia_org_dfs)
+# Sample DataFrames (replace with your actual DataFrames)
+los_org_20 = spark.createDataFrame([(1, 101), (2, 102)], ["CORP_ID", "CORP_PEER"])
+los_org_21 = spark.createDataFrame([(1,), (2,)], ["CORP_ID"])
+los_org_22_a = spark.createDataFrame([(1,), (2,), (3,)], ["CORP_ID"])
+los_org_dfs = [los_org_20, los_org_21, los_org_22_a]
 
-# Perform the successive joins for los_reg
-los_reg_3x3 = successive_inner_join(los_reg_dfs)
+# Function to perform join between two DataFrames
+def perform_join(df1, df2, join_columns):
+    return df1.join(df2, on=join_columns, how='inner')
 
-# Perform the successive joins for tpia_reg
-tpia_reg_3x3 = successive_inner_join(tpia_reg_dfs)
+# Perform the join for los_org
+los_org_3x3 = los_org_dfs[0]
+for df in los_org_dfs[1:]:
+    common_columns = list(set(los_org_3x3.columns) & set(df.columns))
+    los_org_3x3 = perform_join(los_org_3x3, df, common_columns)
 
+# Display the result
+los_org_3x3.show()
 
+# Repeat similar process for tpia_org, los_reg, and tpia_reg
+# ...
 
----------------------------------------------------------------------------
-AttributeError                            Traceback (most recent call last)
-/tmp/ipykernel_299/4220268343.py in <cell line: 1>()
-----> 1 los_reg_dfs.show()
-
-AttributeError: 'list' object has no attribute 'show
+# Stop Spark session
+spark.stop()
