@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 from scipy.stats import expon
 
-
 # Define mapping for IMPROVEMENT_IND_CODE values
 improvement_mapping = {
     '1': 'Improving',
@@ -59,10 +58,12 @@ def generate_data_for_year(year):
         stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], ''])
         
         # For Row 2
-        stacked_data.append([row['reporting_entity_code'], '', 'PerformanceTrend', row['improvement_descriptor_code'], '', row['metric_result']])
+        if row['improvement_descriptor_code'] != '999':
+            stacked_data.append([row['reporting_entity_code'], '', 'PerformanceTrend', row['improvement_descriptor_code'], '', row['metric_result']])
         
         # For Row 3
-        stacked_data.append([row['reporting_entity_code'], '', 'PerformanceComparison', row['compare_descriptor_code'], '', row['metric_result']])
+        if row['compare_descriptor_code'] != '999':
+            stacked_data.append([row['reporting_entity_code'], '', 'PerformanceComparison', row['compare_descriptor_code'], '', row['metric_result']])
 
     stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
 
