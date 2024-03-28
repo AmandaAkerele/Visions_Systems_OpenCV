@@ -1,82 +1,89 @@
-from pyspark.sql import functions as F
-from pyspark.sql.functions import lit, col
-
-# Define columns to keep for union operation
-columns_to_keep = ['CORP_ID', 'CORP_PEER']  # Adjust based on your data
-
-# Select only the columns to keep from each dataframe
-los_org_20_selected = los_org_20.select(columns_to_keep)
-los_org_21_selected = los_org_21.select(columns_to_keep)
-los_org_22_a_selected = los_org_22_a.select(columns_to_keep)
-
-# Union the dataframes
-los_org_union = los_org_20_selected.union(los_org_21_selected).union(los_org_22_a_selected)
-
-# Join with los_org_3x3 and rename column
-los_org_all_yr_b = (
-    los_org_union
-    .join(los_org_3x3.select('CORP_ID'), on='CORP_ID', how='inner')
-    .withColumnRenamed('FISCAL_YEAR', 'TIME')
-)
-
-# Similarly adjust for other datasets...
+import pandas as pd
+import numpy as np
+from scipy.stats import expon
 
 
+# Define mapping for IMPROVEMENT_IND_CODE values
+improvement_mapping = {
+    '1': 'Improving',
+    '2': 'No Change',
+    '3': 'Weakening'
+}
 
+# Define mapping for COMPARE_IND_CODE values
+compare_mapping = {
+    '1': 'Above',
+    '2': 'Same',
+    '3': 'Below'
+}
 
-# Define columns to keep for tpia_org
-tpia_org_columns_to_keep = ['CORP_ID', 'CORP_PEER']  # Adjust based on your data
+# Define mapping for INDICATOR_SUPPRESSION_CODE values 
+suppression_mapping = {
+    '7': '',
+    '2': 'S03',
+    '3': 'S10',
+    '6': 'S10',
+    '901': 'S08'
+}
 
-# Select only the columns to keep from each dataframe for tpia_org
-tpia_org_20_selected = tpia_org_20.select(tpia_org_columns_to_keep)
-tpia_org_21_selected = tpia_org_21.select(tpia_org_columns_to_keep)
-tpia_org_22_a_selected = tpia_org_22_a.select(tpia_org_columns_to_keep)
+# Convert COMPARE_IND_CODE column to numeric type
+EDWT_Indicators["COMPARE_IND_CODE"] = pd.to_numeric(EDWT_Indicators["COMPARE_IND_CODE"], errors='coerce')
+EDWT_Indicators['compare_descriptor_code'] = EDWT_Indicators['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
 
-# Union the dataframes for tpia_org
-tpia_org_union = tpia_org_20_selected.union(tpia_org_21_selected).union(tpia_org_22_a_selected)
+# Convert IMPROVEMENT_IND_CODE column to numeric type
+EDWT_Indicators["IMPROVEMENT_IND_CODE"] = pd.to_numeric(EDWT_Indicators["IMPROVEMENT_IND_CODE"], errors='coerce')
+EDWT_Indicators['improvement_descriptor_code'] = EDWT_Indicators['IMPROVEMENT_IND_CODE'].astype(str).replace(improvement_mapping)
 
-# Join with tpia_org_3x3 and rename column
-tpia_org_all_yr_b = (
-    tpia_org_union
-    .join(tpia_org_3x3.select('CORP_ID'), on='CORP_ID', how='inner')
-    .withColumnRenamed('FISCAL_YEAR', 'TIME')
-)
+# Convert INDICATOR_SUPPRESSION_CODE column to numeric type
+EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
+EDWT_Indicators['missing_reason_code'] = EDWT_Indicators['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
 
-# Define columns to keep for los_reg
-los_reg_columns_to_keep = ['REGION_ID']  # Adjust based on your data
+# Define a function to generate data for a specific year
+def generate_data_for_year(year):
+    EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
+    EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code"}, inplace=True)
 
-# Select only the columns to keep from each dataframe for los_reg
-los_reg_20_selected = los_reg_20.select(los_reg_columns_to_keep)
-los_reg_21_selected = los_reg_21.select(los_reg_columns_to_keep)
-los_reg_22_a_selected = los_reg_22_a.select(los_reg_columns_to_keep)
+    np.random.seed(0)
+    scale_param = 5
+    size = len(EDWT_Indicator_File)
 
-# Union the dataframes for los_reg
-los_reg_union = los_reg_20_selected.union(los_reg_21_selected).union(los_reg_22_a_selected)
+    random_data = expon.ppf(np.random.rand(size), scale=scale_param)
+    random_data_shifted = random_data + 1
 
-# Join with los_reg_3x3 and rename column
-los_reg_all_yr_b = (
-    los_reg_union
-    .join(los_reg_3x3.select('REGION_ID'), on='REGION_ID', how='inner')
-    .withColumnRenamed('SUBMISSION_FISCAL_YEAR', 'TIME')
-)
+    EDWT_Indicator_File['metric_result'] = random_data_shifted.round(1)
+    EDWT_Indicator_File.dropna(subset=['metric_result'], inplace=True)
 
-# Define columns to keep for tpia_reg
-tpia_reg_columns_to_keep = ['REGION_ID']  # Adjust based on your data
+    stacked_data = []
+    for index, row in EDWT_Indicator_File.iterrows():
+        # For Row 1
+        stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], ''])
+        
+        # For Row 2
+        stacked_data.append([row['reporting_entity_code'], '', 'PerformanceTrend', row['improvement_descriptor_code'], '', row['metric_result']])
+        
+        # For Row 3
+        stacked_data.append([row['reporting_entity_code'], '', 'PerformanceComparison', row['compare_descriptor_code'], '', row['metric_result']])
 
-# Select only the columns to keep from each dataframe for tpia_reg
-tpia_reg_20_selected = tpia_reg_20.select(tpia_reg_columns_to_keep)
-tpia_reg_21_selected = tpia_reg_21.select(tpia_reg_columns_to_keep)
-tpia_reg_22_a_selected = tpia_reg_22_a.select(tpia_reg_columns_to_keep)
+    stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
 
-# Union the dataframes for tpia_reg
-tpia_reg_union = tpia_reg_20_selected.union(tpia_reg_21_selected).union(tpia_reg_22_a_selected)
+    stacked_df['reporting_period_code'] = 'FY20' + str(year)
+    stacked_df['reporting_entity_type_code'] = 'ORG'
+    stacked_df['indicator_code'] = '811'
+    stacked_df['metric_code'] = 'PCTL_90'
+    stacked_df['breakdown_type_code_l1'] = 'N/A'
+    stacked_df['breakdown_value_code_l1'] = 'N/A'
+    stacked_df['breakdown_type_code_l2'] = 'N/A'
+    stacked_df['breakdown_value_code_l2'] = 'N/A'
 
-# Join with tpia_reg_3x3 and rename column
-tpia_reg_all_yr_b = (
-    tpia_reg_union
-    .join(tpia_reg_3x3.select('REGION_ID'), on='REGION_ID', how='inner')
-    .withColumnRenamed('SUBMISSION_FISCAL_YEAR', 'TIME')
-)
+    stacked_df = stacked_df[['reporting_period_code', 'reporting_entity_code', 'reporting_entity_type_code', \
+                        'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', \
+                       'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
+                       'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
 
+    return stacked_df
 
+# Generate data for each year from FY2018 to FY2022
+all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
 
+# Write to CSV
+all_years_data.to_csv('finalchekcingnowDELETE_agg_all_years.csv', index=False)
