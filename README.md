@@ -42,6 +42,9 @@ def generate_data_for_year(year):
     EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
     EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code"}, inplace=True)
 
+    # Remove rows with INDICATOR_SUPPRESSION_CODE as 999
+    EDWT_Indicator_File = EDWT_Indicator_File[EDWT_Indicator_File['INDICATOR_SUPPRESSION_CODE'] != 999]
+
     np.random.seed(0)
     scale_param = 5
     size = len(EDWT_Indicator_File)
