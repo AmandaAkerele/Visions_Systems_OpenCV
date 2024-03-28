@@ -42,9 +42,6 @@ def generate_data_for_year(year):
     EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
     EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code"}, inplace=True)
 
-    # Remove rows with INDICATOR_SUPPRESSION_CODE as 999
-    EDWT_Indicator_File = EDWT_Indicator_File[EDWT_Indicator_File['INDICATOR_SUPPRESSION_CODE'] != 999]
-
     np.random.seed(0)
     scale_param = 5
     size = len(EDWT_Indicator_File)
@@ -58,7 +55,8 @@ def generate_data_for_year(year):
     stacked_data = []
     for index, row in EDWT_Indicator_File.iterrows():
         # For Row 1
-        stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], ''])
+        if row['missing_reason_code'] != '999':
+            stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], ''])
         
         # For Row 2
         if row['improvement_descriptor_code'] != '999':
