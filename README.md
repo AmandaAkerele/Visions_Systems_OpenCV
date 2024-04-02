@@ -1,6 +1,35 @@
-from pyspark.sql.functions import when, col
+# For Tpia_org_22
+tpia_org_22_a = pd.merge(tpia_org_22, tpia_supp_org[['CORP_ID']], on='CORP_ID', how='left', indicator=True)
+tpia_org_22_a = tpia_org_22_a[tpia_org_22_a['_merge'] == 'left_only'].drop(columns=['_merge'])
+tpia_org_22_a = tpia_org_22_a.rename(columns={'SUBMISSION_FISCAL_YEAR': 'FISCAL_YEAR'})
+tpia_org_22_a['CORP_ID'].replace({5085: 81180, 5049:81263}, inplace=True)
+
+
+# For Tpia_org_22
+tpia_org_22_a = pd.merge(tpia_org_22, tpia_supp_org[['CORP_ID']], on='CORP_ID', how='left', indicator=True)
+tpia_org_22_a = tpia_org_22_a[tpia_org_22_a['_merge'] == 'left_only'].drop(columns=['_merge'])
+tpia_org_22_a = tpia_org_22_a.rename(columns={'SUBMISSION_FISCAL_YEAR': 'FISCAL_YEAR'})
+tpia_org_22_a['CORP_ID'].replace({5085: 81180, 5049:81263}, inplace=True)
+
+# Tpia_reg_22
+tpia_reg_22_a = pd.merge(tpia_reg_22, tpia_supp_reg[['NEW_REGION_ID']], on='NEW_REGION_ID', how='left', indicator=True)
+tpia_reg_22_a = tpia_reg_22_a[tpia_reg_22_a['_merge'] == 'left_only'].drop(columns=['_merge'])
+tpia_reg_22_a = tpia_reg_22_a.rename(columns={'NEW_REGION_ID': 'REGION_ID'})
+
+# For Los_org_22
+los_org_22_a = pd.merge(los_org_22, los_supp_org_22[['CORP_ID']], on='CORP_ID', how='left', indicator=True)
+los_org_22_a = los_org_22_a[los_org_22_a['_merge'] == 'left_only'].drop(columns=['_merge'])
+los_org_22_a = los_org_22_a.rename(columns={'SUBMISSION_FISCAL_YEAR': 'FISCAL_YEAR'})
+los_org_22_a['CORP_ID'].replace({5085: 81180, 5049:81263}, inplace=True)
+
+# # For Los_reg_22
+los_reg_22_a = pd.merge(los_reg_22, los_supp_reg_22[['NEW_REGION_ID']], on='NEW_REGION_ID', how='left', indicator=True)
+los_reg_22_a = los_reg_22_a[los_reg_22_a['_merge'] == 'left_only'].drop(columns=['_merge'])
+los_reg_22_a = los_reg_22_a.rename(columns={'NEW_REGION_ID': 'REGION_ID'})
+
 
 # Update data for specific CORP_ID values 
+
 corp_id_mapping = {
     1019: 81170, 
     10038: 81124, 
@@ -12,22 +41,20 @@ corp_id_mapping = {
 }
 
 # Apply the mapping to CORP_ID columns in all DataFrames
-dataframes = [los_org_21, los_org_20, los_org_22_a, tpia_org_21, tpia_org_20, tpia_org_22_a]
-
+dataframes= [los_org_21, los_org_20, los_org_22_a, tpia_org_21, tpia_org_20, tpia_org_22_a]
 for df in dataframes:
-    for old_id, new_id in corp_id_mapping.items():
-        df = df.withColumn("CORP_ID", when(col("CORP_ID") == old_id, new_id).otherwise(col("CORP_ID")))
+    df['CORP_ID'].replace(corp_id_mapping, inplace=True)
 
-# Update the original DataFrames with the modified ones
-los_org_21, los_org_20, los_org_22_a, tpia_org_21, tpia_org_20, tpia_org_22_a = dataframes
+# Rename the 'PEER_GROUP_ID' column to 'CORP_PEER' in los_org_21 and los_org_20 & 
+# Reaname the fiscal_year column to 'SUBMISSION_FISCAL_YEAR in los_reg_21 and tpia_reg_21
+los_org_21.rename(columns={'PEER_GROUP_ID': 'CORP_PEER'}, inplace=True)
+los_org_20.rename(columns={'PEER_GROUP_ID': 'CORP_PEER'}, inplace=True)
+tpia_org_21.rename(columns={'PEER_GROUP_ID': 'CORP_PEER'}, inplace=True)
+tpia_org_20.rename(columns={'PEER_GROUP_ID': 'CORP_PEER'}, inplace=True)
 
-# Rename the 'PEER_GROUP_ID' column to 'CORP_PEER' in los_org_21 and los_org_20 
-# & Rename the 'SUBMISSION_FISCAL_YEAR' column to 'FISCAL_YEAR' in los_reg_21 and tpia_reg_21
+# los_reg_21.rename(columns={'SUBMISSION_FISCAL_YEAR': 'FISCAL_YEAR'}, inplace=True)
+# tpia_reg_21.rename(columns={'SUBMISSION_FISCAL_YEAR': 'FISCAL_YEAR'}, inplace=True)
 
-los_org_21 = los_org_21.withColumnRenamed("PEER_GROUP_ID", "CORP_PEER")
-los_org_20 = los_org_20.withColumnRenamed("PEER_GROUP_ID", "CORP_PEER")
-tpia_org_21 = tpia_org_21.withColumnRenamed("PEER_GROUP_ID", "CORP_PEER")
-tpia_org_20 = tpia_org_20.withColumnRenamed("PEER_GROUP_ID", "CORP_PEER")
-
-# los_reg_21 = los_reg_21.withColumnRenamed("SUBMISSION_FISCAL_YEAR", "FISCAL_YEAR")
-# tpia_reg_21 = tpia_reg_21.withColumnRenamed("SUBMISSION_FISCAL_YEAR", "FISCAL_YEAR")
+# Filter out rows where CORP_ID is 5160
+los_org_21 = los_org_21[los_org_21['CORP_ID'] != 5160]
+los_org_20 = los_org_20[los_org_20['CORP_ID'] != 5160]
