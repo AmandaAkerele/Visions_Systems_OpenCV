@@ -1,60 +1,90 @@
-# For Tpia_org_22
-tpia_org_22_a = pd.merge(tpia_org_22, tpia_supp_org[['CORP_ID']], on='CORP_ID', how='left', indicator=True)
-tpia_org_22_a = tpia_org_22_a[tpia_org_22_a['_merge'] == 'left_only'].drop(columns=['_merge'])
-tpia_org_22_a = tpia_org_22_a.rename(columns={'SUBMISSION_FISCAL_YEAR': 'FISCAL_YEAR'})
-tpia_org_22_a['CORP_ID'].replace({5085: 81180, 5049:81263}, inplace=True)
+# Create file for shallow slice pilot
+# Indicator: Emergency Department Wait Time for Physician Initial Assessment (90% Spent Less, in Hours)
 
-
-# For Tpia_org_22
-tpia_org_22_a = pd.merge(tpia_org_22, tpia_supp_org[['CORP_ID']], on='CORP_ID', how='left', indicator=True)
-tpia_org_22_a = tpia_org_22_a[tpia_org_22_a['_merge'] == 'left_only'].drop(columns=['_merge'])
-tpia_org_22_a = tpia_org_22_a.rename(columns={'SUBMISSION_FISCAL_YEAR': 'FISCAL_YEAR'})
-tpia_org_22_a['CORP_ID'].replace({5085: 81180, 5049:81263}, inplace=True)
-
-# Tpia_reg_22
-tpia_reg_22_a = pd.merge(tpia_reg_22, tpia_supp_reg[['NEW_REGION_ID']], on='NEW_REGION_ID', how='left', indicator=True)
-tpia_reg_22_a = tpia_reg_22_a[tpia_reg_22_a['_merge'] == 'left_only'].drop(columns=['_merge'])
-tpia_reg_22_a = tpia_reg_22_a.rename(columns={'NEW_REGION_ID': 'REGION_ID'})
-
-# For Los_org_22
-los_org_22_a = pd.merge(los_org_22, los_supp_org_22[['CORP_ID']], on='CORP_ID', how='left', indicator=True)
-los_org_22_a = los_org_22_a[los_org_22_a['_merge'] == 'left_only'].drop(columns=['_merge'])
-los_org_22_a = los_org_22_a.rename(columns={'SUBMISSION_FISCAL_YEAR': 'FISCAL_YEAR'})
-los_org_22_a['CORP_ID'].replace({5085: 81180, 5049:81263}, inplace=True)
-
-# # For Los_reg_22
-los_reg_22_a = pd.merge(los_reg_22, los_supp_reg_22[['NEW_REGION_ID']], on='NEW_REGION_ID', how='left', indicator=True)
-los_reg_22_a = los_reg_22_a[los_reg_22_a['_merge'] == 'left_only'].drop(columns=['_merge'])
-los_reg_22_a = los_reg_22_a.rename(columns={'NEW_REGION_ID': 'REGION_ID'})
-
-
-# Update data for specific CORP_ID values 
-
-corp_id_mapping = {
-    1019: 81170, 
-    10038: 81124, 
-    7077: 80960, 
-    5045: 81131, 
-    5085: 81180, 
-    5049: 81263, 
-    5160: None 
+# Define mapping for IMPROVEMENT_IND_CODE values
+improvement_mapping = {
+    '1': 'Improving',
+    '2': 'No Change',
+    '3': 'Weakening'
 }
 
-# Apply the mapping to CORP_ID columns in all DataFrames
-dataframes= [los_org_21, los_org_20, los_org_22_a, tpia_org_21, tpia_org_20, tpia_org_22_a]
-for df in dataframes:
-    df['CORP_ID'].replace(corp_id_mapping, inplace=True)
+# Define mapping for COMPARE_IND_CODE values
+compare_mapping = {
+    '1': 'Above',
+    '2': 'Same',
+    '3': 'Below'
+}
 
-# Rename the 'PEER_GROUP_ID' column to 'CORP_PEER' in los_org_21 and los_org_20 & 
-# Reaname the fiscal_year column to 'SUBMISSION_FISCAL_YEAR in los_reg_21 and tpia_reg_21
-los_org_21.rename(columns={'PEER_GROUP_ID': 'CORP_PEER'}, inplace=True)
-los_org_20.rename(columns={'PEER_GROUP_ID': 'CORP_PEER'}, inplace=True)
-tpia_org_21.rename(columns={'PEER_GROUP_ID': 'CORP_PEER'}, inplace=True)
-tpia_org_20.rename(columns={'PEER_GROUP_ID': 'CORP_PEER'}, inplace=True)
+# Define mapping for INDICATOR_SUPPRESSION_CODE values 
+suppression_mapping = {
+    '7': '',
+    '2': 'S03',
+    '3': 'S10',
+    '6': 'S10',
+    '901': 'S08'
+}
 
-# los_reg_21.rename(columns={'SUBMISSION_FISCAL_YEAR': 'FISCAL_YEAR'}, inplace=True)
-# tpia_reg_21.rename(columns={'SUBMISSION_FISCAL_YEAR': 'FISCAL_YEAR'}, inplace=True)
+# Convert COMPARE_IND_CODE column to numeric type
+EDWT_Indicators["COMPARE_IND_CODE"] = pd.to_numeric(EDWT_Indicators["COMPARE_IND_CODE"], errors='coerce')
+EDWT_Indicators['compare_descriptor_code'] = EDWT_Indicators['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
 
-# Filter out rows where CORP_ID is 5160
-los_org_21 = los_org_21[los_org_21['CORP_ID'] != 5160]
-los_org_20 = los_org_20[los_org_20['CORP_ID'] != 5160]
+# Convert IMPROVEMENT_IND_CODE column to numeric type
+EDWT_Indicators["IMPROVEMENT_IND_CODE"] = pd.to_numeric(EDWT_Indicators["IMPROVEMENT_IND_CODE"], errors='coerce')
+EDWT_Indicators['improvement_descriptor_code'] = EDWT_Indicators['IMPROVEMENT_IND_CODE'].astype(str).replace(improvement_mapping)
+
+# Convert INDICATOR_SUPPRESSION_CODE column to numeric type
+EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
+EDWT_Indicators['missing_reason_code'] = EDWT_Indicators['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
+
+# Define a function to generate data for a specific year
+def generate_data_for_year(year):
+    EDWT_Indicator_File = EDWT_Indicators[["ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
+    EDWT_Indicator_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code"}, inplace=True)
+
+    np.random.seed(0)
+    scale_param = 5
+    size = len(EDWT_Indicator_File)
+
+    random_data = expon.ppf(np.random.rand(size), scale=scale_param)
+    random_data_shifted = random_data + 1
+
+    EDWT_Indicator_File['metric_result'] = random_data_shifted.round(1)
+    EDWT_Indicator_File.dropna(subset=['metric_result'], inplace=True)
+
+    stacked_data = []
+    for index, row in EDWT_Indicator_File.iterrows():
+        # For Row 1
+        if row['missing_reason_code'] != '999':
+            stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], ''])
+        
+        # For Row 2
+        if row['improvement_descriptor_code'] != '999':
+            stacked_data.append([row['reporting_entity_code'], '', 'PerformanceTrend', row['improvement_descriptor_code'], '', row['metric_result']])
+        
+        # For Row 3
+        if row['compare_descriptor_code'] != '999':
+            stacked_data.append([row['reporting_entity_code'], '', 'PerformanceComparison', row['compare_descriptor_code'], '', row['metric_result']])
+
+    stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
+
+    stacked_df['reporting_period_code'] = 'FY20' + str(year)
+    stacked_df['reporting_entity_type_code'] = 'ORG'
+    stacked_df['indicator_code'] = '811'
+    stacked_df['metric_code'] = 'PCTL_90'
+    stacked_df['breakdown_type_code_l1'] = 'N/A'
+    stacked_df['breakdown_value_code_l1'] = 'N/A'
+    stacked_df['breakdown_type_code_l2'] = 'N/A'
+    stacked_df['breakdown_value_code_l2'] = 'N/A'
+
+    stacked_df = stacked_df[['reporting_period_code', 'reporting_entity_code', 'reporting_entity_type_code', \
+                        'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', \
+                       'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
+                       'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
+
+    return stacked_df
+
+# Generate data for each year from FY2018 to FY2022
+all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
+
+# Write to CSV
+all_years_data.to_csv('811_agg.csv', index=False)
