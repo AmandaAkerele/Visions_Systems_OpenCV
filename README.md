@@ -54,19 +54,20 @@ def generate_data_for_year(year):
 
     stacked_data = []
     for index, row in TT_Spent_ED_File.iterrows():
-        # For Row 1
-        if row['missing_reason_code'] not in ['999', 'S03', 'S10', 'M02', 'S08']:
-            stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], row['metric_result']])
-        else:
-            stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], ''])
-        
-        # For Row 2
-        if row['improvement_descriptor_code'] != '999' and row['missing_reason_code'] != '999':
-            stacked_data.append([row['reporting_entity_code'], '', 'PerformanceTrend', row['improvement_descriptor_code'], '', ''])
-        
-        # For Row 3
-        if row['compare_descriptor_code'] != '999' and row['missing_reason_code'] != '999':
-            stacked_data.append([row['reporting_entity_code'], '', 'PerformanceComparison', row['compare_descriptor_code'], '', ''])
+        if row['missing_reason_code'] != '999':
+            # For Row 1
+            if row['missing_reason_code'] not in ['S03', 'S10', 'M02', 'S08']:
+                stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], row['metric_result']])
+            else:
+                stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], ''])
+            
+            # For Row 2
+            if row['improvement_descriptor_code'] != '999':
+                stacked_data.append([row['reporting_entity_code'], '', 'PerformanceTrend', row['improvement_descriptor_code'], '', ''])
+            
+            # For Row 3
+            if row['compare_descriptor_code'] != '999':
+                stacked_data.append([row['reporting_entity_code'], '', 'PerformanceComparison', row['compare_descriptor_code'], '', ''])
 
     stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
 
