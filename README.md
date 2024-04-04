@@ -29,50 +29,48 @@ suppression_mapping = {
 }
 
 # Convert COMPARE_IND_CODE column to numeric type
-EDWT_Indicators["COMPARE_IND_CODE"] = pd.to_numeric(EDWT_Indicators["COMPARE_IND_CODE"], errors='coerce')
-EDWT_Indicators['compare_descriptor_code'] = EDWT_Indicators['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
+TT_Spent_ED["COMPARE_IND_CODE"] = pd.to_numeric(TT_Spent_ED["COMPARE_IND_CODE"], errors='coerce')
+TT_Spent_ED['compare_descriptor_code'] = TT_Spent_ED['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
 
 # Convert IMPROVEMENT_IND_CODE column to numeric type
-EDWT_Indicators["IMPROVEMENT_IND_CODE"] = pd.to_numeric(EDWT_Indicators["IMPROVEMENT_IND_CODE"], errors='coerce')
-EDWT_Indicators['improvement_descriptor_code'] = EDWT_Indicators['IMPROVEMENT_IND_CODE'].astype(str).replace(improvement_mapping)
+TT_Spent_ED["IMPROVEMENT_IND_CODE"] = pd.to_numeric(TT_Spent_ED["IMPROVEMENT_IND_CODE"], errors='coerce')
+TT_Spent_ED['improvement_descriptor_code'] = TT_Spent_ED['IMPROVEMENT_IND_CODE'].astype(str).replace(improvement_mapping)
 
 # Convert INDICATOR_SUPPRESSION_CODE column to numeric type
-EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
-EDWT_Indicators['missing_reason_code'] = EDWT_Indicators['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
+TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
+TT_Spent_ED['missing_reason_code'] = TT_Spent_ED['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
 
 # Define a function to generate data for a specific year
 def generate_data_for_year(year):
-    EDWT_Indicators_File = EDWT_Indicators[["ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
-    EDWT_Indicators_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code"}, inplace=True)
+    TT_Spent_ED_File = TT_Spent_ED[["ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
+    TT_Spent_ED_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code"}, inplace=True)
 
     np.random.seed(0)
     scale_param = 30
-    size = len(EDWT_Indicators_File)
+    size = len(TT_Spent_ED_File)
 
     random_data = expon.ppf(np.random.rand(size), scale=scale_param)
     random_data_shifted = random_data + 1
 
-    EDWT_Indicators_File['metric_result'] = random_data_shifted.round(1)
-    EDWT_Indicators_File.dropna(subset=['metric_result'], inplace=True)
+    TT_Spent_ED_File['metric_result'] = random_data_shifted.round(1)
+    TT_Spent_ED_File.dropna(subset=['metric_result'], inplace=True)
 
     stacked_data = []
-    for reporting_entity in EDWT_Indicators_File['reporting_entity_code'].unique():
-        reporting_entity_data = EDWT_Indicators_File[EDWT_Indicators_File['reporting_entity_code'] == reporting_entity]
-        
-        if reporting_entity_data['missing_reason_code'].iloc[0] != '999':
+    for index, row in TT_Spent_ED_File.iterrows():
+        if row['missing_reason_code'] != '999':
             # For Row 1
-            if reporting_entity_data['missing_reason_code'].iloc[0] not in ['S03', 'S10', 'M02', 'S08']:
-                stacked_data.append([reporting_entity, reporting_entity_data['metric_result'].iloc[0], '', '', reporting_entity_data['missing_reason_code'].iloc[0], reporting_entity_data['metric_result'].iloc[0]])
+            if row['missing_reason_code'] not in ['S03', 'S10', 'M02', 'S08']:
+                stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], row['metric_result']])
             else:
-                stacked_data.append([reporting_entity, reporting_entity_data['metric_result'].iloc[0], '', '', reporting_entity_data['missing_reason_code'].iloc[0], ''])
+                stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], ''])
             
             # For Row 2
-            if reporting_entity_data['improvement_descriptor_code'].iloc[0] != '999':
-                stacked_data.append([reporting_entity, '', 'PerformanceTrend', reporting_entity_data['improvement_descriptor_code'].iloc[0], '', ''])
+            if row['improvement_descriptor_code'] != '999':
+                stacked_data.append([row['reporting_entity_code'], '', 'PerformanceTrend', row['improvement_descriptor_code'], '', ''])
             
             # For Row 3
-            if reporting_entity_data['compare_descriptor_code'].iloc[0] != '999':
-                stacked_data.append([reporting_entity, '', 'PerformanceComparison', reporting_entity_data['compare_descriptor_code'].iloc[0], '', ''])
+            if row['compare_descriptor_code'] != '999':
+                stacked_data.append([row['reporting_entity_code'], '', 'PerformanceComparison', row['compare_descriptor_code'], '', ''])
 
     stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
 
@@ -92,14 +90,8 @@ def generate_data_for_year(year):
 
     return stacked_df
 
-# Generate data for each year from FY2018 to FY2023
-all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 24)])
-
-# Remove duplicates based on reporting_period_code and reporting_entity_code
-all_years_data = all_years_data.drop_duplicates(subset=['reporting_period_code', 'reporting_entity_code'])
+# Generate data for each year from FY2018 to FY2022
+all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
 
 # Write to CSV
-all_years_data.to_csv('Correction2_810_agg.csv', index=False)
-
-
-
+all_years_data.to_csv('1810_agg.csv', index=False)
