@@ -53,24 +53,21 @@ def generate_data_for_year(year):
     TT_Spent_ED_File.dropna(subset=['metric_result'], inplace=True)
 
     stacked_data = []
-    
-    # Group by reporting_entity_code to ensure all rows are generated for each unique reporting_entity_code
-    for reporting_entity, group_data in TT_Spent_ED_File.groupby('reporting_entity_code'):
-        for index, row in group_data.iterrows():
-            if row['missing_reason_code'] != '999':
-                # For Row 1
-                if row['missing_reason_code'] not in ['S03', 'S10', 'M02', 'S08']:
-                    stacked_data.append([reporting_entity, row['metric_result'], '', '', row['missing_reason_code'], row['metric_result']])
-                else:
-                    stacked_data.append([reporting_entity, row['metric_result'], '', '', row['missing_reason_code'], ''])
-
-                # For Row 2
-                if row['improvement_descriptor_code'] != '999':
-                    stacked_data.append([reporting_entity, '', 'PerformanceTrend', improvement_mapping.get(row['improvement_descriptor_code'], ''), '', ''])
-
-                # For Row 3
-                if row['compare_descriptor_code'] != '999':
-                    stacked_data.append([reporting_entity, '', 'PerformanceComparison', compare_mapping.get(row['compare_descriptor_code'], ''), '', ''])
+    for index, row in TT_Spent_ED_File.iterrows():
+        if row['missing_reason_code'] != '999':
+            # For Row 1
+            if row['missing_reason_code'] not in ['S03', 'S10', 'M02', 'S08']:
+                stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], row['metric_result']])
+            else:
+                stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], ''])
+            
+            # For Row 2
+            if row['improvement_descriptor_code'] != '999':
+                stacked_data.append([row['reporting_entity_code'], '', 'PerformanceTrend', row['improvement_descriptor_code'], '', ''])
+            
+            # For Row 3
+            if row['compare_descriptor_code'] != '999':
+                stacked_data.append([row['reporting_entity_code'], '', 'PerformanceComparison', row['compare_descriptor_code'], '', ''])
 
     stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
 
@@ -92,9 +89,6 @@ def generate_data_for_year(year):
 
 # Generate data for each year from FY2018 to FY2022
 all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
-
-# Remove duplicates based on reporting_entity_code
-all_years_data = all_years_data.drop_duplicates(subset=['reporting_entity_code'])
 
 # Sort by reporting_entity_code and then by reporting_period_code
 all_years_data = all_years_data.sort_values(by=['reporting_entity_code', 'reporting_period_code'])
