@@ -90,8 +90,14 @@ def generate_data_for_year(year):
 
     return stacked_df
 
-# Generate data for each year from FY2018 to FY2022
-all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
+# Generate data for each year from FY2018 to FY2023
+all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 24)])
+
+# Ensure no duplicates based on reporting_entity_code for each reporting_period_code
+all_years_data = all_years_data.drop_duplicates(subset=['reporting_period_code', 'reporting_entity_code'])
+
+# Sort by reporting_period_code and reporting_entity_code
+all_years_data = all_years_data.sort_values(by=['reporting_period_code', 'reporting_entity_code'])
 
 # Write to CSV
 all_years_data.to_csv('1810_agg.csv', index=False)
