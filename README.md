@@ -71,9 +71,12 @@ def generate_data_for_year(year):
 
     stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
 
-    # Assign reporting_period_code based on year and reporting_entity_code
-    stacked_df['reporting_period_code'] = 'FY20' + str(year)
-    stacked_df.loc[stacked_df['reporting_entity_code'].duplicated(keep='first'), 'reporting_period_code'] = stacked_df['reporting_period_code'].shift(1)
+    # Assign reporting_period_code based on year
+    reporting_periods = ['2018', '2019', '2020', '2021', '2022']
+    current_period = 0
+    for i in range(0, len(stacked_df), 3):
+        stacked_df.loc[i:i+2, 'reporting_period_code'] = reporting_periods[current_period]
+        current_period = (current_period + 1) % len(reporting_periods)
 
     stacked_df['reporting_entity_type_code'] = 'ORG'
     stacked_df['indicator_code'] = '810'
