@@ -89,3 +89,15 @@ def generate_data_for_year(year):
                        'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
 
     return stacked_df
+
+# Generate data for each year from FY2018 to FY2022
+all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
+
+# Remove duplicates based on reporting_entity_code
+all_years_data = all_years_data.drop_duplicates(subset=['reporting_entity_code'])
+
+# Sort by reporting_entity_code and then by reporting_period_code
+all_years_data = all_years_data.sort_values(by=['reporting_entity_code', 'reporting_period_code'])
+
+# Write to CSV
+all_years_data.to_csv('Corrected3810_agg.csv', index=False)
