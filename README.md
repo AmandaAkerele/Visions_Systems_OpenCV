@@ -6,6 +6,7 @@ from scipy.stats import expon
 improvement_mapping = {'1': 'Improving', '2': 'NoChange', '3': 'Weaken'}
 compare_mapping = {'1': 'Above', '2': 'Same', '3': 'Below'}
 suppression_mapping = {'7': '', '2': 'S03', '3': 'M02', '6': 'S10', '901': 'S08'}
+period_mapping = {year: f'FY20{year}' for year in range(18, 23)}
 
 # Sample data (assuming you have TT_Spent_ED DataFrame)
 # TT_Spent_ED = pd.read_csv("your_data_file.csv")
@@ -38,7 +39,7 @@ def generate_data_for_year(year):
     for index, row in TT_Spent_ED_File.iterrows():
         if row['INDICATOR_SUPPRESSION_CODE'] != '999':
             reporting_entity_code = row['reporting_entity_code']
-            reporting_period_code = 'FY20' + str(row['reporting_period_code'])
+            reporting_period_code = period_mapping[row['reporting_period_code']]
             metric_result = row['metric_result']
 
             # For Row 1
@@ -49,11 +50,11 @@ def generate_data_for_year(year):
             
             # For Row 2
             if row['IMPROVEMENT_IND_CODE'] != '999':
-                stacked_data.append([reporting_entity_code, reporting_period_code, '', 'PerformanceTrend', row['IMPROVEMENT_IND_CODE'], '', ''])
+                stacked_data.append([reporting_entity_code, reporting_period_code, '', 'PerformanceTrend', improvement_mapping[str(row['IMPROVEMENT_IND_CODE'])], '', ''])
             
             # For Row 3
             if row['COMPARE_IND_CODE'] != '999':
-                stacked_data.append([reporting_entity_code, reporting_period_code, '', 'PerformanceComparison', row['COMPARE_IND_CODE'], '', ''])
+                stacked_data.append([reporting_entity_code, reporting_period_code, '', 'PerformanceComparison', compare_mapping[str(row['COMPARE_IND_CODE'])], '', ''])
 
     stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'reporting_period_code', 'metric_result', 
                                                      'metric_descriptor_group_code', 'metric_descriptor_code', 
