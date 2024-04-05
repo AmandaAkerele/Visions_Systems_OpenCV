@@ -5,8 +5,8 @@
 # Define mapping for IMPROVEMENT_IND_CODE values
 improvement_mapping = {
     '1': 'Improving',
-    '2': 'No Change',
-    '3': 'Weakening'
+    '2': 'NoChange',
+    '3': 'Weaken'
 }
 
 # Define mapping for COMPARE_IND_CODE values
@@ -91,4 +91,4 @@ def generate_data_for_year(year):
 all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
 
 # Write to CSV
-all_years_data.to_csv('DEL_811_agg.csv', index=False)
+all_years_data.to_csv('811_agg.csv', index=False)
