@@ -1,4 +1,4 @@
-    import pandas as pd
+import pandas as pd
 import numpy as np
 from scipy.stats import expon
 
@@ -43,7 +43,7 @@ TT_Spent_ED['missing_reason_code'] = TT_Spent_ED['INDICATOR_SUPPRESSION_CODE'].a
 # Define a function to generate data for a specific year
 def generate_data_for_year(year):
     TT_Spent_ED_File = TT_Spent_ED[["ORGANIZATION_ID", "FISCAL_YEAR_WH_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
-    TT_Spent_ED_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", "FISCAL_YEAR_WH_ID": "fiscal_year_id"}, inplace=True)
+    TT_Spent_ED_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", "FISCAL_YEAR_WH_ID": "reporting_period_code"}, inplace=True)
 
     np.random.seed(0)
     scale_param = 30
@@ -74,8 +74,8 @@ def generate_data_for_year(year):
 
     stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
 
-    # Map fiscal_year_id to reporting_period_code
-    stacked_df['reporting_period_code'] = 'FY20' + stacked_df['fiscal_year_id'].astype(str)
+    # Map reporting_period_code
+    stacked_df['reporting_period_code'] = 'FY20' + stacked_df['reporting_period_code'].astype(str)
     
     stacked_df['reporting_entity_type_code'] = 'ORG'
     stacked_df['indicator_code'] = '810'
@@ -96,4 +96,65 @@ def generate_data_for_year(year):
 all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
 
 # Write to CSV
-all_years_data.to_csv('810_agg.csv', index=False)
+all_years_data.to_csv('fiscal_810_agg.csv', index=False)
+
+
+
+correct 
+
+---------------------------------------------------------------------------
+KeyError                                  Traceback (most recent call last)
+~/.local/lib/python3.10/site-packages/pandas/core/indexes/base.py in get_loc(self, key)
+   3651         try:
+-> 3652             return self._engine.get_loc(casted_key)
+   3653         except KeyError as err:
+
+~/.local/lib/python3.10/site-packages/pandas/_libs/index.pyx in pandas._libs.index.IndexEngine.get_loc()
+
+~/.local/lib/python3.10/site-packages/pandas/_libs/index.pyx in pandas._libs.index.IndexEngine.get_loc()
+
+pandas/_libs/hashtable_class_helper.pxi in pandas._libs.hashtable.PyObjectHashTable.get_item()
+
+pandas/_libs/hashtable_class_helper.pxi in pandas._libs.hashtable.PyObjectHashTable.get_item()
+
+KeyError: 'reporting_period_code'
+
+The above exception was the direct cause of the following exception:
+
+KeyError                                  Traceback (most recent call last)
+/tmp/ipykernel_492/2300969136.py in <cell line: 96>()
+     94 
+     95 # Generate data for each year from FY2018 to FY2022
+---> 96 all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
+     97 
+     98 # Write to CSV
+
+/tmp/ipykernel_492/2300969136.py in <listcomp>(.0)
+     94 
+     95 # Generate data for each year from FY2018 to FY2022
+---> 96 all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
+     97 
+     98 # Write to CSV
+
+/tmp/ipykernel_492/2300969136.py in generate_data_for_year(year)
+     76 
+     77     # Map reporting_period_code
+---> 78     stacked_df['reporting_period_code'] = 'FY20' + stacked_df['reporting_period_code'].astype(str)
+     79 
+     80     stacked_df['reporting_entity_type_code'] = 'ORG'
+
+~/.local/lib/python3.10/site-packages/pandas/core/frame.py in __getitem__(self, key)
+   3759             if self.columns.nlevels > 1:
+   3760                 return self._getitem_multilevel(key)
+-> 3761             indexer = self.columns.get_loc(key)
+   3762             if is_integer(indexer):
+   3763                 indexer = [indexer]
+
+~/.local/lib/python3.10/site-packages/pandas/core/indexes/base.py in get_loc(self, key)
+   3652             return self._engine.get_loc(casted_key)
+   3653         except KeyError as err:
+-> 3654             raise KeyError(key) from err
+   3655         except TypeError:
+   3656             # If we have a listlike key, _check_indexing_error will raise
+
+KeyError: 'reporting_period_code'
