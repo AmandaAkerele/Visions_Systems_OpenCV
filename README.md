@@ -1,4 +1,4 @@
-import pandas as pd
+    import pandas as pd
 import numpy as np
 from scipy.stats import expon
 
@@ -42,8 +42,8 @@ TT_Spent_ED['missing_reason_code'] = TT_Spent_ED['INDICATOR_SUPPRESSION_CODE'].a
 
 # Define a function to generate data for a specific year
 def generate_data_for_year(year):
-    TT_Spent_ED_File = TT_Spent_ED[["ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
-    TT_Spent_ED_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code"}, inplace=True)
+    TT_Spent_ED_File = TT_Spent_ED[["ORGANIZATION_ID", "FISCAL_YEAR_WH_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
+    TT_Spent_ED_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", "FISCAL_YEAR_WH_ID": "fiscal_year_id"}, inplace=True)
 
     np.random.seed(0)
     scale_param = 30
@@ -74,7 +74,9 @@ def generate_data_for_year(year):
 
     stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
 
-    stacked_df['reporting_period_code'] = 'FY20' + str(year)
+    # Map fiscal_year_id to reporting_period_code
+    stacked_df['reporting_period_code'] = 'FY20' + stacked_df['fiscal_year_id'].astype(str)
+    
     stacked_df['reporting_entity_type_code'] = 'ORG'
     stacked_df['indicator_code'] = '810'
     stacked_df['metric_code'] = 'PCTL_90'
