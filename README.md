@@ -28,14 +28,6 @@ suppression_mapping = {
     '901': 'S08'
 }
 
-# Sample DataFrame (replace with your actual data)
-TT_Spent_ED = pd.DataFrame({
-    'FISCAL_YEAR_WH_ID': ['18', '19', '20'],
-    'ORGANIZATION_ID': ['A', 'B', 'C'],
-    'IMPROVEMENT_IND_CODE': ['1', '2', '3'],
-    'COMPARE_IND_CODE': ['1', '2', '3'],
-    'INDICATOR_SUPPRESSION_CODE': ['7', '2', '3']
-})
 
 # Convert COMPARE_IND_CODE column to numeric type
 TT_Spent_ED["COMPARE_IND_CODE"] = pd.to_numeric(TT_Spent_ED["COMPARE_IND_CODE"], errors='coerce')
@@ -49,12 +41,8 @@ TT_Spent_ED['improvement_descriptor_code'] = TT_Spent_ED['IMPROVEMENT_IND_CODE']
 TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
 TT_Spent_ED['missing_reason_code'] = TT_Spent_ED['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
 
-# Sample period mapping (replace with your actual mapping)
-period_mapping = {
-    '18': 'FY2018',
-    '19': 'FY2019',
-    '20': 'FY2020'
-}
+
+period_mapping = {year: f'FY20{year}' for year in range(18, 23)}
 
 def generate_data_for_year(year):
     TT_Spent_ED_File = TT_Spent_ED[["FISCAL_YEAR_WH_ID", "ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
