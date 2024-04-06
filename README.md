@@ -3,7 +3,7 @@ import numpy as np
 from scipy.stats import expon
 
 improvement_mapping = {
-    '1.0': 'Improving',
+    '1.0': 'Improving',[
     '2.0': 'NoChange',
     '3.0': 'Weaken'
 }
@@ -17,27 +17,23 @@ compare_mapping = {
 
 # Define mapping for INDICATOR_SUPPRESSION_CODE values 
 suppression_mapping = {
-    '7.0': '',
-    '2.0': 'S03',
-    '3.0': 'M02',
-    '6.0': 'S10',
-    '901.0': 'S08'
+   '7.0': '',
+   '2.0': 'S03',
+   '3.0': 'M02',
+   '6.0': 'S10',
+   '901.0': 'S08'
 }
 
 period_mapping = {year: f'FY20{year}' for year in range(18, 23)}
 
-# Assuming EDWT_Indicators and TT_Spent_ED are defined somewhere in your code
-# Convert COMPARE_IND_CODE column to numeric type
-EDWT_Indicators["COMPARE_IND_CODE"] = pd.to_numeric(EDWT_Indicators["COMPARE_IND_CODE"], errors='coerce')
-EDWT_Indicators['compare_descriptor_code'] = EDWT_Indicators['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
+# Convert columns to numeric types and apply mappings
+for col, mapping in [('COMPARE_IND_CODE', compare_mapping),
+                     ('IMPROVEMENT_IND_CODE', improvement_mapping)]:
+    TT_Spent_ED[col] = pd.to_numeric(TT_Spent_ED[col], errors='coerce')
+    TT_Spent_ED[f'{col.lower()}_descriptor_code'] = TT_Spent_ED[col].map(mapping).fillna('')
 
-# Convert IMPROVEMENT_IND_CODE column to numeric type
-EDWT_Indicators["IMPROVEMENT_IND_CODE"] = pd.to_numeric(EDWT_Indicators["IMPROVEMENT_IND_CODE"], errors='coerce')
-EDWT_Indicators['improvement_descriptor_code'] = EDWT_Indicators['IMPROVEMENT_IND_CODE'].astype(str).replace(improvement_mapping)
-
-# Convert INDICATOR_SUPPRESSION_CODE column to numeric type
-EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
-EDWT_Indicators['missing_reason_code'] = EDWT_Indicators['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
+TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
+TT_Spent_ED['missing_reason_code'] = TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"].map(suppression_mapping).fillna('')
 
 def generate_data_for_year(year):
     TT_Spent_ED_File = TT_Spent_ED[["ORGANIZATION_ID", "FISCAL_YEAR_WH_ID", 
@@ -63,13 +59,11 @@ def generate_data_for_year(year):
             reporting_period_code = period_mapping[row['reporting_period_code']]
             metric_result = row['metric_result']
 
-            if row['INDICATOR_SUPPRESSION_CODE'] != '999':
-                
-                # For Row 1
-                if row['INDICATOR_SUPPRESSION_CODE'] not in ['S03', 'S10', 'M02', 'S08']:
-                    stacked_data.append([row['reporting_entity_code'], row['reporting_period_code'], row['metric_result'], '', '', row['INDICATOR_SUPPRESSION_CODE'], row['metric_result']])
-                else:
-                    stacked_data.append([row['reporting_entity_code'], row['reporting_period_code'], row['metric_result'], '', '', row['INDICATOR_SUPPRESSION_CODE'], ''])
+            # For Row 1
+            if row['INDICATOR_SUPPRESSION_CODE'] not in ['S03', 'S10', 'M02', 'S08']:
+                stacked_data.append([reporting_entity_code, reporting_period_code, metric_result, '', '', row['INDICATOR_SUPPRESSION_CODE'], metric_result])
+            else:
+                stacked_data.append([reporting_entity_code, reporting_period_code, metric_result, '', '', row['INDICATOR_SUPPRESSION_CODE'], ''])
             
             # For Row 2
             if row['IMPROVEMENT_IND_CODE'] != 999:
@@ -103,4 +97,4 @@ def generate_data_for_year(year):
 all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
 
 # Write to CSV
-all_years_data.to_csv('fiscal33_810_agg.csv', index=False)
+all_years_data.to_csv('fiscal3_810_agg.csv', index=False)
