@@ -3,7 +3,7 @@ import numpy as np
 from scipy.stats import expon
 
 improvement_mapping = {
-    '1.0': 'Improving',[
+    '1.0': 'Improving',
     '2.0': 'NoChange',
     '3.0': 'Weaken'
 }
@@ -17,23 +17,21 @@ compare_mapping = {
 
 # Define mapping for INDICATOR_SUPPRESSION_CODE values 
 suppression_mapping = {
-   '7.0': '',
-   '2.0': 'S03',
-   '3.0': 'M02',
-   '6.0': 'S10',
-   '901.0': 'S08'
+    '7.0': '',
+    '2.0': 'S03',
+    '3.0': 'M02',
+    '6.0': 'S10',
+    '901.0': 'S08'
 }
 
 period_mapping = {year: f'FY20{year}' for year in range(18, 23)}
 
 # Convert columns to numeric types and apply mappings
 for col, mapping in [('COMPARE_IND_CODE', compare_mapping),
-                     ('IMPROVEMENT_IND_CODE', improvement_mapping)]:
+                     ('IMPROVEMENT_IND_CODE', improvement_mapping),
+                     ('INDICATOR_SUPPRESSION_CODE', suppression_mapping)]:  # Added suppression_mapping here
     TT_Spent_ED[col] = pd.to_numeric(TT_Spent_ED[col], errors='coerce')
     TT_Spent_ED[f'{col.lower()}_descriptor_code'] = TT_Spent_ED[col].map(mapping).fillna('')
-
-TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
-TT_Spent_ED['missing_reason_code'] = TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"].map(suppression_mapping).fillna('')
 
 def generate_data_for_year(year):
     TT_Spent_ED_File = TT_Spent_ED[["ORGANIZATION_ID", "FISCAL_YEAR_WH_ID", 
