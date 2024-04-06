@@ -2,43 +2,48 @@ import pandas as pd
 import numpy as np
 from scipy.stats import expon
 
+# Create file for shallow slice pilot
+# Indicator: Total Time Spent in Emergency Department for Admitted Patients (90% Spent Less, in Hours)
+
+# Define mapping for IMPROVEMENT_IND_CODE values
 improvement_mapping = {
-    '1.0': 'Improving',
-    '2.0': 'NoChange',
-    '3.0': 'Weaken'
+    '1': 'Improving',
+    '2': 'NoChange',
+    '3': 'Weaken'
 }
 
 # Define mapping for COMPARE_IND_CODE values
 compare_mapping = {
-    '1.0': 'Above',
-    '2.0': 'Same',
-    '3.0': 'Below'
+    '1': 'Above',
+    '2': 'Same',
+    '3': 'Below'
 }
 
 # Define mapping for INDICATOR_SUPPRESSION_CODE values 
 suppression_mapping = {
-    '7.0': '',
-    '2.0': 'S03',
-    '3.0': 'M02',
-    '6.0': 'S10',
-    '901.0': 'S08'
+    '7': '',
+    '2': 'S03',
+    '3': 'M02',
+    '6': 'S10',
+    '901': 'S08'
 }
 
-period_mapping = {year: f'FY20{year}' for year in range(18, 23)}
+# Convert COMPARE_IND_CODE column to numeric type
+TT_Spent_ED["COMPARE_IND_CODE"] = pd.to_numeric(TT_Spent_ED["COMPARE_IND_CODE"], errors='coerce')
+TT_Spent_ED['compare_descriptor_code'] = TT_Spent_ED['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
 
-# Convert columns to numeric types and apply mappings
-for col, mapping in [('COMPARE_IND_CODE', compare_mapping),
-                     ('IMPROVEMENT_IND_CODE', improvement_mapping),
-                     ('INDICATOR_SUPPRESSION_CODE', suppression_mapping)]:  # Added suppression_mapping here
-    TT_Spent_ED[col] = pd.to_numeric(TT_Spent_ED[col], errors='coerce')
-    TT_Spent_ED[f'{col.lower()}_descriptor_code'] = TT_Spent_ED[col].map(mapping).fillna('')
+# Convert IMPROVEMENT_IND_CODE column to numeric type
+TT_Spent_ED["IMPROVEMENT_IND_CODE"] = pd.to_numeric(TT_Spent_ED["IMPROVEMENT_IND_CODE"], errors='coerce')
+TT_Spent_ED['improvement_descriptor_code'] = TT_Spent_ED['IMPROVEMENT_IND_CODE'].astype(str).replace(improvement_mapping)
 
+# Convert INDICATOR_SUPPRESSION_CODE column to numeric type
+TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
+TT_Spent_ED['missing_reason_code'] = TT_Spent_ED['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
+
+# Define a function to generate data for a specific year
 def generate_data_for_year(year):
-    TT_Spent_ED_File = TT_Spent_ED[["ORGANIZATION_ID", "FISCAL_YEAR_WH_ID", 
-                                    "IMPROVEMENT_IND_CODE", "COMPARE_IND_CODE", 
-                                    "INDICATOR_SUPPRESSION_CODE"]]
-    TT_Spent_ED_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", 
-                                     "FISCAL_YEAR_WH_ID": "reporting_period_code"}, inplace=True)
+    TT_Spent_ED_File = TT_Spent_ED[["ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
+    TT_Spent_ED_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code"}, inplace=True)
 
     np.random.seed(0)
     scale_param = 30
@@ -52,29 +57,24 @@ def generate_data_for_year(year):
 
     stacked_data = []
     for index, row in TT_Spent_ED_File.iterrows():
-        if row['INDICATOR_SUPPRESSION_CODE'] != 999:
-            reporting_entity_code = row['reporting_entity_code']
-            reporting_period_code = period_mapping[row['reporting_period_code']]
-            metric_result = row['metric_result']
-
+        if row['missing_reason_code'] != '999':
             # For Row 1
-            if row['INDICATOR_SUPPRESSION_CODE'] not in ['S03', 'S10', 'M02', 'S08']:
-                stacked_data.append([reporting_entity_code, reporting_period_code, metric_result, '', '', row['INDICATOR_SUPPRESSION_CODE'], metric_result])
+            if row['missing_reason_code'] not in ['S03', 'S10', 'M02', 'S08']:
+                stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], row['metric_result']])
             else:
-                stacked_data.append([reporting_entity_code, reporting_period_code, metric_result, '', '', row['INDICATOR_SUPPRESSION_CODE'], ''])
+                stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], ''])
             
             # For Row 2
-            if row['IMPROVEMENT_IND_CODE'] != 999:
-                stacked_data.append([reporting_entity_code, reporting_period_code, '', 'PerformanceTrend', improvement_mapping[str(row['IMPROVEMENT_IND_CODE'])], '', ''])
+            if row['improvement_descriptor_code'] != '999':
+                stacked_data.append([row['reporting_entity_code'], '', 'PerformanceTrend', row['improvement_descriptor_code'], '', ''])
             
             # For Row 3
-            if row['COMPARE_IND_CODE'] != 999:
-                stacked_data.append([reporting_entity_code, reporting_period_code, '', 'PerformanceComparison', compare_mapping[str(row['COMPARE_IND_CODE'])], '', ''])
+            if row['compare_descriptor_code'] != '999':
+                stacked_data.append([row['reporting_entity_code'], '', 'PerformanceComparison', row['compare_descriptor_code'], '', ''])
 
-    stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'reporting_period_code', 'metric_result', 
-                                                     'metric_descriptor_group_code', 'metric_descriptor_code', 
-                                                     'missing_reason_code', 'public_metric_result'])
+    stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
 
+    stacked_df['reporting_period_code'] = 'FY20' + str(year)
     stacked_df['reporting_entity_type_code'] = 'ORG'
     stacked_df['indicator_code'] = '810'
     stacked_df['metric_code'] = 'PCTL_90'
@@ -83,11 +83,10 @@ def generate_data_for_year(year):
     stacked_df['breakdown_type_code_l2'] = 'N/A'
     stacked_df['breakdown_value_code_l2'] = 'N/A'
 
-    stacked_df = stacked_df[['reporting_period_code', 'reporting_entity_code', 'reporting_entity_type_code', 
-                             'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 
-                             'breakdown_type_code_l2', 'breakdown_value_code_l2', 'metric_result', 
-                             'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 
-                             'public_metric_result']]
+    stacked_df = stacked_df[['reporting_period_code', 'reporting_entity_code', 'reporting_entity_type_code', \
+                        'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', \
+                       'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
+                       'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
 
     return stacked_df
 
@@ -95,4 +94,4 @@ def generate_data_for_year(year):
 all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
 
 # Write to CSV
-all_years_data.to_csv('fiscal3_810_agg.csv', index=False)
+all_years_data.to_csv('810_agg.csv', index=False)
