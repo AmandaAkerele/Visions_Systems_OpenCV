@@ -56,31 +56,26 @@ def generate_data_for_year(year):
     TT_Spent_ED_File['metric_result'] = random_data_shifted.round(1)
     TT_Spent_ED_File.dropna(subset=['metric_result'], inplace=True)
 
-    # stacked_data = []
-    # for index, row in TT_Spent_ED_File.iterrows():
-    #     if row['missing_reason_code'] != '999':
-    #         reporting_period_code = 'FY20' + str(row['FISCAL_YEAR_WH_ID'])
+    stacked_data = []
+    for index, row in TT_Spent_ED_File.iterrows():
+        if row['INDICATOR_SUPPRESSION_CODE'] != 999:
+            reporting_entity_code = row['reporting_entity_code']
+            reporting_period_code = period_mapping[row['reporting_period_code']]
+            metric_result = row['metric_result']
 
-     stacked_data = []
-      for index, row in TT_Spent_ED_File.iterrows():
-            if row['INDICATOR_SUPPRESSION_CODE'] != 999:
-               reporting_entity_code = row['reporting_entity_code']
-               reporting_period_code = period_mapping[row['reporting_period_code']]
-                    metric_result = row['metric_result']
-            
             # For Row 1
             if row['missing_reason_code'] not in ['S03', 'S10', 'M02', 'S08']:
-                stacked_data.append([reporting_period_code, row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], row['metric_result']])
+                stacked_data.append([reporting_period_code, reporting_entity_code, metric_result, '', '', row['missing_reason_code'], metric_result])
             else:
-                stacked_data.append([reporting_period_code, row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], ''])
+                stacked_data.append([reporting_period_code, reporting_entity_code, metric_result, '', '', row['missing_reason_code'], ''])
             
             # For Row 2
             if row['improvement_descriptor_code'] != '999':
-                stacked_data.append([reporting_period_code, row['reporting_entity_code'], '', 'PerformanceTrend', row['improvement_descriptor_code'], '', ''])
+                stacked_data.append([reporting_period_code, reporting_entity_code, '', 'PerformanceTrend', row['improvement_descriptor_code'], '', ''])
             
             # For Row 3
             if row['compare_descriptor_code'] != '999':
-                stacked_data.append([reporting_period_code, row['reporting_entity_code'], '', 'PerformanceComparison', row['compare_descriptor_code'], '', ''])
+                stacked_data.append([reporting_period_code, reporting_entity_code, '', 'PerformanceComparison', row['compare_descriptor_code'], '', ''])
 
     stacked_df = pd.DataFrame(stacked_data, columns=['reporting_period_code', 'reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
 
@@ -104,11 +99,3 @@ all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 2
 
 # Write to CSV
 all_years_data.to_csv('fiscal36_810_agg.csv', index=False)
-
-
-adjust the error message in the code above 
-
-File "/tmp/ipykernel_492/2638608296.py", line 64
-    stacked_data = []
-    ^
-IndentationError: unexpected indent
