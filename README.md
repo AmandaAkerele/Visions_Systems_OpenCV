@@ -56,7 +56,12 @@ def generate_data_for_year(year):
             reporting_entity_code = row['reporting_entity_code']
             reporting_period_code = period_mapping[row['reporting_period_code']]
             metric_result = row['metric_result']
-            missing_reason_code = suppression_mapping.get(str(row['INDICATOR_SUPPRESSION_CODE']), '')
+
+            # Handling missing_reason_code for INDICATOR_SUPPRESSION_CODE
+            if row['INDICATOR_SUPPRESSION_CODE'] == 7.0:
+                missing_reason_code = ''
+            else:
+                missing_reason_code = suppression_mapping.get(str(row['INDICATOR_SUPPRESSION_CODE']), '')
 
             # For Row 1
             if row['INDICATOR_SUPPRESSION_CODE'] not in ['S03', 'S10', 'M02', 'S08']:
