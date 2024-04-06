@@ -42,7 +42,7 @@ TT_Spent_ED['missing_reason_code'] = TT_Spent_ED['INDICATOR_SUPPRESSION_CODE'].a
 
 # Define a function to generate data for a specific year
 def generate_data_for_year(year):
-    TT_Spent_ED_File = TT_Spent_ED[["ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
+    TT_Spent_ED_File = TT_Spent_ED[["FISCAL_YEAR_WH_ID", "ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
     TT_Spent_ED_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code"}, inplace=True)
 
     np.random.seed(0)
@@ -58,23 +58,23 @@ def generate_data_for_year(year):
     stacked_data = []
     for index, row in TT_Spent_ED_File.iterrows():
         if row['missing_reason_code'] != '999':
+            reporting_period_code = 'FY20' + str(row['FISCAL_YEAR_WH_ID'])
             # For Row 1
             if row['missing_reason_code'] not in ['S03', 'S10', 'M02', 'S08']:
-                stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], row['metric_result']])
+                stacked_data.append([reporting_period_code, row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], row['metric_result']])
             else:
-                stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], ''])
+                stacked_data.append([reporting_period_code, row['reporting_entity_code'], row['metric_result'], '', '', row['missing_reason_code'], ''])
             
             # For Row 2
             if row['improvement_descriptor_code'] != '999':
-                stacked_data.append([row['reporting_entity_code'], '', 'PerformanceTrend', row['improvement_descriptor_code'], '', ''])
+                stacked_data.append([reporting_period_code, row['reporting_entity_code'], '', 'PerformanceTrend', row['improvement_descriptor_code'], '', ''])
             
             # For Row 3
             if row['compare_descriptor_code'] != '999':
-                stacked_data.append([row['reporting_entity_code'], '', 'PerformanceComparison', row['compare_descriptor_code'], '', ''])
+                stacked_data.append([reporting_period_code, row['reporting_entity_code'], '', 'PerformanceComparison', row['compare_descriptor_code'], '', ''])
 
-    stacked_df = pd.DataFrame(stacked_data, columns=['reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
+    stacked_df = pd.DataFrame(stacked_data, columns=['reporting_period_code', 'reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
 
-    stacked_df['reporting_period_code'] = 'FY20' + str(year)
     stacked_df['reporting_entity_type_code'] = 'ORG'
     stacked_df['indicator_code'] = '810'
     stacked_df['metric_code'] = 'PCTL_90'
