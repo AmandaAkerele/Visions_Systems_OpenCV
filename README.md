@@ -1,18 +1,4 @@
-The error you're encountering is due to a syntax issue in the `improvement_mapping` dictionary. There's an extra opening square bracket `[` in the definition of the `improvement_mapping` dictionary.
 
-Here's the corrected `improvement_mapping`:
-
-```python
-improvement_mapping = {
-    '1.0': 'Improving',
-    '2.0': 'NoChange',
-    '3.0': 'Weaken'
-}
-```
-
-Here's the corrected code with the above fix:
-
-```python
 import pandas as pd
 import numpy as np
 from scipy.stats import expon
@@ -77,11 +63,22 @@ def generate_data_for_year(year):
             reporting_period_code = period_mapping[row['reporting_period_code']]
             metric_result = row['metric_result']
 
+            if row['INDICATOR_SUPPRESSION_CODE'] != '999':
+                
             # For Row 1
             if row['INDICATOR_SUPPRESSION_CODE'] not in ['S03', 'S10', 'M02', 'S08']:
-                stacked_data.append([reporting_entity_code, reporting_period_code, metric_result, '', '', row['INDICATOR_SUPPRESSION_CODE'], metric_result])
+                stacked_data.append([row['reporting_entity_code', row['reporting_period_code'], row['metric_result'], '', '', row['INDICATOR_SUPPRESSION_CODE'], row['metric_result']])
             else:
-                stacked_data.append([reporting_entity_code, reporting_period_code, metric_result, '', '', row['INDICATOR_SUPPRESSION_CODE'], ''])
+                stacked_data.append([row['reporting_entity_code'], row['reporting_period_code'], row['metric_result'], '', '', row['INDICATOR_SUPPRESSION_CODE'], ''])
+
+            
+        #  if row['INDICATOR_SUPPRESSION_CODE'] != '999':
+        #     # For Row 1
+        # if row['INDICATOR_SUPPRESSION_CODE'] not in ['S03', 'S10', 'M02', 'S08']:
+        #         stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['INDICATOR_SUPPRESSION_CODE'], row['metric_result']])
+        #     else:
+        #         stacked_data.append([row['reporting_entity_code'], row['metric_result'], '', '', row['INDICATOR_SUPPRESSION_CODE'], ''])
+
             
             # For Row 2
             if row['IMPROVEMENT_IND_CODE'] != 999:
@@ -117,7 +114,10 @@ def generate_data_for_year(year):
 all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
 
 # Write to CSV
-all_years_data.to_csv('fiscal3_810_agg.csv', index=False)
-```
+all_years_data.to_csv('fiscal33_810_agg.csv', index=False)
 
-I've fixed the `improvement_mapping` dictionary by removing the extra opening square bracket `[`.
+solve the issue in the code above. this is the error message below 
+  File "/tmp/ipykernel_492/1779288108.py", line 69
+    stacked_data.append([row['reporting_entity_code', row['reporting_period_code'], row['metric_result'], '', '', row['INDICATOR_SUPPRESSION_CODE'], row['metric_result']])
+                                                                                                                                                                          ^
+SyntaxError: closing parenthesis ')' does not match opening parenthesis '['
