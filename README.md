@@ -1,5 +1,1 @@
-# Replace '1' with '80235' in the ORGANIZATION_ID column
-TT_Spent_ED['ORGANIZATION_ID'].replace('1', '80235', inplace=True)
-
-# Display the first 5 columns of the updated DataFrame
-print(TT_Spent_ED.iloc[:, :5])
+TT_Spent_ED['ORGANIZATION_ID'] = TT_Spent_ED['ORGANIZATION_ID'].apply(lambda x: 80235 if x == 1 else x)
