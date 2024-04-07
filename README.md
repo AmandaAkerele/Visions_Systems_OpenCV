@@ -56,6 +56,12 @@ def generate_data_for_year(year):
     TT_Spent_ED_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", 
                                      "FISCAL_YEAR_WH_ID": "reporting_period_code"}, inplace=True)
     
+    # Replace reporting_entity_code '1' with '80235'
+    TT_Spent_ED_File['reporting_entity_code'] = TT_Spent_ED_File['reporting_entity_code'].replace({'1': '80235'})
+    
+    # Drop rows where reporting_entity_code is '1'
+    TT_Spent_ED_File = TT_Spent_ED_File[TT_Spent_ED_File['reporting_entity_code'] != '1']
+    
     np.random.seed(0)
     scale_param = 30
     size = len(TT_Spent_ED_File)
@@ -70,11 +76,6 @@ def generate_data_for_year(year):
     for index, row in TT_Spent_ED_File.iterrows():
         if row.get('missing_reason_code') != '999':
             reporting_entity_code = row['reporting_entity_code']
-            
-            # Replace reporting_entity_code '1' with '80235' for Row 1, Row 2, and Row 3
-            if reporting_entity_code == '1':
-                reporting_entity_code = '80235'
-            
             reporting_period_code = period_mapping[row['reporting_period_code']]
             metric_result = row['metric_result']
 
