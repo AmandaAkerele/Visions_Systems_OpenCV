@@ -2,6 +2,9 @@ import pandas as pd
 import numpy as np
 from scipy.stats import expon
 
+# Create file for shallow slice pilot
+# Indicator: Total Time Spent in Emergency Department for Admitted Patients (90% Spent Less, in Hours)
+
 # Define mapping for IMPROVEMENT_IND_CODE values
 improvement_mapping = {
     '1': 'Improving',
@@ -68,23 +71,14 @@ def generate_data_for_year(year):
         if row.get('missing_reason_code') != '999':
             reporting_entity_code = row['reporting_entity_code']
             
-            # Update reporting_entity_type_code based on reporting_entity_code
-            if reporting_entity_code == '2':
-                reporting_entity_type_code = 'HPEER_T'
-            elif reporting_entity_code == '3':
-                reporting_entity_type_code = 'HPEER_H1'
-            elif reporting_entity_code == '4':
-                reporting_entity_type_code = 'HPEER_H2'
-            elif reporting_entity_code == '5':
-                reporting_entity_type_code = 'HPEER_H3'
-            elif reporting_entity_code == '1':
+            # Replace reporting_entity_code '1' with '80235' for Row 1, Row 2, and Row 3
+            if reporting_entity_code == '1':
                 reporting_entity_code = '80235'
-                reporting_entity_type_code = 'ORG'
             
             reporting_period_code = period_mapping[row['reporting_period_code']]
             metric_result = row['metric_result']
 
-            # For Row 1, 2, 3
+            # For Row 1
             if row['missing_reason_code'] not in ['S03', 'S10', 'M02', 'S08']:
                 stacked_data.append([reporting_period_code, reporting_entity_code, metric_result, '', '', row['missing_reason_code'], metric_result])
             else:
@@ -100,7 +94,7 @@ def generate_data_for_year(year):
 
     stacked_df = pd.DataFrame(stacked_data, columns=['reporting_period_code', 'reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
 
-    stacked_df['reporting_entity_type_code'] = reporting_entity_type_code
+    stacked_df['reporting_entity_type_code'] = 'ORG'
     stacked_df['indicator_code'] = '810'
     stacked_df['metric_code'] = 'PCTL_90'
     stacked_df['breakdown_type_code_l1'] = 'N/A'
