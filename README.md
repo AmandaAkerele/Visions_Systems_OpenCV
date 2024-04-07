@@ -28,39 +28,44 @@ suppression_mapping = {
     '901': 'S08'
 }
 
-# Sample DataFrame (Replace with your actual data)
-TT_Spent_ED = pd.DataFrame({
-    'FISCAL_YEAR_WH_ID': ['18', '19', '20'],
-    'ORGANIZATION_ID': ['1', '2', '3'],
-    'IMPROVEMENT_IND_CODE': ['1', '2', '3'],
-    'COMPARE_IND_CODE': ['1', '2', '3'],
-    'INDICATOR_SUPPRESSION_CODE': ['7', '2', '3']
-})
-
-# Convert COMPARE_IND_CODE column to numeric type
-TT_Spent_ED["COMPARE_IND_CODE"] = pd.to_numeric(TT_Spent_ED["COMPARE_IND_CODE"], errors='coerce')
-TT_Spent_ED['compare_descriptor_code'] = TT_Spent_ED['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
-
-# Convert IMPROVEMENT_IND_CODE column to numeric type
-TT_Spent_ED["IMPROVEMENT_IND_CODE"] = pd.to_numeric(TT_Spent_ED["IMPROVEMENT_IND_CODE"], errors='coerce')
-TT_Spent_ED['improvement_descriptor_code'] = TT_Spent_ED['IMPROVEMENT_IND_CODE'].astype(str).replace(improvement_mapping)
-
-# Convert INDICATOR_SUPPRESSION_CODE column to numeric type
-TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
-TT_Spent_ED['missing_reason_code'] = TT_Spent_ED['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
-
 period_mapping = {year: f'FY20{year}' for year in range(18, 23)}
 
+def preprocess_data(df):
+    # Convert COMPARE_IND_CODE column to numeric type
+    df["COMPARE_IND_CODE"] = pd.to_numeric(df["COMPARE_IND_CODE"], errors='coerce')
+    df['compare_descriptor_code'] = df['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
+
+    # Convert IMPROVEMENT_IND_CODE column to numeric type
+    df["IMPROVEMENT_IND_CODE"] = pd.to_numeric(df["IMPROVEMENT_IND_CODE"], errors='coerce')
+    df['improvement_descriptor_code'] = df['IMPROVEMENT_IND_CODE'].astype(str).replace(improvement_mapping)
+
+    # Convert INDICATOR_SUPPRESSION_CODE column to numeric type
+    df["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(df["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
+    df['missing_reason_code'] = df['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
+
+    # Replace reporting_entity_code '1' with '80235'
+    df['ORGANIZATION_ID'] = df['ORGANIZATION_ID'].replace({'1': '80235'})
+
+    # Drop rows where reporting_entity_code is '1'
+    df = df[df['ORGANIZATION_ID'] != '1']
+
+    return df
+
 def generate_data_for_year(year):
+    # Sample DataFrame (Replace with your actual data)
+    TT_Spent_ED = pd.DataFrame({
+        'FISCAL_YEAR_WH_ID': ['18', '19', '20'],
+        'ORGANIZATION_ID': ['1', '2', '3'],
+        'IMPROVEMENT_IND_CODE': ['1', '2', '3'],
+        'COMPARE_IND_CODE': ['1', '2', '3'],
+        'INDICATOR_SUPPRESSION_CODE': ['7', '2', '3']
+    })
+
+    TT_Spent_ED = preprocess_data(TT_Spent_ED)
+
     TT_Spent_ED_File = TT_Spent_ED[["FISCAL_YEAR_WH_ID", "ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
     TT_Spent_ED_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", 
                                      "FISCAL_YEAR_WH_ID": "reporting_period_code"}, inplace=True)
-    
-    # Replace reporting_entity_code '1' with '80235'
-    TT_Spent_ED_File['reporting_entity_code'] = TT_Spent_ED_File['reporting_entity_code'].replace({'1': '80235'})
-    
-    # Drop rows where reporting_entity_code is '1'
-    TT_Spent_ED_File = TT_Spent_ED_File[TT_Spent_ED_File['reporting_entity_code'] != '1']
     
     np.random.seed(0)
     scale_param = 30
