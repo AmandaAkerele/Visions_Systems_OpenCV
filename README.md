@@ -25,6 +25,14 @@ suppression_mapping = {
     '901': 'S08'
 }
 
+# Sample DataFrame (Replace with your actual data)
+TT_Spent_ED = pd.DataFrame({
+    'FISCAL_YEAR_WH_ID': ['18', '19', '20'],
+    'ORGANIZATION_ID': ['1', '2', '3'],
+    'IMPROVEMENT_IND_CODE': ['1', '2', '3'],
+    'COMPARE_IND_CODE': ['1', '2', '3'],
+    'INDICATOR_SUPPRESSION_CODE': ['7', '2', '3']
+})
 
 # Convert COMPARE_IND_CODE column to numeric type
 TT_Spent_ED["COMPARE_IND_CODE"] = pd.to_numeric(TT_Spent_ED["COMPARE_IND_CODE"], errors='coerce')
@@ -69,7 +77,8 @@ def generate_data_for_year(year):
                 reporting_entity_type_code = 'HPEER_H2'
             elif reporting_entity_code == '5':
                 reporting_entity_type_code = 'HPEER_H3'
-            else:
+            elif reporting_entity_code == '1':
+                reporting_entity_code = '80235'
                 reporting_entity_type_code = 'ORG'
             
             reporting_period_code = period_mapping[row['reporting_period_code']]
@@ -91,7 +100,6 @@ def generate_data_for_year(year):
 
     stacked_df = pd.DataFrame(stacked_data, columns=['reporting_period_code', 'reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
 
-    # Assign reporting_entity_type_code
     stacked_df['reporting_entity_type_code'] = reporting_entity_type_code
     stacked_df['indicator_code'] = '810'
     stacked_df['metric_code'] = 'PCTL_90'
