@@ -2,9 +2,6 @@ import pandas as pd
 import numpy as np
 from scipy.stats import expon
 
-# Create file for shallow slice pilot
-# Indicator: Total Time Spent in Emergency Department for Admitted Patients (90% Spent Less, in Hours)
-
 # Define mapping for IMPROVEMENT_IND_CODE values
 improvement_mapping = {
     '1': 'Improving',
@@ -41,7 +38,6 @@ TT_Spent_ED['improvement_descriptor_code'] = TT_Spent_ED['IMPROVEMENT_IND_CODE']
 TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
 TT_Spent_ED['missing_reason_code'] = TT_Spent_ED['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
 
-
 period_mapping = {year: f'FY20{year}' for year in range(18, 23)}
 
 def generate_data_for_year(year):
@@ -63,10 +59,23 @@ def generate_data_for_year(year):
     for index, row in TT_Spent_ED_File.iterrows():
         if row.get('missing_reason_code') != '999':
             reporting_entity_code = row['reporting_entity_code']
+            
+            # Update reporting_entity_type_code based on reporting_entity_code
+            if reporting_entity_code == '2':
+                reporting_entity_type_code = 'HPEER_T'
+            elif reporting_entity_code == '3':
+                reporting_entity_type_code = 'HPEER_H1'
+            elif reporting_entity_code == '4':
+                reporting_entity_type_code = 'HPEER_H2'
+            elif reporting_entity_code == '5':
+                reporting_entity_type_code = 'HPEER_H3'
+            else:
+                reporting_entity_type_code = 'ORG'
+            
             reporting_period_code = period_mapping[row['reporting_period_code']]
             metric_result = row['metric_result']
 
-            # For Row 1
+            # For Row 1, 2, 3
             if row['missing_reason_code'] not in ['S03', 'S10', 'M02', 'S08']:
                 stacked_data.append([reporting_period_code, reporting_entity_code, metric_result, '', '', row['missing_reason_code'], metric_result])
             else:
@@ -82,7 +91,8 @@ def generate_data_for_year(year):
 
     stacked_df = pd.DataFrame(stacked_data, columns=['reporting_period_code', 'reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
 
-    stacked_df['reporting_entity_type_code'] = 'ORG'
+    # Assign reporting_entity_type_code
+    stacked_df['reporting_entity_type_code'] = reporting_entity_type_code
     stacked_df['indicator_code'] = '810'
     stacked_df['metric_code'] = 'PCTL_90'
     stacked_df['breakdown_type_code_l1'] = 'N/A'
@@ -98,7 +108,7 @@ def generate_data_for_year(year):
     return stacked_df
 
 # Generate data for each year from FY2018 to FY2022
-# all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
+all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
 
 # Write to CSV
 all_years_data.to_csv('fiscal37_810_agg.csv', index=False)
