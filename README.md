@@ -28,39 +28,37 @@ suppression_mapping = {
     '901': 'S08'
 }
 
-
 # Convert COMPARE_IND_CODE column to numeric type
-TT_Spent_ED["COMPARE_IND_CODE"] = pd.to_numeric(TT_Spent_ED["COMPARE_IND_CODE"], errors='coerce')
-TT_Spent_ED['compare_descriptor_code'] = TT_Spent_ED['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
+EDWT_Indicators["COMPARE_IND_CODE"] = pd.to_numeric(EDWT_Indicators["COMPARE_IND_CODE"], errors='coerce')
+EDWT_Indicators['compare_descriptor_code'] = EDWT_Indicators['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
 
 # Convert IMPROVEMENT_IND_CODE column to numeric type
-TT_Spent_ED["IMPROVEMENT_IND_CODE"] = pd.to_numeric(TT_Spent_ED["IMPROVEMENT_IND_CODE"], errors='coerce')
-TT_Spent_ED['improvement_descriptor_code'] = TT_Spent_ED['IMPROVEMENT_IND_CODE'].astype(str).replace(improvement_mapping)
+EDWT_Indicators["IMPROVEMENT_IND_CODE"] = pd.to_numeric(EDWT_Indicators["IMPROVEMENT_IND_CODE"], errors='coerce')
+EDWT_Indicators['improvement_descriptor_code'] = EDWT_Indicators['IMPROVEMENT_IND_CODE'].astype(str).replace(improvement_mapping)
 
 # Convert INDICATOR_SUPPRESSION_CODE column to numeric type
-TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
-TT_Spent_ED['missing_reason_code'] = TT_Spent_ED['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
-
+EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(EDWT_Indicators["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
+EDWT_Indicators['missing_reason_code'] = EDWT_Indicators['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
 
 period_mapping = {year: f'FY20{year}' for year in range(18, 23)}
 
 def generate_data_for_year(year):
-    TT_Spent_ED_File = TT_Spent_ED[["FISCAL_YEAR_WH_ID", "ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
-    TT_Spent_ED_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", 
+    EDWT_Indicators_File = EDWT_Indicators[["FISCAL_YEAR_WH_ID", "ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
+    EDWT_Indicators_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", 
                                      "FISCAL_YEAR_WH_ID": "reporting_period_code"}, inplace=True)
     
     np.random.seed(0)
     scale_param = 30
-    size = len(TT_Spent_ED_File)
+    size = len(EDWT_Indicators_File)
 
     random_data = expon.ppf(np.random.rand(size), scale=scale_param)
     random_data_shifted = random_data + 1
 
-    TT_Spent_ED_File['metric_result'] = random_data_shifted.round(1)
-    TT_Spent_ED_File.dropna(subset=['metric_result'], inplace=True)
+    EDWT_Indicators_File['metric_result'] = random_data_shifted.round(1)
+    EDWT_Indicators_File.dropna(subset=['metric_result'], inplace=True)
 
     stacked_data = []
-    for index, row in TT_Spent_ED_File.iterrows():
+    for index, row in EDWT_Indicators_File.iterrows():
         if row.get('missing_reason_code') != '999':
             reporting_entity_code = row['reporting_entity_code']
             reporting_period_code = period_mapping[row['reporting_period_code']]
@@ -101,4 +99,4 @@ def generate_data_for_year(year):
 # all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
 
 # Write to CSV
-all_years_data.to_csv('fiscal37_810_agg.csv', index=False)
+# all_years_data.to_csv('fiscal37_810_agg.csv', index=False)
