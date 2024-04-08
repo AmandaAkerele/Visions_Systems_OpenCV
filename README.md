@@ -1,58 +1,124 @@
----------------------------------------------------------------------------
-PySparkTypeError                          Traceback (most recent call last)
-/tmp/ipykernel_1015/1958876069.py in <cell line: 63>()
-     61     return df
-     62 
----> 63 los_regg = calculate_percentile(ed_record_admit_with_ucc_22, 'LOS_HOURS', [0.9], confidence_interval=True)
-     64 los_regg.show()
+from pyspark.sql import functions as F
+from pyspark.sql.window import Window
 
-/tmp/ipykernel_1015/1958876069.py in calculate_percentile(df, metric, ppt, confidence_interval, bycols)
-     57             bycols = ['__']
-     58 
----> 59         df = percentile_ci(df, metric, ppt[i], confidence_interval)
-     60 
-     61     return df
+def percentile_ci(df, metric, percentile, confidence_interval=False):
+    windowSpec = Window.orderBy(metric)
+    
+    df = df.filter(F.col(metric).isNotNull())
+    df = df.withColumn("rank", F.percent_rank().over(windowSpec))
+    
+    count = df.count()
+    
+    if count > 0:
+        kf = (count - 1) * percentile
+        pt_low_n = F.floor(F.lit(kf)) + 1 - 1
+        pt_low_n = F.when(pt_low_n < 0, 0).otherwise(pt_low_n)
+        pt_upp_n = F.floor(F.lit(kf)) + 2 - 1
+        pt_upp_n = F.when(pt_upp_n > count - 1, count - 1).otherwise(pt_upp_n)
+        
+        d = kf - F.floor(F.lit(kf))
+        
+        point_est = (F.when(F.isnull(df.select(metric).collect()[pt_upp_n][metric]), 
+                            df.select(metric).collect()[pt_low_n][metric] - 
+                            df.select(metric).collect()[pt_low_n][metric] * d)
+                     .otherwise(df.select(metric).collect()[pt_low_n][metric] + 
+                                d * (df.select(metric).collect()[pt_upp_n][metric] - 
+                                     df.select(metric).collect()[pt_low_n][metric])))
+        
+        point_est = (F.round(point_est * 10000) / 10000).alias(f'point_estimate_{percentile}')
+        
+        # Altman CI
+        ci_low_n = F.round(count * percentile - 1.96 * (count * percentile * (1 - percentile)) ** 0.5) - 1
+        ci_low_n = F.when(ci_low_n < 0, 0).otherwise(ci_low_n)
+        ci_upp_n = F.round(1 + count * percentile + 1.96 * (count * percentile * (1 - percentile)) ** 0.5) - 1
+        ci_upp_n = F.when(ci_upp_n > count - 1, count - 1).otherwise(ci_upp_n)
+        
+        ci_low = F.when((percentile == 1) | (percentile == 0), None).otherwise(df.select(metric).collect()[ci_low_n][metric])
+        ci_upp = F.when((percentile == 1) | (percentile == 0), None).otherwise(df.select(metric).collect()[ci_upp_n][metric])
+        
+    else:
+        point_est = None
+        ci_low = None
+        ci_upp = None
 
-/tmp/ipykernel_1015/1958876069.py in percentile_ci(df, metric, percentile, confidence_interval)
-     22         pt_upp_value = df.select(metric).orderBy(metric).limit(1).collect()[0][0]
-     23 
----> 24         point_est = F.when(F.isnull(pt_upp_value), 
-     25                            pt_low_value - pt_low_value * d)\
-     26                       .otherwise(pt_low_value + d * (pt_upp_value - pt_low_value))
+    if confidence_interval:
+        return point_est, ci_low, ci_upp
+    else:
+        return point_est
 
-/usr/local/lib/python3.10/dist-packages/pyspark/sql/utils.py in wrapped(*args, **kwargs)
-    172             return getattr(functions, f.__name__)(*args, **kwargs)
-    173         else:
---> 174             return f(*args, **kwargs)
-    175 
-    176     return cast(FuncT, wrapped)
+def calculate_percentile(df, metric, ppt, confidence_interval=False, bycols=[]):
+    strg = [str(round(100 * x)) if 100 * x == round(100 * x) else str(100 * x).replace('.', '_') for x in ppt]
+    for i in range(len(ppt)):
+        if not bycols:
+            df = df.withColumn('__', F.lit(1))
+            bycols = ['__']
+        
+        df = percentile_ci(df, metric, ppt[i], confidence_interval)
+        
+    return df
 
-/usr/local/lib/python3.10/dist-packages/pyspark/sql/functions.py in isnull(col)
-   4354     +----+----+-----+-----+
-   4355     """
--> 4356     return _invoke_function_over_columns("isnull", col)
-   4357 
-   4358 
+# Assuming you've converted your pandas DataFrame to a PySpark DataFrame named ed_record_admit_with_ucc_22_spark
+ed_record_admit_with_ucc_22_spark = spark.createDataFrame(ed_record_admit_with_ucc_22)
 
-/usr/local/lib/python3.10/dist-packages/pyspark/sql/functions.py in _invoke_function_over_columns(name, *cols)
-    103     and wraps the result with :class:`~pyspark.sql.Column`.
-    104     """
---> 105     return _invoke_function(name, *(_to_java_column(col) for col in cols))
-    106 
-    107 
+los_regg = calculate_percentile(ed_record_admit_with_ucc_22_spark, 'LOS_HOURS', [0.9], confidence_interval=True)
+los_regg.show()
 
-/usr/local/lib/python3.10/dist-packages/pyspark/sql/functions.py in <genexpr>(.0)
-    103     and wraps the result with :class:`~pyspark.sql.Column`.
-    104     """
---> 105     return _invoke_function(name, *(_to_java_column(col) for col in cols))
-    106 
-    107 
 
-/usr/local/lib/python3.10/dist-packages/pyspark/sql/column.py in _to_java_column(col)
-     63         jcol = _create_column_from_name(col)
-     64     else:
----> 65         raise PySparkTypeError(
-     66             error_class="NOT_COLUMN_OR_STR",
-     67             message_parameters={"arg_name": "col", "arg_type": type(col).__name__},
 
-PySparkTypeError: [NOT_COLUMN_OR_STR] Argument `col` should be a Column or str, got float.
+or 
+
+from pyspark.sql import functions as F
+from pyspark.sql.window import Window
+
+def calculate_percentile(df, metric, ppt, confidence_interval=False, bycols=[]):
+    # Define the window specification
+    windowSpec = Window.orderBy(metric)
+
+    # Calculate the percentiles
+    for p in ppt:
+        # Compute the rank
+        rank_col = F.percent_rank().over(windowSpec)
+        
+        # Calculate the lower and upper indices for the percentile
+        pt_low_n = F.floor((df.count() - 1) * p)
+        pt_upp_n = F.floor((df.count() - 1) * p) + 1
+
+        # Extract the corresponding values for the lower and upper indices
+        pt_low_val = F.expr(f'percentile_approx({metric}, {p})').over(windowSpec.rowsBetween(Window.unboundedPreceding, Window.currentRow))
+        pt_upp_val = F.expr(f'percentile_approx({metric}, {p})').over(windowSpec.rowsBetween(Window.unboundedPreceding, Window.currentRow))
+
+        # Compute the point estimate
+        point_est = F.when(F.isnull(pt_upp_val), pt_low_val - pt_low_val * (pt_low_n - F.floor(pt_low_n))) \
+                        .otherwise(pt_low_val + (pt_upp_val - pt_low_val) * (pt_low_n - F.floor(pt_low_n)))
+
+        # Compute the confidence intervals if requested
+        if confidence_interval:
+            # Compute the Altman confidence interval
+            ci_low_n = F.round(df.count() * p - 1.96 * F.sqrt(df.count() * p * (1 - p))) - 1
+            ci_upp_n = F.round(1 + df.count() * p + 1.96 * F.sqrt(df.count() * p * (1 - p))) - 1
+            
+            # Extract the corresponding values for the confidence intervals
+            ci_low_val = F.expr(f'percentile_approx({metric}, {p})').over(windowSpec.rowsBetween(Window.unboundedPreceding, Window.currentRow))
+            ci_upp_val = F.expr(f'percentile_approx({metric}, {p})').over(windowSpec.rowsBetween(Window.unboundedPreceding, Window.currentRow))
+
+            # Compute the confidence intervals
+            ci_low = F.when((p == 1) | (p == 0), None).otherwise(ci_low_val)
+            ci_upp = F.when((p == 1) | (p == 0), None).otherwise(ci_upp_val)
+            
+            # Add the columns to the DataFrame
+            df = df.withColumn(f'point_estimate_{p}', F.round(point_est * 10000) / 10000)
+            df = df.withColumn(f'percentile_{p}_ci_lower', F.when(F.isnull(ci_low), None).otherwise(F.round(ci_low * 10000) / 10000))
+            df = df.withColumn(f'percentile_{p}_ci_upper', F.when(F.isnull(ci_upp), None).otherwise(F.round(ci_upp * 10000) / 10000))
+        else:
+            # Add the column to the DataFrame
+            df = df.withColumn(f'point_estimate_{p}', F.round(point_est * 10000) / 10000)
+
+    return df
+
+# Assuming you've converted your pandas DataFrame to a PySpark DataFrame named ed_record_admit_with_ucc_22_spark
+ed_record_admit_with_ucc_22_spark = spark.createDataFrame(ed_record_admit_with_ucc_22)
+
+# Call the calculate_percentile function
+los_regg = calculate_percentile(ed_record_admit_with_ucc_22_spark, 'LOS_HOURS', [0.9], confidence_interval=True)
+los_regg.show()
+
