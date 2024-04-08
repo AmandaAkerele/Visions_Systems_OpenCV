@@ -1,4 +1,13 @@
-Hi Team, 
+Subject: Request for Form T2200 for Home Office Expenses
 
-I am sending this email to kindly request for the Form T2200. I do apologize that this is coming after the March 15th. As I am new to filling tax I didn’t realize that this was a requirement. 
-I Would appreciate if my request is granted to proceed with claiming the home office expenses.
+Dear Team,
+
+I hope this email finds you well. I am writing to request the Form T2200 for the purpose of claiming home office expenses. I sincerely apologize for the delay in sending this request after the March 15th deadline. Being new to tax filing, I was unaware of this requirement earlier.
+
+I would greatly appreciate it if my request could be accommodated to enable me to proceed with claiming the home office expenses.
+
+Thank you for your understanding and assistance.
+
+Warm regards, 
+
+[Your Name]
