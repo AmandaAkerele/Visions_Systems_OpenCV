@@ -1,4 +1,5 @@
 import pyspark.sql.functions as F
+from pyspark.sql.window import Window
 
 # Verify column names
 print(ed_record_admit_with_ucc_22.columns)
@@ -22,9 +23,9 @@ def calculate_percentile(df, metric, ppt, confidence_interval=False, bycols=''):
         df = df.withColumn("rank", F.percent_rank().over(windowSpec))
         df = df.withColumn("point_estimate", F.first(metric).over(windowSpec).alias(f'point_estimate_{strg[i]}'))
         
-        # Continue with your percentile_ci calculation...
-        # ...
-
+        # Here, integrate your percentile_ci function or computation logic
+        # df = percentile_ci(df, metric, ppt[i], confidence_interval)
+        
     if bycols == '__':
         df = df.drop('__')
 
