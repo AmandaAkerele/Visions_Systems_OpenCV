@@ -1,67 +1,78 @@
-import pyspark.pandas as ps
+import pyspark.sql.functions as F
+from pyspark.sql import Window
 
-# Read in Spark DataFrame
-spark_df = ps.DataFrame(df)
+# Convert pandas DataFrame to PySpark DataFrame
+spark_df = df.pandas_api()
 
-# Define the percentile_ci function using PySpark DataFrame operations
 def percentile_ci(indata, percentile, confidence_interval=False):
-    indata = indata.dropna().sort_values(ignore_index=True)
-    ct = indata.shape[0]
+    indata = indata.na.drop().orderBy(indata).withColumn("index", F.monotonically_increasing_id())
+    ct = indata.count()
+    
     if ct > 0:
         kf = (ct - 1) * percentile
-        pt_low_n = (kf.floor() + 1) - 1
-        pt_low_n = pt_low_n.where(pt_low_n >= 0, 0)
-        pt_upp_n = (kf.floor() + 2) - 1
-        pt_upp_n = pt_upp_n.where(pt_upp_n <= ct - 1, ct - 1)
-        pt_upp_n = pt_upp_n.where(pt_upp_n >= 0, 0)
-        d = kf - kf.floor()
-        point_est = (indata[pt_low_n] - indata[pt_low_n] * d).where(indata[pt_upp_n].isna(), 
-                                                                     indata[pt_low_n] + d * (indata[pt_upp_n] - indata[pt_low_n]))
-        point_est = (point_est * 10000).round() / 10000
-
-        # Altman CI
-        ci_low_n = (ct * percentile - 1.96 * (ct * percentile * (1 - percentile)) ** 0.5) - 1
-        ci_low_n = ci_low_n.where(ci_low_n >= 0, 0)
-        ci_upp_n = (1 + ct * percentile + 1.96 * (ct * percentile * (1 - percentile)) ** 0.5) - 1
-        ci_upp_n = ci_upp_n.where(ci_upp_n <= ct - 1, ct - 1)
+        pt_low_n = F.floor(kf) + 1 - 1
+        pt_low_n = F.when(pt_low_n < 0, 0).otherwise(pt_low_n)
         
-        ci_low = ci_low_n.where((percentile == 1) | (percentile == 0), indata[ci_low_n])
-        ci_upp = ci_upp_n.where((percentile == 1) | (percentile == 0), indata[ci_upp_n])
-    else:
-        point_est = None
-        ci_low = None
-        ci_upp = None
+        pt_upp_n = F.floor(kf) + 2 - 1
+        pt_upp_n = F.when(pt_upp_n > ct - 1, ct - 1).otherwise(pt_upp_n)
+        d = kf - F.floor(kf)
+        
+        point_est = F.when(F.isnull(indata.collect()[pt_upp_n]["value"]), 
+                           indata.collect()[pt_low_n]["value"] - indata.collect()[pt_low_n]["value"] * d) \
+                      .otherwise(indata.collect()[pt_low_n]["value"] + d * (indata.collect()[pt_upp_n]["value"] - indata.collect()[pt_low_n]["value"]))
+        
+        point_est = F.round(point_est * 10000) / 10000
 
+        ci_low_n = F.round(ct * percentile - 1.96 * F.sqrt(ct * percentile * (1 - percentile))) - 1
+        ci_low_n = F.when(ci_low_n < 0, 0).otherwise(ci_low_n)
+        
+        ci_upp_n = F.round(1 + ct * percentile + 1.96 * F.sqrt(ct * percentile * (1 - percentile))) - 1
+        ci_upp_n = F.when(ci_upp_n > ct - 1, ct - 1).otherwise(ci_upp_n)
+        
+        ci_low = F.when((percentile == 1) | (percentile == 0), F.nan()).otherwise(indata.collect()[ci_low_n]["value"])
+        ci_upp = F.when((percentile == 1) | (percentile == 0), F.nan()).otherwise(indata.collect()[ci_upp_n]["value"])
+    else:
+        point_est = F.nan()
+        ci_low = F.nan()
+        ci_upp = F.nan()
+    
     if confidence_interval:
-        return point_est, ci_low, ci_upp
+        return point_est, ci_low, ci_upp 
     else:
         return point_est
 
-# Define the calculate_percentile function using PySpark DataFrame operations
-def calculate_percentile(df, metric, ppt, confidence_interval=False, bycols=''):
-    strg = [str(round(100 * x)) if 100 * x == round(100 * x) else str(100 * x).replace('.', '_') for x in ppt]
+def calculate_percentile(df, metric, ppt, confidence_interval=False, bycols=None):
+    strg = [str(round(100*x)) if 100*x == round(100*x) else str(100*x).replace('.', '_') for x in ppt]
+    
+    if bycols is None:
+        bycols = ['__']
+        df = df.withColumn("__", F.lit(1))
+    
+    final = None
     for i in range(len(ppt)):
-        if bycols == '':
-            df['__'] = 1
-            bycols = '__'
-        y = df.groupby(bycols).apply(lambda x: percentile_ci(x[metric], ppt[i], confidence_interval))
-        out = y.tolist()
-        index = y.index.tolist()
-        out_df = ps.DataFrame(out, index=index).reset_index()
-        out_df.columns = [str(col) for col in out_df.columns]
-        out_df = out_df.rename(columns={'0': 'percentile_' + strg[i],
-                                        '1': 'percentile_' + strg[i] + '_ci_lower',
-                                        '2': 'percentile_' + strg[i] + '_ci_upper'})
-        if i == 0:
-            final = out_df
+        y = df.groupBy(*bycols).agg(F.expr(f"percentile_ci({metric}, {ppt[i]}, {confidence_interval})").alias("result"))
+        y = y.select(*bycols, "result.*")
+        y = y.select(*y.columns, F.col("result.*"))
+        
+        out = y.select(*bycols, 
+                       F.col(f"point_est").alias(f"percentile_{strg[i]}"), 
+                       F.col(f"ci_low").alias(f"percentile_{strg[i]}_ci_lower"), 
+                       F.col(f"ci_upp").alias(f"percentile_{strg[i]}_ci_upper"))
+        
+        if final is None:
+            final = out
         else:
-            final = final.merge(out_df, on=bycols)
-
-    if bycols == '__':
-        final.drop(columns=['__'], inplace=True)
-
+            final = final.join(out, on=bycols, how='inner')
+    
+    if '__' in bycols:
+        final = final.drop("__")
+    
     return final
 
-# Call the calculate_percentile function
-# los_reg = calculate_percentile(spark_df, 'los_hours', [0.9], confidence_interval=True)
-# los_reg.show()
+# Below shows some examples of how the function may be called
+# calculate_percentile(spark_df, 'los_hours', [0, 0.5, 0.9, 0.999, 1], confidence_interval=True)
+# los_reg = calculate_percentile(spark_df, 'los_hours', ppt=[0.9], bycols=['fiscal_year', 'facility_province', 'region_id', 'region_name'])
+# calculate_percentile(los_reg, 'percentile_90', ppt=[0.2, 0.8], bycols=['fiscal_year'])
+# calculate_percentile(spark_df, 'wait_time_to_pia_hours', ppt=[0.9], bycols=['fiscal_year', 'facility_province', 'region_id', 'region_name'])
+# los_reg_20_80 = calculate_percentile(spark_df, 'percentile_90', [0.2, 0.8])
+# tpia_org_peer_20_80 = calculate_percentile(spark_df, 'percentile_90', ppt=[0.2, 0.8], bycols=['fiscal_year', 'peer_group_id'])
