@@ -1,61 +1,21 @@
-from pyspark.sql import functions as F
-from pyspark.sql.window import Window
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+/tmp/ipykernel_1015/1753866750.py in <cell line: 59>()
+     57 
+     58 
+---> 59 los_regg = calculate_percentile(ed_record_admit_with_ucc_22, 'LOS_HOURS', [0.9], confidence_interval=True)
+     60 los_regg.show()
 
-def percentile_ci(df, metric, percentile, confidence_interval=False):
-    windowSpec = Window.orderBy(metric)
-    
-    df = df.filter(F.col(metric).isNotNull())
-    df = df.withColumn("rank", F.percent_rank().over(windowSpec))
-    
-    count = df.count()
-    
-    if count > 0:
-        kf = (count - 1) * percentile
-        pt_low_n = F.floor(F.lit(kf)) + 1 - 1
-        pt_low_n = F.when(pt_low_n < 0, 0).otherwise(pt_low_n)
-        pt_upp_n = F.floor(F.lit(kf)) + 2 - 1
-        pt_upp_n = F.when(pt_upp_n > count - 1, count - 1).otherwise(pt_upp_n)
-        
-        d = kf - F.floor(F.lit(kf))
-        
-        point_est = F.when(F.isnull(df.select(metric).collect()[pt_upp_n]), 
-                           df.select(metric).collect()[pt_low_n] - df.select(metric).collect()[pt_low_n] * d)\
-                      .otherwise(df.select(metric).collect()[pt_low_n] + d * (df.select(metric).collect()[pt_upp_n] - df.select(metric).collect()[pt_low_n]))
-        
-        point_est = (F.round(point_est * 10000) / 10000).alias(f'point_estimate_{percentile}')
-        
-        # Altman CI
-        ci_low_n = F.round(count * percentile - 1.96 * (count * percentile * (1 - percentile)) ** 0.5) - 1
-        ci_low_n = F.when(ci_low_n < 0, 0).otherwise(ci_low_n)
-        ci_upp_n = F.round(1 + count * percentile + 1.96 * (count * percentile * (1 - percentile)) ** 0.5) - 1
-        ci_upp_n = F.when(ci_upp_n > count - 1, count - 1).otherwise(ci_upp_n)
-        
-        ci_low = F.when((percentile == 1) | (percentile == 0), None).otherwise(df.select(metric).collect()[ci_low_n])
-        ci_upp = F.when((percentile == 1) | (percentile == 0), None).otherwise(df.select(metric).collect()[ci_upp_n])
-        
-    else:
-        point_est = None
-        ci_low = None
-        ci_upp = None
+/tmp/ipykernel_1015/1753866750.py in calculate_percentile(df, metric, ppt, confidence_interval, bycols)
+     51             bycols = ['__']
+     52 
+---> 53         df = percentile_ci(df, metric, ppt[i], confidence_interval)
+     54 
+     55     return df
 
-    if confidence_interval:
-        return point_est, ci_low, ci_upp
-    else:
-        return point_est
-
-def calculate_percentile(df, metric, ppt, confidence_interval=False, bycols=[]):
-    strg = [str(round(100 * x)) if 100 * x == round(100 * x) else str(100 * x).replace('.', '_') for x in ppt]
-    for i in range(len(ppt)):
-        if not bycols:
-            df = df.withColumn('__', F.lit(1))
-            bycols = ['__']
-        
-        df = percentile_ci(df, metric, ppt[i], confidence_interval)
-        
-    return df
-
-# Assuming you've converted your pandas DataFrame to a PySpark DataFrame named ed_record_admit_with_ucc_22_spark
-ed_record_admit_with_ucc_22_spark = spark.createDataFrame(ed_record_admit_with_ucc_22)
-
-los_regg = calculate_percentile(ed_record_admit_with_ucc_22_spark, 'LOS_HOURS', [0.9], confidence_interval=True)
-los_regg.show()
+/tmp/ipykernel_1015/1753866750.py in percentile_ci(df, metric, percentile, confidence_interval)
+     19         d = kf - F.floor(F.lit(kf))
+     20 
+---> 21         point_est = F.when(F.isnull(df.select(metric).collect()[pt_upp_n]), 
+     22                            df.select(metric).collect()[pt_low_n] - df.select(metric).collect()[pt_low_n] * d)\
+     23                       .otherwise(df.select(metric).collect()[pt_low_n] + d * (df.select(metric).collect()[pt_upp_n] - df.select(metric).collect()[pt_low_n]))
