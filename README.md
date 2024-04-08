@@ -1,7 +1,5 @@
 import pyspark.pandas as ps
-
-# Read in Spark DataFrame
-# spark_df = ps.DataFrame(ed_record_admit_with_ucc_22)
+from pyspark.sql import functions as F
 
 # Define the percentile_ci function using PySpark DataFrame operations
 def percentile_ci(indata, percentile, confidence_interval=False):
@@ -42,7 +40,7 @@ def calculate_percentile(df, metric, ppt, confidence_interval=False, bycols=''):
     strg = [str(round(100 * x)) if 100 * x == round(100 * x) else str(100 * x).replace('.', '_') for x in ppt]
     for i in range(len(ppt)):
         if bycols == '':
-            df['__'] = 1
+            df = df.withColumn('__', F.lit(1))  # Add a constant column '__' with value 1
             bycols = '__'
         y = df.groupby(bycols).apply(lambda x: percentile_ci(x[metric], ppt[i], confidence_interval))
         out = y.tolist()
@@ -65,23 +63,3 @@ def calculate_percentile(df, metric, ppt, confidence_interval=False, bycols=''):
 # Call the calculate_percentile function
 los_regg = calculate_percentile(ed_record_admit_with_ucc_22, 'LOS_HOURS', [0.9], confidence_interval=True)
 los_regg.show()
-
-
-solve the error below for the code above
-
----------------------------------------------------------------------------
-TypeError                                 Traceback (most recent call last)
-/tmp/ipykernel_1015/1492788117.py in <cell line: 66>()
-     64 
-     65 # Call the calculate_percentile function
----> 66 los_regg = calculate_percentile(ed_record_admit_with_ucc_22, 'LOS_HOURS', [0.9], confidence_interval=True)
-     67 los_regg.show()
-
-/tmp/ipykernel_1015/1492788117.py in calculate_percentile(df, metric, ppt, confidence_interval, bycols)
-     43     for i in range(len(ppt)):
-     44         if bycols == '':
----> 45             df['__'] = 1
-     46             bycols = '__'
-     47         y = df.groupby(bycols).apply(lambda x: percentile_ci(x[metric], ppt[i], confidence_interval))
-
-TypeError: 'DataFrame' object does not support item assignment
