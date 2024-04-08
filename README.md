@@ -1,15 +1,11 @@
-solve this error correctly please 
-
-
-Selection deleted
 import pyspark.pandas as ps
 from pyspark.sql import functions as F
 from pyspark.sql.functions import pandas_udf
-from pyspark.sql.types import DoubleType, StructType, StructField
+from pyspark.sql.types import DoubleType
 
 # Define the percentile_ci function using pandas_udf
-@pandas_udf(returnType=DoubleType())
-def percentile_ci(s: pd.Series, percentile: float, confidence_interval: bool) -> pd.Series:
+@pandas_udf(DoubleType())
+def percentile_ci(s, percentile, confidence_interval):
     s = s.dropna().sort_values(ignore_index=True)
     ct = s.shape[0]
     if ct > 0:
@@ -72,30 +68,5 @@ def calculate_percentile(df, metric, ppt, confidence_interval=False, bycols=''):
 ed_record_admit_with_ucc_22_spark = ps.DataFrame(ed_record_admit_with_ucc_22)
 
 # Call the calculate_percentile function
-los_regg = calculate_percentile(ed_record_admit_with_ucc_22, 'LOS_HOURS', [0.9], confidence_interval=True)
+los_regg = calculate_percentile(ed_record_admit_with_ucc_22_spark, 'LOS_HOURS', [0.9], confidence_interval=True)
 los_regg.show()
-
----------------------------------------------------------------------------
-PySparkNotImplementedError                Traceback (most recent call last)
-/tmp/ipykernel_1015/3270558175.py in <cell line: 7>()
-      6 # Define the percentile_ci function using pandas_udf
-      7 @pandas_udf(returnType=DoubleType())
-----> 8 def percentile_ci(s: pd.Series, percentile: float, confidence_interval: bool) -> pd.Series:
-      9     s = s.dropna().sort_values(ignore_index=True)
-     10     ct = s.shape[0]
-
-/usr/local/lib/python3.10/dist-packages/pyspark/sql/pandas/functions.py in _create_pandas_udf(f, returnType, evalType)
-    431         except NameError:
-    432             type_hints = {}
---> 433         evalType = infer_eval_type(signature(f), type_hints)
-    434         assert evalType is not None
-    435 
-
-/usr/local/lib/python3.10/dist-packages/pyspark/sql/pandas/typehints.py in infer_eval_type(sig, type_hints)
-    134         return PandasUDFType.GROUPED_AGG
-    135     else:
---> 136         raise PySparkNotImplementedError(
-    137             error_class="UNSUPPORTED_SIGNATURE",
-    138             message_parameters={"signature": str(sig)},
-
-PySparkNotImplementedError: [UNSUPPORTED_SIGNATURE] Unsupported signature: (s: pandas.core.series.Series, percentile: float, confidence_interval: bool) -> pandas.core.series.Series.
