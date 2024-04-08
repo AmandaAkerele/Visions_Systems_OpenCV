@@ -1,4 +1,3 @@
-                                                                               
 ---------------------------------------------------------------------------
 PySparkTypeError                          Traceback (most recent call last)
 /tmp/ipykernel_1015/1610451872.py in <cell line: 62>()
