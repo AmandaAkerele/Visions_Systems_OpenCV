@@ -1,6 +1,6 @@
-Agree with Amanda's self-evaluation.
-Amanda consistenty demostrated commitment to quality and professionalism and met her assigned job objectives.
-In the short period of time since Amanda joined our team, she was able to demonstrate that she is a self-motiviated individual who strives to complete her tasks on time. In no time, Amanda was able to understand the SAS code used for production of the ED Wait Time indicators and started with its conversion to Python. During this process, she collaborated effectively with the other analyst working on the same project, and they were able to deliver the completed project by the negotiated timelines.
-As soon as she finished this project, Amanda shifted her focus on updating the code using PySpark and the GUD files available in parquet format, thus positioning the team ahead of schedule for the next deliverable focusing on the indicator production automation.    
-Amanda has shown great willingness to help build success around group efforts. Immediately after she joined the internal study group, she started helping the other members with the problems they encountered during the code conversion of their projects. She was even praised by her teammates that her responses are more precise than those received from our MIST mentor. 
-Thank you, Amanda for all of your contributions during the last couple of months
+Good Morning ,
+
+Thank you for the positive feedback in my recent PMP evaluation. I appreciate the recognition of my commitment to quality, professionalism, and meeting job objectives. It's been rewarding to contribute to projects like the SAS code conversion to Python and updating with PySpark and GUD files, all while collaborating effectively with the team. I'm also glad to assist my colleagues through the internal study group. I look forward to continuing to contribute to our team's success and achieving our future goals together.
+
+Best regards,
+Amanda Akerele
