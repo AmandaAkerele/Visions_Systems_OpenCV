@@ -28,39 +28,48 @@ suppression_mapping = {
     '901': 'S08'
 }
 
+# Create dummy data
+data = {
+    'FISCAL_YEAR_WH_ID': np.random.choice([18, 19, 20, 21, 22], 100),
+    'ORGANIZATION_ID': np.random.choice([1, 2, 3, 4, 5], 100),
+    'IMPROVEMENT_IND_CODE': np.random.choice(['1', '2', '3'], 100),
+    'COMPARE_IND_CODE': np.random.choice(['1', '2', '3'], 100),
+    'INDICATOR_SUPPRESSION_CODE': np.random.choice(['7', '2', '3', '6', '901'], 100)
+}
+
+Dummy_data = pd.DataFrame(data)
 
 # Convert COMPARE_IND_CODE column to numeric type
-TT_Spent_ED["COMPARE_IND_CODE"] = pd.to_numeric(TT_Spent_ED["COMPARE_IND_CODE"], errors='coerce')
-TT_Spent_ED['compare_descriptor_code'] = TT_Spent_ED['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
+Dummy_data["COMPARE_IND_CODE"] = pd.to_numeric(Dummy_data["COMPARE_IND_CODE"], errors='coerce')
+Dummy_data['compare_descriptor_code'] = Dummy_data['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
 
 # Convert IMPROVEMENT_IND_CODE column to numeric type
-TT_Spent_ED["IMPROVEMENT_IND_CODE"] = pd.to_numeric(TT_Spent_ED["IMPROVEMENT_IND_CODE"], errors='coerce')
-TT_Spent_ED['improvement_descriptor_code'] = TT_Spent_ED['IMPROVEMENT_IND_CODE'].astype(str).replace(improvement_mapping)
+Dummy_data["IMPROVEMENT_IND_CODE"] = pd.to_numeric(Dummy_data["IMPROVEMENT_IND_CODE"], errors='coerce')
+Dummy_data['improvement_descriptor_code'] = Dummy_data['IMPROVEMENT_IND_CODE'].astype(str).replace(improvement_mapping)
 
 # Convert INDICATOR_SUPPRESSION_CODE column to numeric type
-TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(TT_Spent_ED["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
-TT_Spent_ED['missing_reason_code'] = TT_Spent_ED['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
-
+Dummy_data["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(Dummy_data["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
+Dummy_data['missing_reason_code'] = Dummy_data['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
 
 period_mapping = {year: f'FY20{year}' for year in range(18, 23)}
 
 def generate_data_for_year(year):
-    TT_Spent_ED_File = TT_Spent_ED[["FISCAL_YEAR_WH_ID", "ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
-    TT_Spent_ED_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", 
-                                     "FISCAL_YEAR_WH_ID": "reporting_period_code"}, inplace=True)
+    Dummy_data_File = Dummy_data[["FISCAL_YEAR_WH_ID", "ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
+    Dummy_data_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", 
+                                    "FISCAL_YEAR_WH_ID": "reporting_period_code"}, inplace=True)
     
     np.random.seed(0)
     scale_param = 30
-    size = len(TT_Spent_ED_File)
+    size = len(Dummy_data_File)
 
     random_data = expon.ppf(np.random.rand(size), scale=scale_param)
     random_data_shifted = random_data + 1
 
-    TT_Spent_ED_File['metric_result'] = random_data_shifted.round(1)
-    TT_Spent_ED_File.dropna(subset=['metric_result'], inplace=True)
+    Dummy_data_File['metric_result'] = random_data_shifted.round(1)
+    Dummy_data_File.dropna(subset=['metric_result'], inplace=True)
 
     stacked_data = []
-    for index, row in TT_Spent_ED_File.iterrows():
+    for index, row in Dummy_data_File.iterrows():
         if row.get('INDICATOR_SUPPRESSION_CODE') != '999':
             reporting_entity_code = row['reporting_entity_code']
             reporting_period_code = period_mapping[row['reporting_period_code']]
@@ -101,4 +110,4 @@ def generate_data_for_year(year):
 all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
 
 # Write to CSV
-all_years_data.to_csv('fiscal36_810_agg.csv', index=False)
+all_years_data.to_csv('fiscal40_810_agg.csv', index=False)
