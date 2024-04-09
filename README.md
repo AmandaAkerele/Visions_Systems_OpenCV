@@ -1,116 +1,19 @@
-import pandas as pd
-import numpy as np
-from scipy.stats import expon
+YHS transition project!
+Currently working on the shallow-slice pilot project for the Indicator automation.
 
-# Create file for shallow slice pilot
-# Indicator: Total Time Spent in Emergency Department for Admitted Patients (90% Spent Less, in Hours)
+Shallow slice is a data flow (aka data pipeline) that accepts an input file containing pre-calculated indicator/metrics and stores the data solely for presentation on cihi.ca. 
 
-# Define mapping for IMPROVEMENT_IND_CODE values
-improvement_mapping = {
-    '1': 'Improving',
-    '2': 'NoChange',
-    '3': 'Weaken'
-}
+have the responsibility to develop python code that create the indicator data in the prescribed format which is the shallow slice format. 
+This program code that I have implemented can be used in the future by analyst. All you will have to do it plug your dataframe on the already pre-existing calculated indicator in using the code to generate the output. 
 
-# Define mapping for COMPARE_IND_CODE values
-compare_mapping = {
-    '1': 'Above',
-    '2': 'Same',
-    '3': 'Below'
-}
+We are the Back-End development for the YHS Transition project 
+Will work with indicator owners/analysts for code ingestion for 
+indicators to be published in Sept 2024 using the shallow slice approach.
+For the Inidicators, the code implementation had a lot more rules to adhered to for the Shallow Slice project. And when I speak about rules
+A transformation of how Cihi reports its Public data products
+•	Improve YHS In-Brief & YHS In-Depth visualizations to better meet the target audiences’ needs 
+•	Ensure relevant reporting information is all co-located for easy use/reference 
 
-# Define mapping for INDICATOR_SUPPRESSION_CODE values 
-suppression_mapping = {
-    '7': '',
-    '2': 'S03',
-    '3': 'M02',
-    '6': 'S10',
-    '901': 'S08'
-}
-
-# Create dummy data
-data = {
-    'FISCAL_YEAR_WH_ID': np.random.choice([18, 19, 20, 21, 22], 100),
-    'ORGANIZATION_ID': np.random.choice([1, 2, 3, 4, 5], 100),
-    'IMPROVEMENT_IND_CODE': np.random.choice(['1', '2', '3'], 100),
-    'COMPARE_IND_CODE': np.random.choice(['1', '2', '3'], 100),
-    'INDICATOR_SUPPRESSION_CODE': np.random.choice(['7', '2', '3', '6', '901'], 100)
-}
-
-Dummy_data = pd.DataFrame(data)
-
-# Drop duplicates
-Dummy_data = Dummy_data.drop_duplicates()
-
-# Convert COMPARE_IND_CODE column to numeric type
-Dummy_data["COMPARE_IND_CODE"] = pd.to_numeric(Dummy_data["COMPARE_IND_CODE"], errors='coerce')
-Dummy_data['compare_descriptor_code'] = Dummy_data['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
-
-# Convert IMPROVEMENT_IND_CODE column to numeric type
-Dummy_data["IMPROVEMENT_IND_CODE"] = pd.to_numeric(Dummy_data["IMPROVEMENT_IND_CODE"], errors='coerce')
-Dummy_data['improvement_descriptor_code'] = Dummy_data['IMPROVEMENT_IND_CODE'].astype(str).replace(improvement_mapping)
-
-# Convert INDICATOR_SUPPRESSION_CODE column to numeric type
-Dummy_data["INDICATOR_SUPPRESSION_CODE"] = pd.to_numeric(Dummy_data["INDICATOR_SUPPRESSION_CODE"], errors='coerce')
-Dummy_data['missing_reason_code'] = Dummy_data['INDICATOR_SUPPRESSION_CODE'].astype(str).replace(suppression_mapping)
-
-period_mapping = {year: f'FY20{year}' for year in range(18, 23)}
-
-def generate_data_for_year(year):
-    Dummy_data_File = Dummy_data[["FISCAL_YEAR_WH_ID", "ORGANIZATION_ID", "improvement_descriptor_code", "compare_descriptor_code", "missing_reason_code"]]
-    Dummy_data_File.rename(columns={"ORGANIZATION_ID": "reporting_entity_code", 
-                                    "FISCAL_YEAR_WH_ID": "reporting_period_code"}, inplace=True)
-    
-    np.random.seed(0)
-    scale_param = 30
-    size = len(Dummy_data_File)
-
-    random_data = expon.ppf(np.random.rand(size), scale=scale_param)
-    random_data_shifted = random_data + 1
-
-    Dummy_data_File['metric_result'] = random_data_shifted.round(1)
-    Dummy_data_File.dropna(subset=['metric_result'], inplace=True)
-
-    stacked_data = []
-    for index, row in Dummy_data_File.iterrows():
-        if row.get('INDICATOR_SUPPRESSION_CODE') != '999':
-            reporting_entity_code = row['reporting_entity_code']
-            reporting_period_code = period_mapping[row['reporting_period_code']]
-            metric_result = row['metric_result']
-
-            # For Row 1
-            if row['missing_reason_code'] not in ['S03', 'S10', 'M02', 'S08']:
-                stacked_data.append([reporting_period_code, reporting_entity_code, metric_result, '', '', row['missing_reason_code'], metric_result])
-            else:
-                stacked_data.append([reporting_period_code, reporting_entity_code, metric_result, '', '', row['missing_reason_code'], ''])
-            
-            # For Row 2
-            if row['improvement_descriptor_code'] != '999':
-                stacked_data.append([reporting_period_code, reporting_entity_code, '', 'PerformanceTrend', row['improvement_descriptor_code'], '', ''])
-            
-            # For Row 3
-            if row['compare_descriptor_code'] != '999':
-                stacked_data.append([reporting_period_code, reporting_entity_code, '', 'PerformanceComparison', row['compare_descriptor_code'], '', ''])
-
-    stacked_df = pd.DataFrame(stacked_data, columns=['reporting_period_code', 'reporting_entity_code', 'metric_result', 'metric_descriptor_group_code', 'metric_descriptor_code', 'missing_reason_code', 'public_metric_result'])
-
-    stacked_df['reporting_entity_type_code'] = 'ORG'
-    stacked_df['indicator_code'] = '810'
-    stacked_df['metric_code'] = 'PCTL_90'
-    stacked_df['breakdown_type_code_l1'] = 'N/A'
-    stacked_df['breakdown_value_code_l1'] = 'N/A'
-    stacked_df['breakdown_type_code_l2'] = 'N/A'
-    stacked_df['breakdown_value_code_l2'] = 'N/A'
-
-    stacked_df = stacked_df[['reporting_period_code', 'reporting_entity_code', 'reporting_entity_type_code', \
-                        'indicator_code', 'metric_code', 'breakdown_type_code_l1', 'breakdown_value_code_l1', 'breakdown_type_code_l2', \
-                       'breakdown_value_code_l2', 'metric_result', 'metric_descriptor_group_code', \
-                       'metric_descriptor_code', 'missing_reason_code', 'public_metric_result']]
-
-    return stacked_df
-
-# Generate data for each year from FY2018 to FY2022
-all_years_data = pd.concat([generate_data_for_year(year) for year in range(18, 23)])
-
-# Write to CSV
-all_years_data.to_csv('fiscal40_810_agg.csv', index=False)
+Automate the calculation of some indicators or contextual measures
+•	Learn about tools, process and specification for manual loading of  the data pipeline through Shallow Slice
+•	Analysts can start creating indicator and contextual measure data for YHS Transition
