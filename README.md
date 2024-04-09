@@ -39,6 +39,9 @@ data = {
 
 Dummy_data = pd.DataFrame(data)
 
+# Drop duplicates
+Dummy_data = Dummy_data.drop_duplicates()
+
 # Convert COMPARE_IND_CODE column to numeric type
 Dummy_data["COMPARE_IND_CODE"] = pd.to_numeric(Dummy_data["COMPARE_IND_CODE"], errors='coerce')
 Dummy_data['compare_descriptor_code'] = Dummy_data['COMPARE_IND_CODE'].astype(str).replace(compare_mapping)
