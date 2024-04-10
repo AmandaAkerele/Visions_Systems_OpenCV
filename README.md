@@ -1,25 +1,27 @@
-Subject: Shallow-Slice Pilot Project Update: Automating Indicators for YHS Transition
+remove_supp= ~los_corp['CORP_ID'].isin(LOS_supp_org['CORP_ID'])
+los_org_22 = los_corp[remove_supp].rename(columns={'SUBMISSION_FISCAL_YEAR':'FISCAL_YEAR','percentile_90':'PERCENTILE_90'})
+los_org_22['CORP_ID']=los_org_22['CORP_ID'].apply(lambda x: 81180 if x==5085 else x)
+los_org_22['CORP_ID']=los_org_22['CORP_ID'].apply(lambda x: 81263 if x==5049 else x)
 
-Hello everyone,
+remove_supp= ~los_reg['NEW_REGION_ID'].isin(LOS_supp_reg['NEW_REGION_ID'])
+los_reg_22 = los_reg[remove_supp].rename(columns={'NEW_REGION_ID': 'REGION_ID','SUBMISSION_FISCAL_YEAR':'FISCAL_YEAR','percentile_90':'PERCENTILE_90'})
 
-I am pleased to share an update on the progress of our shallow-slice pilot project aimed at automating indicators for the YHS transition.
+los_org_21['CORP_ID']=los_org_21['CORP_ID'].apply(lambda x: 81170 if x==1019 else x)
+los_org_21['CORP_ID']=los_org_21['CORP_ID'].apply(lambda x: 81124 if x==10038 else x)
+los_org_21['CORP_ID']=los_org_21['CORP_ID'].apply(lambda x: 80960 if x==7077 else x)
+los_org_21['CORP_ID']=los_org_21['CORP_ID'].apply(lambda x: 81131 if x==5045 else x)
+los_org_21['CORP_ID']=los_org_21['CORP_ID'].apply(lambda x: 81180 if x==5085 else x)
+los_org_21['CORP_ID']=los_org_21['CORP_ID'].apply(lambda x: 81263 if x==5049 else x)
+los_org_21=los_org_21[los_org_21['CORP_ID'] != 5160].rename(columns={'PEER_GROUP_ID':'CORP_PEER'})
 
-The shallow-slice pilot is a specialized data flow or data pipeline designed to process input files containing pre-calculated indicators and metrics. Our primary objective is to store this data exclusively for presentation on cihi.ca.
+los_org_20['CORP_ID']=los_org_20['CORP_ID'].apply(lambda x: 81170 if x==1019 else x)
+los_org_20['CORP_ID']=los_org_20['CORP_ID'].apply(lambda x: 81124 if x==10038 else x)
+los_org_20['CORP_ID']=los_org_20['CORP_ID'].apply(lambda x: 80960 if x==7077 else x)
+los_org_20['CORP_ID']=los_org_20['CORP_ID'].apply(lambda x: 81131 if x==5045 else x)
+los_org_20['CORP_ID']=los_org_20['CORP_ID'].apply(lambda x: 81180 if x==5085 else x)
+los_org_20['CORP_ID']=los_org_20['CORP_ID'].apply(lambda x: 81263 if x==5049 else x)
+los_org_20=los_org_20[los_org_20['CORP_ID'] != 5160].rename(columns={'PEER_GROUP_ID':'CORP_PEER'})
+los_org_22=los_org_22[los_org_22['CORP_ID'] != 5160].rename(columns={'percentile_90':'PERCENTILE_90'})
 
-One of my main responsibilities in this project has been the development of Python code to generate indicator data in the prescribed shallow-slice format. This code is both robust and reusable, serving as a foundational tool that analysts can integrate with their dataframes to produce the desired outputs efficiently.
-
-Our target is to publish these indicators using the shallow-slice approach by September 2024. To ensure the success of this project, I have worked closely with the team to establish several critical rules and guidelines:
-
-1. **Suppression**: We are implementing rigorous data suppression protocols to effectively manage sensitive or irrelevant information, thereby maintaining data integrity and privacy.
-
-2. **Transformation of CIHI's Public Data Products**: We are focused on improving the way CIHI reports its public data, with an emphasis on enhancing clarity and user-friendliness.
-
-3. **Improving Visualizations**: I have been actively involved in refining the YHS In-Brief and YHS In-Depth visualizations to better meet the needs of our target audiences.
-
-4. **Data Accessibility**: To facilitate ease of use and reference, we are co-locating relevant reporting information within our data sets.
-
-In addition to these guidelines, I have been exploring opportunities to automate the calculation of specific indicators and contextual measures, aiming to significantly streamline our data processing workflow. As part of this initiative, I will be organizing training sessions to familiarize analysts with the tools, processes, and specifications required for manual data loading into the shallow-slice data pipeline.
-
-In conclusion, the shallow-slice pilot project represents a significant advancement in our efforts to automate and optimize indicator reporting for the YHS transition. I encourage everyone to familiarize themselves with the tools and guidelines we've provided and to begin leveraging them in your respective roles.
-
-Thank you for your attention, and I am open to any questions or feedback you may have.
+los_org_cmp = pd.merge(los_org_22, los_peer_base, on='CORP_PEER')
+los_reg_cmp = pd.merge(los_reg_22, los_reg_base, left_on='FISCAL_YEAR', right_on='SUBMISSION_FISCAL_YEAR')
