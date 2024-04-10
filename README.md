@@ -1,7 +1,7 @@
 from pyspark.sql import functions as F
 
 # Transformations for LOS
-remove_supp_los = ~los_org_22.join(los_supp_org_22, on='CORP_ID', how='left_anti')
+remove_supp_los = los_org_22.join(los_supp_org_22, on='CORP_ID', how='left_anti')
 los_org_22_a = remove_supp_los.select(
     F.col('SUBMISSION_FISCAL_YEAR').alias('FISCAL_YEAR'),
     F.col('percentile_90').alias('PERCENTILE_90')
@@ -39,7 +39,7 @@ los_org_cmp = los_org_22_a.join(los_peer_base, on='CORP_PEER')
 los_reg_cmp = los_org_22_a.join(los_reg_base, on=F.col('FISCAL_YEAR') == F.col('SUBMISSION_FISCAL_YEAR'))
 
 # Transformations for TPIA
-remove_supp_tpia = ~tpia_org_22.join(tpia_supp_org_22, on='CORP_ID', how='left_anti')
+remove_supp_tpia = tpia_org_22.join(tpia_supp_org_22, on='CORP_ID', how='left_anti')
 tpia_org_22_a = remove_supp_tpia.select(
     F.col('SUBMISSION_FISCAL_YEAR').alias('FISCAL_YEAR'),
     F.col('percentile_90').alias('PERCENTILE_90')
@@ -66,19 +66,3 @@ tpia_org_22_a = tpia_org_22_a.filter(F.col('CORP_ID') != 5160).withColumnRenamed
 
 tpia_org_cmp = tpia_org_22_a.join(tpia_peer_base, on='CORP_PEER')
 tpia_reg_cmp = tpia_org_22_a.join(tpia_reg_base, on=F.col('FISCAL_YEAR') == F.col('SUBMISSION_FISCAL_YEAR'))
-
-
-
-
-solve this issue below:
-
----------------------------------------------------------------------------
-TypeError                                 Traceback (most recent call last)
-/tmp/ipykernel_794/992471634.py in <cell line: 4>()
-      2 
-      3 # Transformations for LOS
-----> 4 remove_supp_los = ~los_org_22.join(los_supp_org_22, on='CORP_ID', how='left_anti')
-      5 los_org_22_a = remove_supp_los.select(
-      6     F.col('SUBMISSION_FISCAL_YEAR').alias('FISCAL_YEAR'),
-
-TypeError: bad operand type for unary ~: 'DataFrame'
