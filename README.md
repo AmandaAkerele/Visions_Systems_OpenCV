@@ -1,89 +1,90 @@
-from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
+# Merge los_org_22_a with los_peer_base on 'CORP_PEER' column
+los_org_cmp = los_org_22_a.merge(los_peer_base, on= 'CORP_PEER')
 
-# Initialize Spark session
-spark = SparkSession.builder.appName("Tpia_Los_Transformations").getOrCreate()
+# Merge tpia_org_22_a with tpia_peer_base on 'CORP_PEER' column
+tpia_org_cmp = tpia_org_22_a.merge(tpia_peer_base, on='CORP_PEER')
 
-# Convert pandas DataFrames to PySpark DataFrames (assuming tpia_org_22, tpia_supp_org, tpia_reg_22, tpia_supp_reg, 
-# los_org_22, los_supp_org_22, los_reg_22, los_supp_reg_22, los_org_21, los_org_20, tpia_org_21, tpia_org_20 are 
-# already available as PySpark DataFrames)
-tpia_org_22_spark = spark.createDataFrame(tpia_org_22)
-tpia_supp_org_spark = spark.createDataFrame(tpia_supp_org)
-tpia_reg_22_spark = spark.createDataFrame(tpia_reg_22)
-tpia_supp_reg_spark = spark.createDataFrame(tpia_supp_reg)
-los_org_22_spark = spark.createDataFrame(los_org_22)
-los_supp_org_22_spark = spark.createDataFrame(los_supp_org_22)
-los_reg_22_spark = spark.createDataFrame(los_reg_22)
-los_supp_reg_22_spark = spark.createDataFrame(los_supp_reg_22)
-los_org_21_spark = spark.createDataFrame(los_org_21)
-los_org_20_spark = spark.createDataFrame(los_org_20)
-tpia_org_21_spark = spark.createDataFrame(tpia_org_21)
-tpia_org_20_spark = spark.createDataFrame(tpia_org_20)
+# Merge los_reg_22_a with los_reg_base on 'FISCAL_YEAR' and 'SUBMISSION_FISCAL_YEAR' columns
+los_reg_cmp = los_reg_22_a.merge(los_reg_base, left_on='SUBMISSION_FISCAL_YEAR', right_on= 'SUBMISSION_FISCAL_YEAR')
 
-# For Tpia_org_22
-tpia_org_22_a_spark = tpia_org_22_spark.join(tpia_supp_org_spark.select('CORP_ID'), on='CORP_ID', how='left_anti')
-tpia_org_22_a_spark = tpia_org_22_a_spark.withColumnRenamed('SUBMISSION_FISCAL_YEAR', 'FISCAL_YEAR')
-tpia_org_22_a_spark = tpia_org_22_a_spark.withColumn('CORP_ID', F.when(F.col('CORP_ID') == 5085, 81180) \
-                                                           .when(F.col('CORP_ID') == 5049, 81263) \
-                                                           .otherwise(F.col('CORP_ID')))
+# Merge tpia_reg_22 with tpia_reg_base on 'FISCAL_YEAR' and 'SUBMISSION_FISCAL_YEAR' columns
+tpia_reg_cmp = tpia_reg_22_a.merge(tpia_reg_base, left_on='SUBMISSION_FISCAL_YEAR', right_on='SUBMISSION_FISCAL_YEAR')
 
-# Tpia_reg_22
-tpia_reg_22_a_spark = tpia_reg_22_spark.join(tpia_supp_reg_spark.select('NEW_REGION_ID'), on='NEW_REGION_ID', how='left_anti')
-tpia_reg_22_a_spark = tpia_reg_22_a_spark.withColumnRenamed('NEW_REGION_ID', 'REGION_ID')
+los_org_cmp_a = los_org_cmp.rename(columns={0.2:'20th_Percentile',0.8:'80th_Percentile' })
+tpia_org_cmp_a = tpia_org_cmp.rename(columns={0.2:'20th_Percentile',0.8:'80th_Percentile' })
+los_reg_cmp_a = los_reg_cmp.rename(columns={0.2:'20th_Percentile',0.8:'80th_Percentile' })
+tpia_reg_cmp_a = tpia_reg_cmp.rename(columns={0.2:'20th_Percentile',0.8:'80th_Percentile' })
 
-# For Los_org_22
-los_org_22_a_spark = los_org_22_spark.join(los_supp_org_22_spark.select('CORP_ID'), on='CORP_ID', how='left_anti')
-los_org_22_a_spark = los_org_22_a_spark.withColumnRenamed('SUBMISSION_FISCAL_YEAR', 'FISCAL_YEAR')
-los_org_22_a_spark = los_org_22_a_spark.withColumn('CORP_ID', F.when(F.col('CORP_ID') == 5085, 81180) \
-                                                           .when(F.col('CORP_ID') == 5049, 81263) \
-                                                           .otherwise(F.col('CORP_ID')))
+def apply_conditions(df):
+    conditions = [
+        (df['PERCENTILE_90'] < df['20th_Percentile']),
+        (df['PERCENTILE_90'] >= df['20th_Percentile']) & (df['PERCENTILE_90'] <= df['80th_Percentile']),
+        (df['PERCENTILE_90'] > df['80th_Percentile'])
+    ]
 
-# For Los_reg_22
-los_reg_22_a_spark = los_reg_22_spark.join(los_supp_reg_22_spark.select('NEW_REGION_ID'), on='NEW_REGION_ID', how='left_anti')
-los_reg_22_a_spark = los_reg_22_a_spark.withColumnRenamed('NEW_REGION_ID', 'REGION_ID')
+    values= ['001', '002', '003']
+    descriptions = ['Above average performance', 'Same as average', 'Below average performance']
 
-# Update data for specific CORP_ID values
-corp_id_mapping = {
-    1019: 81170,
-    10038: 81124,
-    7077: 80960,
-    5045: 81131,
-    5085: 81180,
-    5049: 81263,
-    5160: None
-}
+    # Apply conditions
+    df['COMPARE_IND_CODE'] = np.select(conditions, values , default='')
+    df['COMPARE_IND_E_DESC'] = np.select(conditions, descriptions, default='')
 
-# Apply the mapping to CORP_ID columns in all DataFrames
-dataframes = [los_org_21_spark, los_org_20_spark, los_org_22_a_spark, tpia_org_21_spark, tpia_org_20_spark, tpia_org_22_a_spark]
-for df in dataframes:
-    for col, val in corp_id_mapping.items():
-        df = df.withColumn('CORP_ID', F.when(F.col('CORP_ID') == col, val).otherwise(F.col('CORP_ID')))
+    # Sort the DataFrame by CORP_ID or REGION_ID as needed 
+    if 'CORP_ID' in df.columns:
+        df.sort_values(by=['CORP_ID'], inplace=True)
+    elif 'REGION_ID' in df.columns:
+        df.sort_values(by=['REGION_ID'], inplace=True)
 
-# Rename the 'PEER_GROUP_ID' column to 'CORP_PEER' in los_org_21_spark and los_org_20_spark &
-# Rename the fiscal_year column to 'SUBMISSION_FISCAL_YEAR in los_reg_21_spark and tpia_reg_21_spark
-los_org_21_spark = los_org_21_spark.withColumnRenamed('PEER_GROUP_ID', 'CORP_PEER')
-los_org_20_spark = los_org_20_spark.withColumnRenamed('PEER_GROUP_ID', 'CORP_PEER')
-tpia_org_21_spark = tpia_org_21_spark.withColumnRenamed('PEER_GROUP_ID', 'CORP_PEER')
-tpia_org_20_spark = tpia_org_20_spark.withColumnRenamed('PEER_GROUP_ID', 'CORP_PEER')
+# Apply conditions for each DataFrame
+apply_conditions(los_org_cmp_a)
+apply_conditions(tpia_org_cmp_a)
+apply_conditions(los_reg_cmp_a)
+apply_conditions(tpia_reg_cmp_a)
 
-# los_reg_21_spark = los_reg_21_spark.withColumnRenamed('SUBMISSION_FISCAL_YEAR', 'FISCAL_YEAR')
-# tpia_reg_21_spark = tpia_reg_21_spark.withColumnRenamed('SUBMISSION_FISCAL_YEAR', 'FISCAL_YEAR')
+# Define a list of dataframes for los_org
+los_org_dfs = [
+    los_org_20[['CORP_ID', 'CORP_PEER']],
+    los_org_21[['CORP_ID']],
+    los_org_22_a[['CORP_ID']]
+]
 
-# Filter out rows where CORP_ID is 5160
-los_org_21_spark = los_org_21_spark.filter(F.col('CORP_ID') != 5160)
-los_org_20_spark = los_org_20_spark.filter(F.col('CORP_ID') != 5160)
+# Define a list of dataframes for tpia_org
+tpia_org_dfs = [
+    tpia_org_20[['CORP_ID', 'CORP_PEER']],
+    tpia_org_21[['CORP_ID']],
+    tpia_org_22_a[['CORP_ID']]
+]
 
-# Merge los_org_22_a_spark with los_peer_base_spark on 'CORP_PEER' column
-los_org_cmp_spark = los_org_22_a_spark.join(los_peer_base_spark, on='CORP_PEER', how='inner')
 
-# Merge tpia_org_22_a_spark with tpia_peer_base_spark on 'CORP_PEER' column
-tpia_org_cmp_spark = tpia_org_22_a_spark.join(tpia_peer_base_spark, on='CORP_PEER', how='inner')
+# Define a list of dataframes for los_reg
+los_reg_dfs = [
+    los_reg_20[['REGION_ID']],
+    los_reg_21[['REGION_ID']],
+    los_reg_22_a[['REGION_ID']]
+]
 
-# Merge los_reg_22_a_spark with los_reg_base_spark on 'FISCAL_YEAR' and 'SUBMISSION_FISCAL_YEAR' columns
-los_reg_cmp_spark = los_reg_22_a_spark.join(los_reg_base_spark, on='SUBMISSION_FISCAL_YEAR', how='inner')
+# Define a list of dataframes for tpia_reg
+tpia_reg_dfs = [
+    tpia_reg_20[['REGION_ID']],
+    tpia_reg_21[['REGION_ID']],
+    tpia_reg_22_a[['REGION_ID']]
+]
 
-# Merge tpia_reg_22_spark with tpia_reg_base_spark on 'FISCAL_YEAR' and 'SUBMISSION_FISCAL_YEAR' columns
-tpia_reg_cmp_spark = tpia_reg_22_a_spark.join(tpia_reg_base_spark, on='SUBMISSION_FISCAL_YEAR', how='inner')
+# Function to perform successive inner merges on a list of dataframes
+def successive_inner_merge(dataframes):
+    result_df = dataframes[0]
+    for df in dataframes[1:]:
+        result_df = pd.merge(result_df, df, on=result_df.columns.intersection(df.columns).tolist(), how='inner')
+    return result_df
 
-# Stop Spark session
-spark.stop()
+# Perform the successive merges for los_org
+los_org_3x3 = successive_inner_merge(los_org_dfs)
+
+# Perform the successive merges for tpia_org
+tpia_org_3x3 = successive_inner_merge(tpia_org_dfs)
+
+# Perform the successive merges for los_reg
+los_reg_3x3 = successive_inner_merge(los_reg_dfs)
+
+# Perform the successive merges for tpia_reg
+tpia_reg_3x3 = successive_inner_merge(tpia_reg_dfs)
