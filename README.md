@@ -1,12 +1,12 @@
 from pyspark.sql import functions as F
 
 # Transformations for LOS
-remove_supp_los = ~los_corp.join(LOS_supp_org, on='CORP_ID', how='left_anti')
-los_org_22 = remove_supp_los.select(
+remove_supp_los = ~los_org_22.join(los_supp_org_22, on='CORP_ID', how='left_anti')
+los_org_22_a = remove_supp_los.select(
     F.col('SUBMISSION_FISCAL_YEAR').alias('FISCAL_YEAR'),
     F.col('percentile_90').alias('PERCENTILE_90')
 )
-los_org_22 = los_org_22.withColumn('CORP_ID', 
+los_org_22_a = los_org_22_a.withColumn('CORP_ID', 
                                    F.when(F.col('CORP_ID') == 5085, 81180)
                                    .when(F.col('CORP_ID') == 5049, 81263)
                                    .otherwise(F.col('CORP_ID')))
@@ -33,18 +33,18 @@ for original, corrected in corrections.items():
                                        .otherwise(F.col('CORP_ID')))
 
 los_org_20 = los_org_20.filter(F.col('CORP_ID') != 5160).withColumnRenamed('PEER_GROUP_ID', 'CORP_PEER')
-los_org_22 = los_org_22.filter(F.col('CORP_ID') != 5160).withColumnRenamed('percentile_90', 'PERCENTILE_90')
+los_org_22_a = los_org_22_a.filter(F.col('CORP_ID') != 5160).withColumnRenamed('percentile_90', 'PERCENTILE_90')
 
-los_org_cmp = los_org_22.join(los_peer_base, on='CORP_PEER')
-los_reg_cmp = los_org_22.join(los_reg_base, on=F.col('FISCAL_YEAR') == F.col('SUBMISSION_FISCAL_YEAR'))
+los_org_cmp = los_org_22_a.join(los_peer_base, on='CORP_PEER')
+los_reg_cmp = los_org_22_a.join(los_reg_base, on=F.col('FISCAL_YEAR') == F.col('SUBMISSION_FISCAL_YEAR'))
 
 # Transformations for TPIA
-remove_supp_tpia = ~tpia_corp.join(TPIA_supp_org, on='CORP_ID', how='left_anti')
-tpia_org_22 = remove_supp_tpia.select(
+remove_supp_tpia = ~tpia_org_22.join(tpia_supp_org_22, on='CORP_ID', how='left_anti')
+tpia_org_22_a = remove_supp_tpia.select(
     F.col('SUBMISSION_FISCAL_YEAR').alias('FISCAL_YEAR'),
     F.col('percentile_90').alias('PERCENTILE_90')
 )
-tpia_org_22 = tpia_org_22.withColumn('CORP_ID', 
+tpia_org_22_a = tpia_org_22_a.withColumn('CORP_ID', 
                                      F.when(F.col('CORP_ID') == 5085, 81180)
                                      .when(F.col('CORP_ID') == 5049, 81263)
                                      .otherwise(F.col('CORP_ID')))
@@ -62,8 +62,23 @@ for original, corrected in corrections.items():
                                          .otherwise(F.col('CORP_ID')))
 
 tpia_org_20 = tpia_org_20.filter(F.col('CORP_ID') != 5160).withColumnRenamed('PEER_GROUP_ID', 'CORP_PEER')
-tpia_org_22 = tpia_org_22.filter(F.col('CORP_ID') != 5160).withColumnRenamed('percentile_90', 'PERCENTILE_90')
+tpia_org_22_a = tpia_org_22_a.filter(F.col('CORP_ID') != 5160).withColumnRenamed('percentile_90', 'PERCENTILE_90')
 
-tpia_org_cmp = tpia_org_22.join(tpia_peer_base, on='CORP_PEER')
-tpia_reg_cmp = tpia_org_22.join(tpia_reg_base, on=F.col('FISCAL_YEAR') == F.col('SUBMISSION_FISCAL_YEAR'))
+tpia_org_cmp = tpia_org_22_a.join(tpia_peer_base, on='CORP_PEER')
+tpia_reg_cmp = tpia_org_22_a.join(tpia_reg_base, on=F.col('FISCAL_YEAR') == F.col('SUBMISSION_FISCAL_YEAR'))
 
+
+
+
+solve this issue below:
+
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+/tmp/ipykernel_794/992471634.py in <cell line: 4>()
+      2 
+      3 # Transformations for LOS
+----> 4 remove_supp_los = ~los_org_22.join(los_supp_org_22, on='CORP_ID', how='left_anti')
+      5 los_org_22_a = remove_supp_los.select(
+      6     F.col('SUBMISSION_FISCAL_YEAR').alias('FISCAL_YEAR'),
+
+TypeError: bad operand type for unary ~: 'DataFrame'
