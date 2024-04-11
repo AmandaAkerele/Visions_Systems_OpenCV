@@ -1,21 +1,21 @@
 from pyspark.sql import functions as F
 
 # Filter out rows not in tpia_supp_org for tpia_org_22
-remove_supp = ~tpia_org_22.select('CORP_ID').isin(tpia_supp_org.select('CORP_ID').collect())
-tpia_org_22_a = tpia_org_22.join(remove_supp, on='CORP_ID', how='left_anti') \
-                      .withColumnRenamed('SUBMISSION_FISCAL_YEAR', 'FISCAL_YEAR') \
-                      .withColumnRenamed('percentile_90', 'PERCENTILE_90')
+remove_supp = tpia_org_22.join(tpia_supp_org.select('CORP_ID'), on='CORP_ID', how='left_anti')
+tpia_org_22_a = tpia_org_22.join(remove_supp, on='CORP_ID', how='left_semi') \
+                          .withColumnRenamed('SUBMISSION_FISCAL_YEAR', 'FISCAL_YEAR') \
+                          .withColumnRenamed('percentile_90', 'PERCENTILE_90')
 tpia_org_22_a = tpia_org_22_a.withColumn('CORP_ID', 
                                      F.when(F.col('CORP_ID') == 5085, 81180)
                                       .when(F.col('CORP_ID') == 5049, 81263)
                                       .otherwise(F.col('CORP_ID')))
 
 # Filter out rows not in tpia_supp_reg for tpia_reg_22
-remove_supp = ~tpia_reg_22.select('NEW_REGION_ID').isin(tpia_supp_reg.select('NEW_REGION_ID').collect())
-tpia_reg_22_a = tpia_reg_22.join(remove_supp, on='NEW_REGION_ID', how='left_anti') \
-                      .withColumnRenamed('NEW_REGION_ID', 'REGION_ID') \
-                      .withColumnRenamed('SUBMISSION_FISCAL_YEAR', 'FISCAL_YEAR') \
-                      .withColumnRenamed('percentile_90', 'PERCENTILE_90')
+remove_supp = tpia_reg_22.join(tpia_supp_reg.select('NEW_REGION_ID'), on='NEW_REGION_ID', how='left_anti')
+tpia_reg_22_a = tpia_reg_22.join(remove_supp, on='NEW_REGION_ID', how='left_semi') \
+                          .withColumnRenamed('NEW_REGION_ID', 'REGION_ID') \
+                          .withColumnRenamed('SUBMISSION_FISCAL_YEAR', 'FISCAL_YEAR') \
+                          .withColumnRenamed('percentile_90', 'PERCENTILE_90')
 
 # Update CORP_ID values for tpia_org_21 and tpia_org_20
 corp_id_mapping = {
