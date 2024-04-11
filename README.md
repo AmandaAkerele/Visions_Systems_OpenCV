@@ -1,7 +1,7 @@
 from pyspark.sql import functions as F
 
 # Filter out rows not in tpia_supp_org for tpia_org_22
-remove_supp = ~tpia_org_22.select('CORP_ID').isin(tpia_supp_org.select('CORP_ID')).alias('remove')
+remove_supp = ~tpia_org_22.select('CORP_ID').isin(tpia_supp_org.select('CORP_ID').collect())
 tpia_org_22_a = tpia_org_22.join(remove_supp, on='CORP_ID', how='left_anti') \
                       .withColumnRenamed('SUBMISSION_FISCAL_YEAR', 'FISCAL_YEAR') \
                       .withColumnRenamed('percentile_90', 'PERCENTILE_90')
@@ -11,7 +11,7 @@ tpia_org_22_a = tpia_org_22_a.withColumn('CORP_ID',
                                       .otherwise(F.col('CORP_ID')))
 
 # Filter out rows not in tpia_supp_reg for tpia_reg_22
-remove_supp = ~tpia_reg_22.select('NEW_REGION_ID').isin(tpia_supp_reg.select('NEW_REGION_ID')).alias('remove')
+remove_supp = ~tpia_reg_22.select('NEW_REGION_ID').isin(tpia_supp_reg.select('NEW_REGION_ID').collect())
 tpia_reg_22_a = tpia_reg_22.join(remove_supp, on='NEW_REGION_ID', how='left_anti') \
                       .withColumnRenamed('NEW_REGION_ID', 'REGION_ID') \
                       .withColumnRenamed('SUBMISSION_FISCAL_YEAR', 'FISCAL_YEAR') \
@@ -77,23 +77,3 @@ tpia_reg_all_yr_a = tpia_reg_all_yr.join(tpia_reg_3x3_a.select('REGION_ID'), on=
 # Rename columns for tpia_org_all_yr_b and tpia_reg_all_yr_b
 tpia_org_all_yr_b = tpia_org_all_yr_a.withColumnRenamed('FISCAL_YEAR', 'TIME')
 tpia_reg_all_yr_b = tpia_reg_all_yr_a.withColumnRenamed('FISCAL_YEAR', 'TIME')
-
-
-correct the code below 
-
-AttributeError                            Traceback (most recent call last)
-/tmp/ipykernel_763/2057840444.py in <cell line: 4>()
-      2 
-      3 # Filter out rows not in tpia_supp_org for tpia_org_22
-----> 4 remove_supp = ~tpia_org_22.select('CORP_ID').isin(tpia_supp_org.select('CORP_ID')).alias('remove')
-      5 tpia_org_22_a = tpia_org_22.join(remove_supp, on='CORP_ID', how='left_anti') \
-      6                       .withColumnRenamed('SUBMISSION_FISCAL_YEAR', 'FISCAL_YEAR') \
-
-/usr/local/lib/python3.10/dist-packages/pyspark/sql/dataframe.py in __getattr__(self, name)
-   3121         """
-   3122         if name not in self.columns:
--> 3123             raise AttributeError(
-   3124                 "'%s' object has no attribute '%s'" % (self.__class__.__name__, name)
-   3125             )
-
-AttributeError: 'DataFrame' object has no attribute 'isin'
