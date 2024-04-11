@@ -1,18 +1,18 @@
 from pyspark.sql import functions as F
 
 # Filter out rows not in tpia_supp_org for tpia_org_22
-remove_supp = ~tpia_corp.select('CORP_ID').isin(tpia_supp_org.select('CORP_ID')).alias('remove')
-tpia_org_22 = tpia_corp.join(remove_supp, on='CORP_ID', how='left_anti') \
+remove_supp = ~tpia_org_22.select('CORP_ID').isin(tpia_supp_org.select('CORP_ID')).alias('remove')
+tpia_org_22_a = tpia_org_22.join(remove_supp, on='CORP_ID', how='left_anti') \
                       .withColumnRenamed('SUBMISSION_FISCAL_YEAR', 'FISCAL_YEAR') \
                       .withColumnRenamed('percentile_90', 'PERCENTILE_90')
-tpia_org_22 = tpia_org_22.withColumn('CORP_ID', 
+tpia_org_22_a = tpia_org_22_a.withColumn('CORP_ID', 
                                      F.when(F.col('CORP_ID') == 5085, 81180)
                                       .when(F.col('CORP_ID') == 5049, 81263)
                                       .otherwise(F.col('CORP_ID')))
 
 # Filter out rows not in tpia_supp_reg for tpia_reg_22
-remove_supp = ~tpia_reg.select('NEW_REGION_ID').isin(tpia_supp_reg.select('NEW_REGION_ID')).alias('remove')
-tpia_reg_22 = tpia_reg.join(remove_supp, on='NEW_REGION_ID', how='left_anti') \
+remove_supp = ~tpia_reg_22.select('NEW_REGION_ID').isin(tpia_supp_reg.select('NEW_REGION_ID')).alias('remove')
+tpia_reg_22_a = tpia_reg_22.join(remove_supp, on='NEW_REGION_ID', how='left_anti') \
                       .withColumnRenamed('NEW_REGION_ID', 'REGION_ID') \
                       .withColumnRenamed('SUBMISSION_FISCAL_YEAR', 'FISCAL_YEAR') \
                       .withColumnRenamed('percentile_90', 'PERCENTILE_90')
@@ -35,10 +35,10 @@ for df in dataframes:
     df = df.filter(F.col('CORP_ID') != 5160).withColumnRenamed('PEER_GROUP_ID', 'CORP_PEER')
 
 # Merge tpia_org_22 with tpia_peer_base on 'CORP_PEER' column
-tpia_org_cmp = tpia_org_22.join(tpia_peer_base, on='CORP_PEER', how='inner')
+tpia_org_cmp = tpia_org_22_a.join(tpia_peer_base, on='CORP_PEER', how='inner')
 
 # Merge tpia_reg_22 with tpia_reg_base on 'FISCAL_YEAR' and 'SUBMISSION_FISCAL_YEAR' columns
-tpia_reg_cmp = tpia_reg_22.join(tpia_reg_base, (tpia_reg_22['FISCAL_YEAR'] == tpia_reg_base['SUBMISSION_FISCAL_YEAR']), how='inner')
+tpia_reg_cmp = tpia_reg_22_a.join(tpia_reg_base, (tpia_reg_22_a['FISCAL_YEAR'] == tpia_reg_base['SUBMISSION_FISCAL_YEAR']), how='inner')
 
 # Define the apply_conditions UDF
 @F.udf
@@ -61,14 +61,14 @@ tpia_reg_cmp_a = tpia_reg_cmp.withColumn('COMPARE_IND_CODE', apply_conditions(F.
 
 # Successive joins for tpia_org_3x3 and tpia_reg_3x3
 tpia_org_3x3_a = tpia_org_20.select('CORP_ID', 'CORP_PEER').join(tpia_org_21.select('CORP_ID'), on='CORP_ID', how='inner') \
-                         .join(tpia_org_22.select('CORP_ID'), on='CORP_ID', how='inner')
+                         .join(tpia_org_22_a.select('CORP_ID'), on='CORP_ID', how='inner')
 
 tpia_reg_3x3_a = tpia_reg_20.select('REGION_ID').join(tpia_reg_21.select('REGION_ID'), on='REGION_ID', how='inner') \
-                         .join(tpia_reg_22.select('REGION_ID'), on='REGION_ID', how='inner')
+                         .join(tpia_reg_22_a.select('REGION_ID'), on='REGION_ID', how='inner')
 
 # Concatenate tpia_org_20, tpia_org_21, tpia_org_22 and tpia_reg_20, tpia_reg_21, tpia_reg_22
-tpia_org_all_yr = tpia_org_20.union(tpia_org_21).union(tpia_org_22)
-tpia_reg_all_yr = tpia_reg_20.union(tpia_reg_21).union(tpia_reg_22)
+tpia_org_all_yr = tpia_org_20.union(tpia_org_21).union(tpia_org_22_a)
+tpia_reg_all_yr = tpia_reg_20.union(tpia_reg_21).union(tpia_reg_22_a)
 
 # Successive joins for tpia_org_all_yr_a and tpia_reg_all_yr_a
 tpia_org_all_yr_a = tpia_org_all_yr.join(tpia_org_3x3_a.select('CORP_ID'), on='CORP_ID', how='inner')
@@ -77,3 +77,23 @@ tpia_reg_all_yr_a = tpia_reg_all_yr.join(tpia_reg_3x3_a.select('REGION_ID'), on=
 # Rename columns for tpia_org_all_yr_b and tpia_reg_all_yr_b
 tpia_org_all_yr_b = tpia_org_all_yr_a.withColumnRenamed('FISCAL_YEAR', 'TIME')
 tpia_reg_all_yr_b = tpia_reg_all_yr_a.withColumnRenamed('FISCAL_YEAR', 'TIME')
+
+
+correct the code below 
+
+AttributeError                            Traceback (most recent call last)
+/tmp/ipykernel_763/2057840444.py in <cell line: 4>()
+      2 
+      3 # Filter out rows not in tpia_supp_org for tpia_org_22
+----> 4 remove_supp = ~tpia_org_22.select('CORP_ID').isin(tpia_supp_org.select('CORP_ID')).alias('remove')
+      5 tpia_org_22_a = tpia_org_22.join(remove_supp, on='CORP_ID', how='left_anti') \
+      6                       .withColumnRenamed('SUBMISSION_FISCAL_YEAR', 'FISCAL_YEAR') \
+
+/usr/local/lib/python3.10/dist-packages/pyspark/sql/dataframe.py in __getattr__(self, name)
+   3121         """
+   3122         if name not in self.columns:
+-> 3123             raise AttributeError(
+   3124                 "'%s' object has no attribute '%s'" % (self.__class__.__name__, name)
+   3125             )
+
+AttributeError: 'DataFrame' object has no attribute 'isin'
