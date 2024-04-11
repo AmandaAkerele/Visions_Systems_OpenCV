@@ -1,68 +1,53 @@
-from pyspark.sql import functions as F
+---------------------------------------------------------------------------
+SparkRuntimeException                     Traceback (most recent call last)
+/tmp/ipykernel_763/3218910333.py in <cell line: 20>()
+     18 
+     19 # Apply CORP_ID mapping for tpia_org_21
+---> 20 mapping_expr = F.create_map([F.lit(x) for x in 
+     21                              [(1019, 81170), (10038, 81124), (7077, 80960), 
+     22                               (5045, 81131), (5085, 81180), (5049, 81263), (5160, None)]])
 
-# Remove rows from tpia_corp where CORP_ID is in tpia_supp_org
-remove_supp = ~tpia_corp['CORP_ID'].isin(tpia_supp_org['CORP_ID'])
-tpia_org_22 = tpia_corp.filter(remove_supp)
-tpia_org_22 = tpia_org_22.withColumnRenamed('SUBMISSION_FISCAL_YEAR', 'FISCAL_YEAR') \
-                         .withColumnRenamed('percentile_90', 'PERCENTILE_90')
-tpia_org_22 = tpia_org_22.withColumn('CORP_ID', F.when(tpia_org_22['CORP_ID'] == 5085, 81180)
-                                           .when(tpia_org_22['CORP_ID'] == 5049, 81263)
-                                           .otherwise(tpia_org_22['CORP_ID']))
+/tmp/ipykernel_763/3218910333.py in <listcomp>(.0)
+     18 
+     19 # Apply CORP_ID mapping for tpia_org_21
+---> 20 mapping_expr = F.create_map([F.lit(x) for x in 
+     21                              [(1019, 81170), (10038, 81124), (7077, 80960), 
+     22                               (5045, 81131), (5085, 81180), (5049, 81263), (5160, None)]])
 
-# Remove rows from tpia_reg where NEW_REGION_ID is in tpia_supp_reg
-remove_supp = ~tpia_reg['NEW_REGION_ID'].isin(tpia_supp_reg['NEW_REGION_ID'])
-tpia_reg_22 = tpia_reg.filter(remove_supp)
-tpia_reg_22 = tpia_reg_22.withColumnRenamed('NEW_REGION_ID', 'REGION_ID') \
-                         .withColumnRenamed('SUBMISSION_FISCAL_YEAR', 'FISCAL_YEAR') \
-                         .withColumnRenamed('percentile_90', 'PERCENTILE_90')
+/usr/local/lib/python3.10/dist-packages/pyspark/sql/utils.py in wrapped(*args, **kwargs)
+    172             return getattr(functions, f.__name__)(*args, **kwargs)
+    173         else:
+--> 174             return f(*args, **kwargs)
+    175 
+    176     return cast(FuncT, wrapped)
 
-# Apply CORP_ID mapping for tpia_org_21
-mapping_expr = F.create_map([F.lit(x) for x in 
-                             [(1019, 81170), (10038, 81124), (7077, 80960), 
-                              (5045, 81131), (5085, 81180), (5049, 81263), (5160, None)]])
-tpia_org_21 = tpia_org_21.withColumn('CORP_ID', mapping_expr.getItem(tpia_org_21['CORP_ID']))
-tpia_org_21 = tpia_org_21.filter(tpia_org_21['CORP_ID'] != 5160).withColumnRenamed('PEER_GROUP_ID', 'CORP_PEER')
+/usr/local/lib/python3.10/dist-packages/pyspark/sql/functions.py in lit(col)
+    191             if dt is not None:
+    192                 return _invoke_function("lit", col).astype(dt).alias(str(col))
+--> 193         return _invoke_function("lit", col)
+    194 
+    195 
 
-# Apply CORP_ID mapping for tpia_org_20
-tpia_org_20 = tpia_org_20.withColumn('CORP_ID', mapping_expr.getItem(tpia_org_20['CORP_ID']))
-tpia_org_20 = tpia_org_20.filter(tpia_org_20['CORP_ID'] != 5160).withColumnRenamed('PEER_GROUP_ID', 'CORP_PEER')
+/usr/local/lib/python3.10/dist-packages/pyspark/sql/functions.py in _invoke_function(name, *args)
+     95     assert SparkContext._active_spark_context is not None
+     96     jf = _get_jvm_function(name, SparkContext._active_spark_context)
+---> 97     return Column(jf(*args))
+     98 
+     99 
 
-# Apply conditions using a UDF
-def apply_conditions(percentile_90, percentile_20, percentile_80):
-    if percentile_90 < percentile_20:
-        return '001', 'Above average performance'
-    elif percentile_90 >= percentile_20 and percentile_90 <= percentile_80:
-        return '002', 'Same as average'
-    else:
-        return '003', 'Below average performance'
+/usr/local/lib/python3.10/dist-packages/py4j/java_gateway.py in __call__(self, *args)
+   1320 
+   1321         answer = self.gateway_client.send_command(command)
+-> 1322         return_value = get_return_value(
+   1323             answer, self.gateway_client, self.target_id, self.name)
+   1324 
 
-apply_conditions_udf = F.udf(apply_conditions, returnType='struct<COMPARE_IND_CODE:string, COMPARE_IND_E_DESC:string>')
+/usr/local/lib/python3.10/dist-packages/pyspark/errors/exceptions/captured.py in deco(*a, **kw)
+    183                 # Hide where the exception came from that shows a non-Pythonic
+    184                 # JVM exception message.
+--> 185                 raise converted from None
+    186             else:
+    187                 raise
 
-tpia_org_cmp = tpia_org_22.join(tpia_peer_base, on='CORP_PEER')
-tpia_org_cmp = tpia_org_cmp.withColumn('conditions', apply_conditions_udf('PERCENTILE_90', '20th_Percentile', '80th_Percentile')) \
-                           .select('*', 'conditions.*').drop('conditions') \
-                           .orderBy('CORP_ID')
+SparkRuntimeException: [UNSUPPORTED_FEATURE.LITERAL_TYPE] The feature is not supported: Literal for '[1019, 81170]' of class java.util.ArrayList.
 
-tpia_reg_cmp = tpia_reg_22.join(tpia_reg_base, tpia_reg_22['FISCAL_YEAR'] == tpia_reg_base['SUBMISSION_FISCAL_YEAR'])
-tpia_reg_cmp = tpia_reg_cmp.withColumn('conditions', apply_conditions_udf('PERCENTILE_90', '20th_Percentile', '80th_Percentile')) \
-                           .select('*', 'conditions.*').drop('conditions') \
-                           .orderBy('REGION_ID')
-
-# Merge operations for tpia_org_3x3 and tpia_reg_3x3
-tpia_org_3x3_a = tpia_org_20.select('CORP_ID', 'CORP_PEER').join(tpia_org_21.select('CORP_ID'), on='CORP_ID', how='inner') \
-                         .join(tpia_org_22.select('CORP_ID'), on='CORP_ID', how='inner')
-
-tpia_reg_3x3_a = tpia_reg_20.select('REGION_ID').join(tpia_reg_21.select('REGION_ID'), on='REGION_ID', how='inner') \
-                         .join(tpia_reg_22.select('REGION_ID'), on='REGION_ID', how='inner')
-
-# Concatenate all tpia_org and tpia_reg dataframes
-tpia_org_all_yr = tpia_org_20.union(tpia_org_21).union(tpia_org_22)
-tpia_reg_all_yr = tpia_reg_20.union(tpia_reg_21).union(tpia_reg_22)
-
-# Merge operations for tpia_org_all_yr_a and tpia_reg_all_yr_a
-tpia_org_all_yr_a = tpia_org_all_yr.join(tpia_org_3x3.select('CORP_ID'), on='CORP_ID', how='inner')
-tpia_reg_all_yr_a = tpia_reg_all_yr.join(tpia_reg_3x3.select('REGION_ID'), on='REGION_ID', how='inner')
-
-# Rename columns in tpia_org_all_yr_a and tpia_reg_all_yr_a
-tpia_org_all_yr_b = tpia_org_all_yr_a.withColumnRenamed('FISCAL_YEAR', 'TIME')
-tpia_reg_all_yr_b = tpia_reg_all_yr_a.withColumnRenamed('FISCAL_YEAR', 'TIME')
