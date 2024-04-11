@@ -1,30 +1,82 @@
-# Update data for specific CORP_ID values 
+los_org_cmp_a = los_org_cmp.rename(columns={0.2:'20th_Percentile',0.8:'80th_Percentile' })
+tpia_org_cmp_a = tpia_org_cmp.rename(columns={0.2:'20th_Percentile',0.8:'80th_Percentile' })
+los_reg_cmp_a = los_reg_cmp.rename(columns={0.2:'20th_Percentile',0.8:'80th_Percentile' })
+tpia_reg_cmp_a = tpia_reg_cmp.rename(columns={0.2:'20th_Percentile',0.8:'80th_Percentile' })
 
-corp_id_mapping = {
-    1019: 81170, 
-    10038: 81124, 
-    7077: 80960, 
-    5045: 81131, 
-    5085: 81180, 
-    5049: 81263, 
-    5160: None 
-}
+def apply_conditions(df):
+    conditions = [
+        (df['PERCENTILE_90'] < df['20th_Percentile']),
+        (df['PERCENTILE_90'] >= df['20th_Percentile']) & (df['PERCENTILE_90'] <= df['80th_Percentile']),
+        (df['PERCENTILE_90'] > df['80th_Percentile'])
+    ]
 
-# Apply the mapping to CORP_ID columns in all DataFrames
-dataframes= [los_org_21, los_org_20, los_org_22_a, tpia_org_21, tpia_org_20, tpia_org_22_a]
-for df in dataframes:
-    df['CORP_ID'].replace(corp_id_mapping, inplace=True)
+    values= ['001', '002', '003']
+    descriptions = ['Above average performance', 'Same as average', 'Below average performance']
 
-# Rename the 'PEER_GROUP_ID' column to 'CORP_PEER' in los_org_21 and los_org_20 & 
-# Reaname the fiscal_year column to 'SUBMISSION_FISCAL_YEAR in los_reg_21 and tpia_reg_21
-los_org_21.rename(columns={'PEER_GROUP_ID': 'CORP_PEER'}, inplace=True)
-los_org_20.rename(columns={'PEER_GROUP_ID': 'CORP_PEER'}, inplace=True)
-tpia_org_21.rename(columns={'PEER_GROUP_ID': 'CORP_PEER'}, inplace=True)
-tpia_org_20.rename(columns={'PEER_GROUP_ID': 'CORP_PEER'}, inplace=True)
+    # Apply conditions
+    df['COMPARE_IND_CODE'] = np.select(conditions, values , default='')
+    df['COMPARE_IND_E_DESC'] = np.select(conditions, descriptions, default='')
 
-# los_reg_21.rename(columns={'SUBMISSION_FISCAL_YEAR': 'FISCAL_YEAR'}, inplace=True)
-# tpia_reg_21.rename(columns={'SUBMISSION_FISCAL_YEAR': 'FISCAL_YEAR'}, inplace=True)
+    # Sort the DataFrame by CORP_ID or REGION_ID as needed 
+    if 'CORP_ID' in df.columns:
+        df.sort_values(by=['CORP_ID'], inplace=True)
+    elif 'REGION_ID' in df.columns:
+        df.sort_values(by=['REGION_ID'], inplace=True)
 
-# Filter out rows where CORP_ID is 5160
-los_org_21 = los_org_21[los_org_21['CORP_ID'] != 5160]
-los_org_20 = los_org_20[los_org_20['CORP_ID'] != 5160]
+# Apply conditions for each DataFrame
+apply_conditions(los_org_cmp_a)
+apply_conditions(tpia_org_cmp_a)
+apply_conditions(los_reg_cmp_a)
+apply_conditions(tpia_reg_cmp_a)
+
+
+
+
+
+# Define a list of dataframes for los_org
+los_org_dfs = [
+    los_org_20[['CORP_ID', 'CORP_PEER']],
+    los_org_21[['CORP_ID']],
+    los_org_22_a[['CORP_ID']]
+]
+
+# Define a list of dataframes for tpia_org
+tpia_org_dfs = [
+    tpia_org_20[['CORP_ID', 'CORP_PEER']],
+    tpia_org_21[['CORP_ID']],
+    tpia_org_22_a[['CORP_ID']]
+]
+
+
+# Define a list of dataframes for los_reg
+los_reg_dfs = [
+    los_reg_20[['REGION_ID']],
+    los_reg_21[['REGION_ID']],
+    los_reg_22_a[['REGION_ID']]
+]
+
+# Define a list of dataframes for tpia_reg
+tpia_reg_dfs = [
+    tpia_reg_20[['REGION_ID']],
+    tpia_reg_21[['REGION_ID']],
+    tpia_reg_22_a[['REGION_ID']]
+]
+
+# Function to perform successive inner merges on a list of dataframes
+def successive_inner_merge(dataframes):
+    result_df = dataframes[0]
+    for df in dataframes[1:]:
+        result_df = pd.merge(result_df, df, on=result_df.columns.intersection(df.columns).tolist(), how='inner')
+    return result_df
+
+# Perform the successive merges for los_org
+los_org_3x3 = successive_inner_merge(los_org_dfs)
+
+# Perform the successive merges for tpia_org
+tpia_org_3x3 = successive_inner_merge(tpia_org_dfs)
+
+# Perform the successive merges for los_reg
+los_reg_3x3 = successive_inner_merge(los_reg_dfs)
+
+# Perform the successive merges for tpia_reg
+tpia_reg_3x3 = successive_inner_merge(tpia_reg_dfs)
