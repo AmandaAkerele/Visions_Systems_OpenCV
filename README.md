@@ -1,23 +1,17 @@
-from pyspark.sql import functions as F
 
-# Update data for specific CORP_ID values
-corp_id_mapping = {
-    1019: 81170,
-    10038: 81124,
-    7077: 80960,
-    5045: 81131,
-    5085: 81180,
-    5049: 81263,
-    5160: None
-}
+tpia_org_21['CORP_ID']=tpia_org_21['CORP_ID'].apply(lambda x: 81170 if x==1019 else x)
+tpia_org_21['CORP_ID']=tpia_org_21['CORP_ID'].apply(lambda x: 81124 if x==10038 else x)
+tpia_org_21['CORP_ID']=tpia_org_21['CORP_ID'].apply(lambda x: 80960 if x==7077 else x)
+tpia_org_21['CORP_ID']=tpia_org_21['CORP_ID'].apply(lambda x: 81131 if x==5045 else x)
+tpia_org_21['CORP_ID']=tpia_org_21['CORP_ID'].apply(lambda x: 81180 if x==5085 else x)
+tpia_org_21['CORP_ID']=tpia_org_21['CORP_ID'].apply(lambda x: 81263 if x==5049 else x)
+tpia_org_21=tpia_org_21[tpia_org_21['CORP_ID'] != 5160].rename(columns={'PEER_GROUP_ID':'CORP_PEER'})
 
-# Apply the mapping to CORP_ID columns in all DataFrames
-dataframes = [los_org_21, los_org_20, los_org_22_a, tpia_org_21, tpia_org_20, tpia_org_22_a]
-
-for i in range(len(dataframes)):
-    for col, val in corp_id_mapping.items():
-        dataframes[i] = dataframes[i].withColumn('CORP_ID', 
-                                                 F.coalesce(
-                                                     F.when(F.col('CORP_ID') == col, val),
-                                                     F.col('CORP_ID')
-                                                 ))
+tpia_org_20['CORP_ID']=tpia_org_20['CORP_ID'].apply(lambda x: 81170 if x==1019 else x)
+tpia_org_20['CORP_ID']=tpia_org_20['CORP_ID'].apply(lambda x: 81124 if x==10038 else x)
+tpia_org_20['CORP_ID']=tpia_org_20['CORP_ID'].apply(lambda x: 80960 if x==7077 else x)
+tpia_org_20['CORP_ID']=tpia_org_20['CORP_ID'].apply(lambda x: 81131 if x==5045 else x)
+tpia_org_20['CORP_ID']=tpia_org_20['CORP_ID'].apply(lambda x: 81180 if x==5085 else x)
+tpia_org_20['CORP_ID']=tpia_org_20['CORP_ID'].apply(lambda x: 81263 if x==5049 else x)
+tpia_org_20=tpia_org_20[tpia_org_20['CORP_ID'] != 5160].rename(columns={'PEER_GROUP_ID':'CORP_PEER'})
+tpia_org_22=tpia_org_22[tpia_org_22['CORP_ID'] != 5160].rename(columns={'percentile_90':'PERCENTILE_90'})
