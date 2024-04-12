@@ -1,39 +1,85 @@
+from pyspark.sql import functions as F
+from pyspark.sql import Window
+from pyspark.ml.regression import LinearRegression
+from pyspark.ml.feature import VectorAssembler
+from pyspark.sql.types import FloatType, IntegerType
+
 # Convert columns to numeric and drop NaNs
-los_org_all_yr_b = los_org_all_yr_b.apply(pd.to_numeric, errors='coerce')
-los_org_all_yr_b.dropna(subset=['PERCENTILE_90', 'TIME'], inplace=True)
+los_org_all_yr_b = los_org_all_yr_b.select(
+    *[F.col(col).cast("float") for col in ['PERCENTILE_90', 'TIME']]
+).na.drop(subset=['PERCENTILE_90', 'TIME'])
+
+# Define a window specification
+windowSpec = Window.partitionBy('CORP_ID')
 
 # Create a GroupBy object and prepare DataFrame for results
-grouped = los_org_all_yr_b.groupby('CORP_ID')
+grouped = los_org_all_yr_b.groupBy('CORP_ID').agg(
+    F.collect_list('TIME').alias('TIME_LIST'),
+    F.collect_list('PERCENTILE_90').alias('PERCENTILE_90_LIST')
+)
+
 all_results = []
 
 # Iterate, perform regression, and store results
-for group_name, group_data in grouped:
-    X = sm.add_constant(group_data['TIME'])
-    y = group_data['PERCENTILE_90']
-    model = sm.OLS(y, X).fit()
-    conf_int = model.conf_int(alpha=0.05)
+for row in grouped.collect():
+    corp_id = row['CORP_ID']
+    X = list(zip(row['TIME_LIST'], [1]*len(row['TIME_LIST'])))
+    y = row['PERCENTILE_90_LIST']
+
+    # Create a DataFrame from the data
+    df = spark.createDataFrame(X, ["TIME", "const"]).withColumn("PERCENTILE_90", F.lit(None))
+    
+    # VectorAssembler
+    assembler = VectorAssembler(inputCols=["TIME", "const"], outputCol="features")
+    df = assembler.transform(df)
+    
+    # Linear Regression
+    lr = LinearRegression(featuresCol='features', labelCol='PERCENTILE_90', regParam=0.0)
+    model = lr.fit(df)
+    
+    # Extract coefficients and confidence intervals
+    params = model.coefficients.toArray()
+    std_err = model.summary.coefficientStandardErrors
+    t_values = model.summary.tValues
+    p_values = model.summary.pValues
+    conf_int = model.summary.confidenceIntervals()
 
     for param_type, values in zip(['PARAMS', 'STDERR', 'T', 'PVALUE', 'L95B', 'U95B'],
-                                  [model.params, model.bse, model.tvalues, model.pvalues,
-                                   pd.Series([conf_int.loc['TIME', 0]], index=['TIME']),
-                                   pd.Series([conf_int.loc['TIME', 1]], index=['TIME'])]):
-        all_results.append({'CORP_ID': group_name, '_TYPE_': param_type, **values})
+                                  [params, std_err, t_values, p_values,
+                                   [conf_int[0][0]], [conf_int[0][1]]]):
+        all_results.append({'CORP_ID': corp_id, '_TYPE_': param_type, 'TIME': float(values[0])})
 
 # Convert to DataFrame and analyze results
-los_org_trend_a = pd.DataFrame(all_results)
-los_org_trend_a['linr'] = ((los_org_trend_a['_TYPE_'] == 'PVALUE') & (los_org_trend_a['TIME'] < 0.05)).astype(int)
+los_org_trend_a = spark.createDataFrame(all_results)
+
+# Add linr column
+los_org_trend_a = los_org_trend_a.withColumn(
+    'linr', F.when((F.col('_TYPE_') == 'PVALUE') & (F.col('TIME') < 0.05), 1).otherwise(0)
+)
 
 # Create subsets and merge
-p_val = los_org_trend_a[los_org_trend_a['_TYPE_'] == 'PVALUE'][['CORP_ID', 'linr']]
-parms = los_org_trend_a[los_org_trend_a['_TYPE_'] == 'PARAMS'][['CORP_ID', 'TIME']]
-merged = pd.merge(p_val, parms, on='CORP_ID')
+p_val = los_org_trend_a.filter(los_org_trend_a['_TYPE_'] == 'PVALUE').select('CORP_ID', 'linr')
+parms = los_org_trend_a.filter(los_org_trend_a['_TYPE_'] == 'PARAMS').select('CORP_ID', 'TIME')
+
+merged = p_val.join(parms, on='CORP_ID', how='inner')
 
 # Define improvement indicators
-merged['IMPROVEMENT_IND_CODE'] = '002'
-merged['IMPROVEMENT_IND_E_DESC'] = 'No Change'
-mask = merged['linr'] == 1
-merged.loc[mask & (merged['TIME'] > 0), ['IMPROVEMENT_IND_CODE', 'IMPROVEMENT_IND_E_DESC']] = ['003', 'Weakening']
-merged.loc[mask & (merged['TIME'] < 0), ['IMPROVEMENT_IND_CODE', 'IMPROVEMENT_IND_E_DESC']] = ['001', 'Improving']
+merged = merged.withColumn('IMPROVEMENT_IND_CODE', F.lit('002')) \
+               .withColumn('IMPROVEMENT_IND_E_DESC', F.lit('No Change'))
 
-# Final filtering 
-los_org_trend_b = merged[~merged['CORP_ID'].isin(ed_nacrs_flg_1_22['CORP_ID'])]
+merged = merged.withColumn(
+    'IMPROVEMENT_IND_CODE', 
+    F.when((F.col('linr') == 1) & (F.col('TIME') > 0), '003')
+    .when((F.col('linr') == 1) & (F.col('TIME') < 0), '001')
+    .otherwise(F.col('IMPROVEMENT_IND_CODE'))
+)
+
+merged = merged.withColumn(
+    'IMPROVEMENT_IND_E_DESC', 
+    F.when((F.col('linr') == 1) & (F.col('TIME') > 0), 'Weakening')
+    .when((F.col('linr') == 1) & (F.col('TIME') < 0), 'Improving')
+    .otherwise(F.col('IMPROVEMENT_IND_E_DESC'))
+)
+
+# Final filtering
+los_org_trend_b = merged.join(ed_nacrs_flg_1_22, on='CORP_ID', how='left_anti')
