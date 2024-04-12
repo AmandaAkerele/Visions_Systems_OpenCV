@@ -17,4 +17,7 @@ dataframes = [los_org_21, los_org_20, los_org_22_a, tpia_org_21, tpia_org_20, tp
 for i in range(len(dataframes)):
     for col, val in corp_id_mapping.items():
         dataframes[i] = dataframes[i].withColumn('CORP_ID', 
-                                                 F.when(F.col('CORP_ID') == col, val).otherwise(F.col('CORP_ID')))
+                                                 F.coalesce(
+                                                     F.when(F.col('CORP_ID') == col, val),
+                                                     F.col('CORP_ID')
+                                                 ))
