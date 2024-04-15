@@ -1,6 +1,7 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 import statsmodels.api as sm
+import numpy as np
 
 # Initialize Spark session
 spark = SparkSession.builder.appName("Convert to PySpark").getOrCreate()
@@ -25,8 +26,8 @@ def perform_ols(group_data):
     
     # Extract confidence intervals
     conf_int = results.conf_int(alpha=0.05)
-    l95b = conf_int.loc['TIME', 0]  # Lower bound for 'time'
-    u95b = conf_int.loc['TIME', 1]  # Upper bound for 'time'
+    l95b = conf_int[0][1]  # Lower bound for 'time'
+    u95b = conf_int[1][1]  # Upper bound for 'time'
 
     results_dict = {
         'CORP_ID': group_data.select('CORP_ID').first()[0],
@@ -79,22 +80,3 @@ los_org_p_val_parms = los_org_p_val_parms.withColumn('IMPROVEMENT_IND_CODE',
 # Replace 'ed_nacrs_flg_1_SL' with the actual DataFrame
 ed_nacrs_flg_1_SL_corp_ids = ed_nacrs_flg_1_SL.select('CORP_ID')
 los_org_trend_b = los_org_p_val_parms.join(ed_nacrs_flg_1_SL_corp_ids, 'CORP_ID', 'left_anti')
-
-SOLVE THIS ERROR IN THE CODE BELOW: 
----------------------------------------------------------------------------
-AttributeError                            Traceback (most recent call last)
-/tmp/ipykernel_3755/2676148992.py in <cell line: 45>()
-     45 for group_name in los_org_all_yr_b.select('TIME').distinct().rdd.flatMap(lambda x: x).collect():
-     46     group_data = los_org_all_yr_b.filter(F.col('TIME') == group_name)
----> 47     all_results.append(perform_ols(group_data))
-     48 
-     49 # Convert results to DataFrame
-
-/tmp/ipykernel_3755/2676148992.py in perform_ols(group_data)
-     26     # Extract confidence intervals
-     27     conf_int = results.conf_int(alpha=0.05)
----> 28     l95b = conf_int.loc['TIME', 0]  # Lower bound for 'time'
-     29     u95b = conf_int.loc['TIME', 1]  # Upper bound for 'time'
-     30 
-
-AttributeError: 'numpy.ndarray' object has no attribute 'loc'
