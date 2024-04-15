@@ -3,17 +3,16 @@ from pyspark.sql import functions as F
 import statsmodels.api as sm
 import pandas as pd
 
-# Assuming 'los_org_all_yr_b' is a PySpark DataFrame
 # Convert columns to numeric and drop NaNs
-# columns_to_convert = ['PERCENTILE_90', 'TIME']
-# for col in columns_to_convert:
-#     los_org_all_yr_b = los_org_all_yr_b.withColumn(col, F.col(col).cast('float'))
-# los_org_all_yr_b = los_org_all_yr_b.dropna(subset=columns_to_convert)
+columns_to_convert = ['PERCENTILE_90', 'TIME']
+for col in columns_to_convert:
+    los_org_all_yr_b = los_org_all_yr_b.withColumn(col, F.col(col).cast('float'))
+los_org_all_yr_b = los_org_all_yr_b.dropna(subset=columns_to_convert)
 
 # Function to perform linear regression and return results
 def perform_ols(data):
-    X = sm.add_constant(data.select('TIME').rdd.flatMap(lambda x: x).collect())
-    y = data.select('PERCENTILE_90').rdd.flatMap(lambda x: x).collect()
+    X = sm.add_constant(data.select('TIME').rdd.flatMap(lambda x: [float(i) for i in x]).collect())
+    y = data.select('PERCENTILE_90').rdd.flatMap(lambda x: [float(i) for i in x]).collect()
     model = sm.OLS(y, X).fit()
     conf_int = model.conf_int(alpha=0.05)
     
@@ -53,44 +52,3 @@ merged = merged.withColumn('IMPROVEMENT_IND_CODE', F.when(mask & (F.col('VALUE')
 # Final filtering 
 ed_nacrs_flg_1_22_corp_ids = ed_nacrs_flg_1_22.select('CORP_ID')
 los_org_trend_b = merged.join(ed_nacrs_flg_1_22_corp_ids, 'CORP_ID', 'left_anti')
-
-error is below solve it pls
-
----------------------------------------------------------------------------
-UFuncTypeError                            Traceback (most recent call last)
-/tmp/ipykernel_3755/2000684506.py in <cell line: 30>()
-     30 for group_name in los_org_all_yr_b.select('CORP_ID').distinct().rdd.flatMap(lambda x: x).collect():
-     31     group_data = los_org_all_yr_b.filter(F.col('CORP_ID') == group_name)
----> 32     all_results.extend(perform_ols(group_data))
-     33 
-     34 # Convert to DataFrame and analyze results
-
-/tmp/ipykernel_3755/2000684506.py in perform_ols(data)
-     13 # Function to perform linear regression and return results
-     14 def perform_ols(data):
----> 15     X = sm.add_constant(data.select('TIME').rdd.flatMap(lambda x: x).collect())
-     16     y = data.select('PERCENTILE_90').rdd.flatMap(lambda x: x).collect()
-     17     model = sm.OLS(y, X).fit()
-
-~/.local/lib/python3.10/site-packages/statsmodels/tools/tools.py in add_constant(data, prepend, has_constant)
-    193         raise ValueError('Only implemented for 2-dimensional arrays')
-    194 
---> 195     is_nonzero_const = np.ptp(x, axis=0) == 0
-    196     is_nonzero_const &= np.all(x != 0.0, axis=0)
-    197     if is_nonzero_const.any():
-
-~/.local/lib/python3.10/site-packages/numpy/core/fromnumeric.py in ptp(a, axis, out, keepdims)
-   2682         else:
-   2683             return ptp(axis=axis, out=out, **kwargs)
--> 2684     return _methods._ptp(a, axis=axis, out=out, **kwargs)
-   2685 
-   2686 
-
-~/.local/lib/python3.10/site-packages/numpy/core/_methods.py in _ptp(a, axis, out, keepdims)
-    218 def _ptp(a, axis=None, out=None, keepdims=False):
-    219     return um.subtract(
---> 220         umr_maximum(a, axis, None, out, keepdims),
-    221         umr_minimum(a, axis, None, None, keepdims),
-    222         out
-
-UFuncTypeError: ufunc 'maximum' did not contain a loop with signature matching types (dtype('<U4'), dtype('<U4')) -> None
