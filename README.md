@@ -1,7 +1,7 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
-import statsmodels.api as sm
-import numpy as np
+from pyspark.ml.regression import LinearRegression
+from pyspark.ml.feature import VectorAssembler
 
 # Initialize Spark session
 spark = SparkSession.builder.appName("Convert to PySpark").getOrCreate()
@@ -19,22 +19,28 @@ grouped = los_org_all_yr_b.groupBy('CORP_ID')
 
 # Define a function to perform linear regression and return results
 def perform_ols(group_data):
-    X = sm.add_constant(group_data.select('TIME').collect())
-    y = group_data.select('PERCENTILE_90').collect()
-    model = sm.OLS(y, X)
-    results = model.fit()
-    
-    # Extract confidence intervals
-    conf_int = results.conf_int(alpha=0.05)
-    l95b = conf_int.loc['const', 0]  # Lower bound for constant term
-    u95b = conf_int.loc['const', 1]  # Upper bound for constant term
+    # Create a vector assembler
+    assembler = VectorAssembler(inputCols=["TIME"], outputCol="features")
+    data = assembler.transform(group_data)
+
+    # Create and fit the model
+    lr = LinearRegression(featuresCol="features", labelCol="PERCENTILE_90")
+    model = lr.fit(data)
+
+    # Extract coefficients and confidence intervals
+    coef = model.coefficients[0]
+    std_err = model.summary.coefficientStandardErrors[0]
+    t_val = coef / std_err
+    p_val = model.summary.pValues[0]
+    l95b = coef - 1.96 * std_err  # Lower bound for 'time'
+    u95b = coef + 1.96 * std_err  # Upper bound for 'time'
 
     results_dict = {
         'CORP_ID': group_data.select('CORP_ID').first()[0],
-        'PARAMS': results.params[1],
-        'STDERR': results.bse[1],
-        'T': results.tvalues[1],
-        'PVALUE': results.pvalues[1],
+        'PARAMS': coef,
+        'STDERR': std_err,
+        'T': t_val,
+        'PVALUE': p_val,
         'L95B': l95b,
         'U95B': u95b
     }
