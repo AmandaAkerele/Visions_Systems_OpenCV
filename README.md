@@ -1,83 +1,96 @@
+from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
-from pyspark.sql import Window
-from pyspark.ml.regression import LinearRegression
-from pyspark.ml.feature import VectorAssembler
-from pyspark.sql.types import FloatType, IntegerType
-from pyspark.ml.linalg import Vectors, VectorUDT
+import statsmodels.api as sm
+import pandas as pd
 
+# Assuming 'los_org_all_yr_b' is a PySpark DataFrame
 # Convert columns to numeric and drop NaNs
-los_org_all_yr_b = los_org_all_yr_b.select(
-    *[F.col(col).cast("float") for col in ['PERCENTILE_90', 'TIME']]
-).na.drop(subset=['PERCENTILE_90', 'TIME'])
+# columns_to_convert = ['PERCENTILE_90', 'TIME']
+# for col in columns_to_convert:
+#     los_org_all_yr_b = los_org_all_yr_b.withColumn(col, F.col(col).cast('float'))
+# los_org_all_yr_b = los_org_all_yr_b.dropna(subset=columns_to_convert)
 
-# Define a window specification
-windowSpec = Window.partitionBy('CORP_ID')
+# Function to perform linear regression and return results
+def perform_ols(data):
+    X = sm.add_constant(data.select('TIME').rdd.flatMap(lambda x: x).collect())
+    y = data.select('PERCENTILE_90').rdd.flatMap(lambda x: x).collect()
+    model = sm.OLS(y, X).fit()
+    conf_int = model.conf_int(alpha=0.05)
+    
+    results = []
+    for param_type, value in zip(['PARAMS', 'STDERR', 'T', 'PVALUE', 'L95B', 'U95B'],
+                                 [model.params, model.bse, model.tvalues, model.pvalues,
+                                  [conf_int['TIME'][0]], [conf_int['TIME'][1]]]):
+        results.append({'CORP_ID': data.select('CORP_ID').first()[0], '_TYPE_': param_type, 'VALUE': value[0]})
+    
+    return results
 
-# Create a GroupBy object and prepare DataFrame for results
-grouped = los_org_all_yr_b.groupBy('CORP_ID').agg(
-    F.collect_list('TIME').alias('TIME'),
-    F.collect_list('PERCENTILE_90').alias('PERCENTILE_90')
-)
-
+# Iterate over groups, perform regression, and store results
 all_results = []
-
-# Iterate, perform regression, and store results
-for row in grouped.collect():
-    corp_id = row['CORP_ID']
-    X = [float(t) for t in row['TIME']]
-    y = [float(p) for p in row['PERCENTILE_90']]
-
-    # Create a DataFrame from the data
-    data = [(Vectors.dense([x, 1.0]), y[i]) for i, x in enumerate(X)]
-    df = spark.createDataFrame(data, ["features", "PERCENTILE_90"])
-    
-    # Linear Regression
-    lr = LinearRegression(featuresCol='features', labelCol='PERCENTILE_90', regParam=0.0)
-    model = lr.fit(df)
-    
-    # Extract coefficients and confidence intervals
-    params = model.coefficients.toArray()
-    std_err = model.summary.coefficientStandardErrors
-    t_values = model.summary.tValues
-    p_values = model.summary.pValues
-    conf_int = model.summary.confidenceIntervals()
-
-    for param_type, values in zip(['PARAMS', 'STDERR', 'T', 'PVALUE', 'L95B', 'U95B'],
-                                  [params, std_err, t_values, p_values,
-                                   [conf_int[0][0]], [conf_int[0][1]]]):
-        all_results.append({'CORP_ID': corp_id, '_TYPE_': param_type, 'TIME': float(values[0])})
+for group_name in los_org_all_yr_b.select('CORP_ID').distinct().rdd.flatMap(lambda x: x).collect():
+    group_data = los_org_all_yr_b.filter(F.col('CORP_ID') == group_name)
+    all_results.extend(perform_ols(group_data))
 
 # Convert to DataFrame and analyze results
 los_org_trend_a = spark.createDataFrame(all_results)
-
-# Add linr column
-los_org_trend_a = los_org_trend_a.withColumn(
-    'linr', F.when((F.col('_TYPE_') == 'PVALUE') & (F.col('TIME') < 0.05), 1).otherwise(0)
-)
+los_org_trend_a = los_org_trend_a.withColumn('linr', (F.col('_TYPE_') == 'PVALUE') & (F.col('VALUE') < 0.05).cast('int'))
 
 # Create subsets and merge
-p_val = los_org_trend_a.filter(los_org_trend_a['_TYPE_'] == 'PVALUE').select('CORP_ID', 'linr')
-parms = los_org_trend_a.filter(los_org_trend_a['_TYPE_'] == 'PARAMS').select('CORP_ID', 'TIME')
-
-merged = p_val.join(parms, on='CORP_ID', how='inner')
+p_val = los_org_trend_a.filter(F.col('_TYPE_') == 'PVALUE').select('CORP_ID', 'linr')
+parms = los_org_trend_a.filter(F.col('_TYPE_') == 'PARAMS').select('CORP_ID', 'VALUE')
+merged = p_val.join(parms, 'CORP_ID', 'inner')
 
 # Define improvement indicators
 merged = merged.withColumn('IMPROVEMENT_IND_CODE', F.lit('002')) \
                .withColumn('IMPROVEMENT_IND_E_DESC', F.lit('No Change'))
 
-merged = merged.withColumn(
-    'IMPROVEMENT_IND_CODE', 
-    F.when((F.col('linr') == 1) & (F.col('TIME') > 0), '003')
-    .when((F.col('linr') == 1) & (F.col('TIME') < 0), '001')
-    .otherwise(F.col('IMPROVEMENT_IND_CODE'))
-)
+mask = (F.col('linr') == 1)
+merged = merged.withColumn('IMPROVEMENT_IND_CODE', F.when(mask & (F.col('VALUE') > 0), '003').otherwise(F.col('IMPROVEMENT_IND_CODE'))) \
+               .withColumn('IMPROVEMENT_IND_E_DESC', F.when(mask & (F.col('VALUE') > 0), 'Weakening') \
+                                                          .when(mask & (F.col('VALUE') < 0), 'Improving') \
+                                                          .otherwise(F.col('IMPROVEMENT_IND_E_DESC')))
 
-merged = merged.withColumn(
-    'IMPROVEMENT_IND_E_DESC', 
-    F.when((F.col('linr') == 1) & (F.col('TIME') > 0), 'Weakening')
-    .when((F.col('linr') == 1) & (F.col('TIME') < 0), 'Improving')
-    .otherwise(F.col('IMPROVEMENT_IND_E_DESC'))
-)
+# Final filtering 
+ed_nacrs_flg_1_22_corp_ids = ed_nacrs_flg_1_22.select('CORP_ID')
+los_org_trend_b = merged.join(ed_nacrs_flg_1_22_corp_ids, 'CORP_ID', 'left_anti')
 
-# Final filtering
-los_org_trend_b = merged.join(ed_nacrs_flg_1_22, on='CORP_ID', how='left_anti')
+error is below solve it pls
+
+---------------------------------------------------------------------------
+UFuncTypeError                            Traceback (most recent call last)
+/tmp/ipykernel_3755/2000684506.py in <cell line: 30>()
+     30 for group_name in los_org_all_yr_b.select('CORP_ID').distinct().rdd.flatMap(lambda x: x).collect():
+     31     group_data = los_org_all_yr_b.filter(F.col('CORP_ID') == group_name)
+---> 32     all_results.extend(perform_ols(group_data))
+     33 
+     34 # Convert to DataFrame and analyze results
+
+/tmp/ipykernel_3755/2000684506.py in perform_ols(data)
+     13 # Function to perform linear regression and return results
+     14 def perform_ols(data):
+---> 15     X = sm.add_constant(data.select('TIME').rdd.flatMap(lambda x: x).collect())
+     16     y = data.select('PERCENTILE_90').rdd.flatMap(lambda x: x).collect()
+     17     model = sm.OLS(y, X).fit()
+
+~/.local/lib/python3.10/site-packages/statsmodels/tools/tools.py in add_constant(data, prepend, has_constant)
+    193         raise ValueError('Only implemented for 2-dimensional arrays')
+    194 
+--> 195     is_nonzero_const = np.ptp(x, axis=0) == 0
+    196     is_nonzero_const &= np.all(x != 0.0, axis=0)
+    197     if is_nonzero_const.any():
+
+~/.local/lib/python3.10/site-packages/numpy/core/fromnumeric.py in ptp(a, axis, out, keepdims)
+   2682         else:
+   2683             return ptp(axis=axis, out=out, **kwargs)
+-> 2684     return _methods._ptp(a, axis=axis, out=out, **kwargs)
+   2685 
+   2686 
+
+~/.local/lib/python3.10/site-packages/numpy/core/_methods.py in _ptp(a, axis, out, keepdims)
+    218 def _ptp(a, axis=None, out=None, keepdims=False):
+    219     return um.subtract(
+--> 220         umr_maximum(a, axis, None, out, keepdims),
+    221         umr_minimum(a, axis, None, None, keepdims),
+    222         out
+
+UFuncTypeError: ufunc 'maximum' did not contain a loop with signature matching types (dtype('<U4'), dtype('<U4')) -> None
