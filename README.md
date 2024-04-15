@@ -1,8 +1,7 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
-from pyspark.ml.regression import LinearRegression
+from pyspark.ml.classification import LogisticRegression
 from pyspark.ml.feature import VectorAssembler
-import numpy as np
 
 # Initialize Spark session
 spark = SparkSession.builder.appName("Convert to PySpark").getOrCreate()
@@ -18,17 +17,17 @@ los_org_all_yr_b = los_org_all_yr_b.dropna(subset=['PERCENTILE_90', 'TIME'])
 # Create a GroupBy object for the 'CORP_ID' variable
 grouped = los_org_all_yr_b.groupBy('CORP_ID')
 
-# Define a function to perform linear regression and return results
-def perform_ols(group_data):
+# Define a function to perform logistic regression and return results
+def perform_logistic(group_data):
     # Create a vector assembler
     assembler = VectorAssembler(inputCols=["TIME"], outputCol="features")
     data = assembler.transform(group_data)
 
     # Create and fit the model
-    lr = LinearRegression(featuresCol="features", labelCol="PERCENTILE_90")
+    lr = LogisticRegression(featuresCol="features", labelCol="PERCENTILE_90", maxIter=10)
     model = lr.fit(data)
 
-    # Extract coefficients and confidence intervals
+    # Extract coefficients
     coef = model.coefficients[0]
     
     # Compute standard error manually
@@ -54,11 +53,11 @@ def perform_ols(group_data):
 
     return results_dict
 
-# Perform regression for each group and collect results
+# Perform logistic regression for each group and collect results
 all_results = []
 for group_name in los_org_all_yr_b.select('TIME').distinct().rdd.flatMap(lambda x: x).collect():
     group_data = los_org_all_yr_b.filter(F.col('TIME') == group_name)
-    all_results.append(perform_ols(group_data))
+    all_results.append(perform_logistic(group_data))
 
 # Convert results to DataFrame
 los_org_trend = spark.createDataFrame(all_results)
