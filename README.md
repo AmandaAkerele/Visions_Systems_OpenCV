@@ -1,88 +1,48 @@
-from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
-from pyspark.ml.regression import LinearRegression
-from pyspark.ml.feature import VectorAssembler
+24/04/15 11:24:35 WARN Instrumentation: [b558bf3e] regParam is zero, which might cause numerical instability and overfitting.
+24/04/15 11:24:35 WARN Instrumentation: [b558bf3e] Cholesky solver failed due to singular covariance matrix. Retrying with Quasi-Newton solver.
+                                                                                
+---------------------------------------------------------------------------
+UnsupportedOperationException             Traceback (most recent call last)
+/tmp/ipykernel_3755/3708711566.py in <cell line: 50>()
+     50 for group_name in los_org_all_yr_b.select('TIME').distinct().rdd.flatMap(lambda x: x).collect():
+     51     group_data = los_org_all_yr_b.filter(F.col('TIME') == group_name)
+---> 52     all_results.append(perform_ols(group_data))
+     53 
+     54 # Convert results to DataFrame
 
-# Initialize Spark session
-spark = SparkSession.builder.appName("Convert to PySpark").getOrCreate()
+/tmp/ipykernel_3755/3708711566.py in perform_ols(group_data)
+     28     # Extract coefficients and confidence intervals
+     29     coef = model.coefficients[0]
+---> 30     std_err = model.summary.coefficientStandardErrors[0]
+     31     t_val = coef / std_err
+     32     p_val = model.summary.pValues[0]
 
-# Assuming 'los_org_all_yr_b' is a PySpark DataFrame
-# Convert columns to numeric, just in case they are not
-los_org_all_yr_b = los_org_all_yr_b.withColumn('PERCENTILE_90', F.col('PERCENTILE_90').cast('float')) \
-                                   .withColumn('TIME', F.col('TIME').cast('float'))
+/usr/local/lib/python3.10/dist-packages/pyspark/ml/regression.py in coefficientStandardErrors(self)
+    700         LinearRegression.solver
+    701         """
+--> 702         return self._call_java("coefficientStandardErrors")
+    703 
+    704     @property
 
-# Drop rows where either 'PERCENTILE_90' or 'TIME' is NaN after the conversion
-los_org_all_yr_b = los_org_all_yr_b.dropna(subset=['PERCENTILE_90', 'TIME'])
+/usr/local/lib/python3.10/dist-packages/pyspark/ml/wrapper.py in _call_java(self, name, *args)
+     70 
+     71         java_args = [_py2java(sc, arg) for arg in args]
+---> 72         return _java2py(sc, m(*java_args))
+     73 
+     74     @staticmethod
 
-# Create a GroupBy object for the 'CORP_ID' variable
-grouped = los_org_all_yr_b.groupBy('CORP_ID')
+/usr/local/lib/python3.10/dist-packages/py4j/java_gateway.py in __call__(self, *args)
+   1320 
+   1321         answer = self.gateway_client.send_command(command)
+-> 1322         return_value = get_return_value(
+   1323             answer, self.gateway_client, self.target_id, self.name)
+   1324 
 
-# Define a function to perform linear regression and return results
-def perform_ols(group_data):
-    # Create a vector assembler
-    assembler = VectorAssembler(inputCols=["TIME"], outputCol="features")
-    data = assembler.transform(group_data)
+/usr/local/lib/python3.10/dist-packages/pyspark/errors/exceptions/captured.py in deco(*a, **kw)
+    183                 # Hide where the exception came from that shows a non-Pythonic
+    184                 # JVM exception message.
+--> 185                 raise converted from None
+    186             else:
+    187                 raise
 
-    # Create and fit the model
-    lr = LinearRegression(featuresCol="features", labelCol="PERCENTILE_90")
-    model = lr.fit(data)
-
-    # Extract coefficients and confidence intervals
-    coef = model.coefficients[0]
-    std_err = model.summary.coefficientStandardErrors[0]
-    t_val = coef / std_err
-    p_val = model.summary.pValues[0]
-    l95b = coef - 1.96 * std_err  # Lower bound for 'time'
-    u95b = coef + 1.96 * std_err  # Upper bound for 'time'
-
-    results_dict = {
-        'CORP_ID': group_data.select('CORP_ID').first()[0],
-        'PARAMS': coef,
-        'STDERR': std_err,
-        'T': t_val,
-        'PVALUE': p_val,
-        'L95B': l95b,
-        'U95B': u95b
-    }
-
-    return results_dict
-
-# Perform regression for each group and collect results
-all_results = []
-for group_name in los_org_all_yr_b.select('TIME').distinct().rdd.flatMap(lambda x: x).collect():
-    group_data = los_org_all_yr_b.filter(F.col('TIME') == group_name)
-    all_results.append(perform_ols(group_data))
-
-# Convert results to DataFrame
-los_org_trend = spark.createDataFrame(all_results)
-
-# Step 1: Creating los_org_trend_a with a new variable 'linr'
-los_org_trend_a = los_org_trend.withColumn('linr', 
-                                           (F.col('_TYPE_') == 'PVALUE') & 
-                                           (F.col('VALUE') < 0.05) & 
-                                           (F.col('VALUE').isNotNull())).withColumn('linr', F.when(F.col('linr'), 1).otherwise(0))
-
-# Step 2: Creating subsets based on _TYPE_
-los_org_p_val = los_org_trend_a.filter(F.col('_TYPE_') == 'PVALUE').select('CORP_ID', 'linr')
-los_org_parms = los_org_trend_a.filter(F.col('_TYPE_') == 'PARAMS').select('CORP_ID', 'VALUE')
-
-# Steps 3 and 4: Sorting and merging the datasets
-los_org_p_val_parms = los_org_p_val.join(los_org_parms, 'CORP_ID', 'inner').orderBy('CORP_ID')
-
-# Step 5: Assigning new variables based on conditions
-los_org_p_val_parms = los_org_p_val_parms.withColumn('IMPROVEMENT_IND_CODE', F.lit('002')) \
-                                         .withColumn('IMPROVEMENT_IND_E_DESC', F.lit('No Change'))
-
-mask = (F.col('linr') == 1)
-los_org_p_val_parms = los_org_p_val_parms.withColumn('IMPROVEMENT_IND_CODE', 
-                                                     F.when(mask & (F.col('VALUE') > 0), '003')
-                                                     .otherwise(F.col('IMPROVEMENT_IND_CODE'))) \
-                                         .withColumn('IMPROVEMENT_IND_E_DESC', 
-                                                     F.when(mask & (F.col('VALUE') > 0), 'Weakening')
-                                                     .when(mask & (F.col('VALUE') < 0), 'Improving')
-                                                     .otherwise(F.col('IMPROVEMENT_IND_E_DESC')))
-
-# Step 6: Assuming ed_nacrs_flg_1_SL is another DataFrame you have
-# Replace 'ed_nacrs_flg_1_SL' with the actual DataFrame
-ed_nacrs_flg_1_SL_corp_ids = ed_nacrs_flg_1_SL.select('CORP_ID')
-los_org_trend_b = los_org_p_val_parms.join(ed_nacrs_flg_1_SL_corp_ids, 'CORP_ID', 'left_anti')
+UnsupportedOperationException: No Std. Error of coefficients available for this LinearRegressionModel
