@@ -1,60 +1,75 @@
-from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
-import statsmodels.api as sm
+# Convert columns to numeric, just in case they are not
+los_org_all_yr_b['PERCENTILE_90'] = pd.to_numeric(los_org_all_yr_b['PERCENTILE_90'], errors='coerce')
+los_org_all_yr_b['TIME'] = pd.to_numeric(los_org_all_yr_b['TIME'], errors='coerce')
 
-# Initialize Spark session
-spark = SparkSession.builder.appName("Convert to PySpark").getOrCreate()
+# Drop rows where either 'percentile_90' or 'time' is NaN after the conversion
+los_org_all_yr_b.dropna(subset=['PERCENTILE_90', 'TIME'], inplace=True)
 
-# Assuming 'los_org_all_yr_b' is a PySpark DataFrame
-# Convert columns to numeric and drop NaNs
-columns_to_convert = ['PERCENTILE_90', 'TIME']
-for col in columns_to_convert:
-    los_org_all_yr_b = los_org_all_yr_b.withColumn(col, F.col(col).cast('float'))
-los_org_all_yr_b = los_org_all_yr_b.dropna(subset=columns_to_convert)
+# Create a GroupBy object for the 'CORP_ID' variable
+grouped = los_org_all_yr_b.groupby('CORP_ID')
 
-# Define a function to perform linear regression and return results
-def perform_ols_sql(group_data):
-    X = sm.add_constant(group_data.select('TIME').collect())
-    y = group_data.select('PERCENTILE_90').collect()
-    model = sm.OLS(y, X).fit()
-    conf_int = model.conf_int(alpha=0.05)
-    
-    results = []
-    for param_type, value in zip(['PARAMS', 'STDERR', 'T', 'PVALUE', 'L95B', 'U95B'],
-                                 [model.params[1], model.bse[1], model.tvalues[1], model.pvalues[1],
-                                  conf_int[1][0], conf_int[1][1]]):
-        results.append({'CORP_ID': group_data.select('CORP_ID').first()[0], '_TYPE_': param_type, 'VALUE': value})
-    
-    return results
+# Create empty DataFrame to store results
+los_org_trend = pd.DataFrame()
 
-# Register UDF to perform OLS
-spark.udf.register("perform_ols_sql", perform_ols_sql)
+# Iterate over groups and perform regression
+for group_name, group_data in grouped:
+    X = sm.add_constant(group_data['TIME'])
+    y = group_data['PERCENTILE_90']
+    model = sm.OLS(y, X)
+    results = model.fit()
 
-# Group by 'CORP_ID', perform linear regression, and aggregate results
-los_org_trend_a = los_org_all_yr_b.groupBy('CORP_ID').agg(F.expr("perform_ols_sql(collect_list(TIME), collect_list(PERCENTILE_90)) AS ols_result"))
 
-# Explode the aggregated results
-los_org_trend_a = los_org_trend_a.select('CORP_ID', F.explode('ols_result').alias('result')) \
-                                 .select('CORP_ID', 'result._TYPE_', 'result.VALUE')
+   # Prepare list to store results
+all_results = []
 
-# Create 'linr' column
-los_org_trend_a = los_org_trend_a.withColumn('linr', (F.col('_TYPE_') == 'PVALUE') & (F.col('VALUE') < 0.05).cast('int'))
+# Iterate over each group and perform regression
+for group_name, group_data in grouped:
+    X = sm.add_constant(group_data['TIME'])
+    y = group_data['PERCENTILE_90']
+    model = sm.OLS(y, X)
+    results = model.fit()
 
-# Create subsets and merge
-p_val = los_org_trend_a.filter(F.col('_TYPE_') == 'PVALUE').select('CORP_ID', 'linr')
-parms = los_org_trend_a.filter(F.col('_TYPE_') == 'PARAMS').select('CORP_ID', 'VALUE')
-merged = p_val.join(parms, 'CORP_ID', 'inner')
+    # Extract confidence intervals
+    conf_int = results.conf_int(alpha=0.05)
+    l95b = conf_int.loc['TIME', 0]  # Lower bound for 'time'
+    u95b = conf_int.loc['TIME', 1]  # Upper bound for 'time'
 
-# Define improvement indicators
-merged = merged.withColumn('IMPROVEMENT_IND_CODE', F.lit('002')) \
-               .withColumn('IMPROVEMENT_IND_E_DESC', F.lit('No Change'))
+    # Extracting results and appending to the list
+    for param_type, values in zip(['PARAMS', 'STDERR', 'T', 'PVALUE', 'L95B', 'U95B'],
+                                  [results.params, results.bse, results.tvalues, results.pvalues,
+                                   pd.Series([l95b], index=['TIME']), pd.Series([u95b], index=['TIME'])]):
+        row = {'CORP_ID': group_name, '_TYPE_': param_type}
+        row.update({name: values[name] for name in values.index if name in values})
+        all_results.append(row)
 
-mask = (F.col('linr') == 1)
-merged = merged.withColumn('IMPROVEMENT_IND_CODE', F.when(mask & (F.col('VALUE') > 0), '003').otherwise(F.col('IMPROVEMENT_IND_CODE'))) \
-               .withColumn('IMPROVEMENT_IND_E_DESC', F.when(mask & (F.col('VALUE') > 0), 'Weakening') \
-                                                          .when(mask & (F.col('VALUE') < 0), 'Improving') \
-                                                          .otherwise(F.col('IMPROVEMENT_IND_E_DESC')))
+# Convert results to DataFrame
+los_org_trend = pd.DataFrame(all_results)
 
-# Final filtering 
-ed_nacrs_flg_1_22_corp_ids = ed_nacrs_flg_1_22.select('CORP_ID')
-los_org_trend_b = merged.join(ed_nacrs_flg_1_22_corp_ids, 'CORP_ID', 'left_anti')
+# Step 1: Creating los_org_trend_a with a new variable 'linr'
+los_org_trend_a = los_org_trend.copy()
+los_org_trend_a['linr'] = 0
+los_org_trend_a.loc[(los_org_trend_a['_TYPE_'] == 'PVALUE') &
+                    (los_org_trend_a['TIME'] < 0.05) &
+                    (los_org_trend_a['TIME'].notna()), 'linr'] = 1
+
+# Step 2: Creating subsets based on _TYPE_
+los_org_p_val = los_org_trend_a[los_org_trend_a['_TYPE_'] == 'PVALUE'][['CORP_ID', 'linr']]
+los_org_parms = los_org_trend_a[los_org_trend_a['_TYPE_'] == 'PARAMS'][['CORP_ID', 'TIME']]
+
+
+# Steps 3 and 4: Sorting and merging the datasets
+los_org_p_val_parms = pd.merge(los_org_p_val.sort_values('CORP_ID'),
+                     los_org_parms.sort_values('CORP_ID'),
+                     on='CORP_ID')
+
+# Step 5: Assigning new variables based on conditions
+los_org_p_val_parms['IMPROVEMENT_IND_CODE'] = '002'
+los_org_p_val_parms['IMPROVEMENT_IND_E_DESC'] = 'No Change'
+
+mask = los_org_p_val_parms['linr'] == 1
+los_org_p_val_parms.loc[mask & (los_org_p_val_parms['TIME'] > 0), ['IMPROVEMENT_IND_CODE', 'IMPROVEMENT_IND_E_DESC']] = ['003', 'Weakening']
+los_org_p_val_parms.loc[mask & (los_org_p_val_parms['TIME'] < 0), ['IMPROVEMENT_IND_CODE', 'IMPROVEMENT_IND_E_DESC']] = ['001', 'Improving']
+
+# Step 6: Assuming ed_nacrs_flg_1 is another DataFrame you have
+# Replace 'ed_nacrs_flg_1' with the actual DataFrame
+los_org_trend_b = los_org_p_val_parms[~los_org_p_val_parms['CORP_ID'].isin(ed_nacrs_flg_1_SL['CORP_ID'])]
