@@ -1,95 +1,85 @@
-# Concatenate, merge, and rename for Los Org
-los_org_all_yr_b = (
-    los_org_20.unionByName(los_org_21, allowMissingColumns=True)
-               .unionByName(los_org_22_a, allowMissingColumns=True)
-               .join(los_org_3x3, on='CORP_ID', how='inner')
-               .withColumnRenamed("FISCAL_YEAR", "TIME")
-               .select('CORP_ID', 'TIME', 'PERCENTILE_90')  # Ensure CORP_ID is included
+from pyspark.sql import functions as F
+from pyspark.sql import Window
+from pyspark.ml.regression import LinearRegression
+from pyspark.ml.feature import VectorAssembler
+from pyspark.sql.types import FloatType, IntegerType
+
+# Convert columns to numeric and drop NaNs
+los_org_all_yr_b = los_org_all_yr_b.select(
+    *[F.col(col).cast("float") for col in ['PERCENTILE_90', 'TIME']]
+).na.drop(subset=['PERCENTILE_90', 'TIME'])
+
+# Define a window specification
+windowSpec = Window.partitionBy('CORP_ID')
+
+# Create a GroupBy object and prepare DataFrame for results
+grouped = los_org_all_yr_b.groupBy('CORP_ID').agg(
+    F.collect_list('TIME').alias('TIME_LIST'),
+    F.collect_list('PERCENTILE_90').alias('PERCENTILE_90_LIST')
 )
 
-# Convert columns to numeric, just in case they are not
-los_org_all_yr_b = los_org_all_yr_b.withColumn('PERCENTILE_90', F.col('PERCENTILE_90').cast('float')) \
-                                   .withColumn('TIME', F.col('TIME').cast('float'))
-
-# Drop rows where either 'PERCENTILE_90' or 'TIME' is NaN after the conversion
-los_org_all_yr_b = los_org_all_yr_b.dropna(subset=['PERCENTILE_90', 'TIME'])
-
-# Create a GroupBy object for the 'CORP_ID' variable
-grouped = los_org_all_yr_b.groupBy('CORP_ID')
-
-# Define a function to perform logistic regression and return results
-def perform_logistic(group_data):
-    # Create a vector assembler
-    assembler = VectorAssembler(inputCols=["TIME"], outputCol="features")
-    data = assembler.transform(group_data)
-
-    # Create and fit the model
-    lr = LogisticRegression(featuresCol="features", labelCol="PERCENTILE_90", maxIter=10)
-    model = lr.fit(data)
-
-    # Extract coefficients
-    coef = model.coefficients[0]
-    
-    # Compute standard error manually
-    residuals = model.summary.residuals.collect()
-    n = len(residuals)
-    mse = sum([r ** 2 for r in residuals]) / n
-    se = np.sqrt(mse / n)
-    
-    t_val = coef / se
-    p_val = model.summary.pValues[0]
-    l95b = coef - 1.96 * se  # Lower bound for 'time'
-    u95b = coef + 1.96 * se  # Upper bound for 'time'
-
-    results_dict = {
-        'CORP_ID': group_data.select('CORP_ID').first()[0],
-        'PARAMS': coef,
-        'STDERR': se,
-        'T': t_val,
-        'PVALUE': p_val,
-        'L95B': l95b,
-        'U95B': u95b
-    }
-
-    return results_dict
-
-# Perform logistic regression for each group and collect results
 all_results = []
-for group_name in los_org_all_yr_b.select('TIME').distinct().rdd.flatMap(lambda x: x).collect():
-    group_data = los_org_all_yr_b.filter(F.col('TIME') == group_name)
-    all_results.append(perform_logistic(group_data))
 
-# Convert results to DataFrame
-los_org_trend = spark.createDataFrame(all_results)
+# Iterate, perform regression, and store results
+for row in grouped.collect():
+    corp_id = row['CORP_ID']
+    X = list(zip(row['TIME_LIST'], [1]*len(row['TIME_LIST'])))
+    y = row['PERCENTILE_90_LIST']
 
-# Step 1: Creating los_org_trend_a with a new variable 'linr'
-los_org_trend_a = los_org_trend.withColumn('linr', 
-                                           (F.col('_TYPE_') == 'PVALUE') & 
-                                           (F.col('VALUE') < 0.05) & 
-                                           (F.col('VALUE').isNotNull())).withColumn('linr', F.when(F.col('linr'), 1).otherwise(0))
+    # Create a DataFrame from the data
+    df = spark.createDataFrame(X, ["TIME", "const"]).withColumn("PERCENTILE_90", F.lit(None))
+    
+    # VectorAssembler
+    assembler = VectorAssembler(inputCols=["TIME", "const"], outputCol="features")
+    df = assembler.transform(df)
+    
+    # Linear Regression
+    lr = LinearRegression(featuresCol='features', labelCol='PERCENTILE_90', regParam=0.0)
+    model = lr.fit(df)
+    
+    # Extract coefficients and confidence intervals
+    params = model.coefficients.toArray()
+    std_err = model.summary.coefficientStandardErrors
+    t_values = model.summary.tValues
+    p_values = model.summary.pValues
+    conf_int = model.summary.confidenceIntervals()
 
-# Step 2: Creating subsets based on _TYPE_
-los_org_p_val = los_org_trend_a.filter(F.col('_TYPE_') == 'PVALUE').select('CORP_ID', 'linr')
-los_org_parms = los_org_trend_a.filter(F.col('_TYPE_') == 'PARAMS').select('CORP_ID', 'VALUE')
+    for param_type, values in zip(['PARAMS', 'STDERR', 'T', 'PVALUE', 'L95B', 'U95B'],
+                                  [params, std_err, t_values, p_values,
+                                   [conf_int[0][0]], [conf_int[0][1]]]):
+        all_results.append({'CORP_ID': corp_id, '_TYPE_': param_type, 'TIME': float(values[0])})
 
-# Steps 3 and 4: Sorting and merging the datasets
-los_org_p_val_parms = los_org_p_val.join(los_org_parms, 'CORP_ID', 'inner').orderBy('CORP_ID')
+# Convert to DataFrame and analyze results
+los_org_trend_a = spark.createDataFrame(all_results)
 
-# Step 5: Assigning new variables based on conditions
-los_org_p_val_parms = los_org_p_val_parms.withColumn('IMPROVEMENT_IND_CODE', F.lit('002')) \
-                                         .withColumn('IMPROVEMENT_IND_E_DESC', F.lit('No Change'))
+# Add linr column
+los_org_trend_a = los_org_trend_a.withColumn(
+    'linr', F.when((F.col('_TYPE_') == 'PVALUE') & (F.col('TIME') < 0.05), 1).otherwise(0)
+)
 
-mask = (F.col('linr') == 1)
-los_org_p_val_parms = los_org_p_val_parms.withColumn('IMPROVEMENT_IND_CODE', 
-                                                     F.when(mask & (F.col('VALUE') > 0), '003')
-                                                     .otherwise(F.col('IMPROVEMENT_IND_CODE'))) \
-                                         .withColumn('IMPROVEMENT_IND_E_DESC', 
-                                                     F.when(mask & (F.col('VALUE') > 0), 'Weakening')
-                                                     .when(mask & (F.col('VALUE') < 0), 'Improving')
-                                                     .otherwise(F.col('IMPROVEMENT_IND_E_DESC')))
+# Create subsets and merge
+p_val = los_org_trend_a.filter(los_org_trend_a['_TYPE_'] == 'PVALUE').select('CORP_ID', 'linr')
+parms = los_org_trend_a.filter(los_org_trend_a['_TYPE_'] == 'PARAMS').select('CORP_ID', 'TIME')
 
-# Step 6: Assuming ed_nacrs_flg_1_SL is another DataFrame you have
-# Replace 'ed_nacrs_flg_1_SL' with the actual DataFrame
-ed_nacrs_flg_1_SL_corp_ids = ed_nacrs_flg_1_SL.select('CORP_ID')
-los_org_trend_b = los_org_p_val_parms.join(ed_nacrs_flg_1_SL_corp_ids, 'CORP_ID', 'left_anti')
+merged = p_val.join(parms, on='CORP_ID', how='inner')
 
+# Define improvement indicators
+merged = merged.withColumn('IMPROVEMENT_IND_CODE', F.lit('002')) \
+               .withColumn('IMPROVEMENT_IND_E_DESC', F.lit('No Change'))
+
+merged = merged.withColumn(
+    'IMPROVEMENT_IND_CODE', 
+    F.when((F.col('linr') == 1) & (F.col('TIME') > 0), '003')
+    .when((F.col('linr') == 1) & (F.col('TIME') < 0), '001')
+    .otherwise(F.col('IMPROVEMENT_IND_CODE'))
+)
+
+merged = merged.withColumn(
+    'IMPROVEMENT_IND_E_DESC', 
+    F.when((F.col('linr') == 1) & (F.col('TIME') > 0), 'Weakening')
+    .when((F.col('linr') == 1) & (F.col('TIME') < 0), 'Improving')
+    .otherwise(F.col('IMPROVEMENT_IND_E_DESC'))
+)
+
+# Final filtering
+los_org_trend_b = merged.join(ed_nacrs_flg_1_22, on='CORP_ID', how='left_anti')
