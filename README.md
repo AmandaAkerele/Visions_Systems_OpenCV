@@ -1,7 +1,6 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 import statsmodels.api as sm
-import pandas as pd
 
 # Initialize Spark session
 spark = SparkSession.builder.appName("Convert to PySpark").getOrCreate()
@@ -13,29 +12,32 @@ for col in columns_to_convert:
     los_org_all_yr_b = los_org_all_yr_b.withColumn(col, F.col(col).cast('float'))
 los_org_all_yr_b = los_org_all_yr_b.dropna(subset=columns_to_convert)
 
-# Function to perform linear regression and return results
-def perform_ols(data):
-    X = sm.add_constant(data.select('TIME').rdd.flatMap(lambda x: x).collect())
-    y = data.select('PERCENTILE_90').rdd.flatMap(lambda x: x).collect()
+# Define a function to perform linear regression and return results
+def perform_ols_sql(group_data):
+    X = sm.add_constant(group_data.select('TIME').collect())
+    y = group_data.select('PERCENTILE_90').collect()
     model = sm.OLS(y, X).fit()
     conf_int = model.conf_int(alpha=0.05)
     
     results = []
     for param_type, value in zip(['PARAMS', 'STDERR', 'T', 'PVALUE', 'L95B', 'U95B'],
-                                 [model.params, model.bse, model.tvalues, model.pvalues,
-                                  [conf_int['TIME'][0]], [conf_int['TIME'][1]]]):
-        results.append({'CORP_ID': data.select('CORP_ID').first()[0], '_TYPE_': param_type, 'VALUE': value[0]})
+                                 [model.params[1], model.bse[1], model.tvalues[1], model.pvalues[1],
+                                  conf_int[1][0], conf_int[1][1]]):
+        results.append({'CORP_ID': group_data.select('CORP_ID').first()[0], '_TYPE_': param_type, 'VALUE': value})
     
     return results
 
-# Iterate over groups, perform regression, and store results
-all_results = []
-for group_name in los_org_all_yr_b.select('CORP_ID').distinct().rdd.flatMap(lambda x: x).collect():
-    group_data = los_org_all_yr_b.filter(F.col('CORP_ID') == group_name)
-    all_results.extend(perform_ols(group_data))
+# Register UDF to perform OLS
+spark.udf.register("perform_ols_sql", perform_ols_sql)
 
-# Convert to DataFrame and analyze results
-los_org_trend_a = spark.createDataFrame(all_results)
+# Group by 'CORP_ID', perform linear regression, and aggregate results
+los_org_trend_a = los_org_all_yr_b.groupBy('CORP_ID').agg(F.expr("perform_ols_sql(collect_list(TIME), collect_list(PERCENTILE_90)) AS ols_result"))
+
+# Explode the aggregated results
+los_org_trend_a = los_org_trend_a.select('CORP_ID', F.explode('ols_result').alias('result')) \
+                                 .select('CORP_ID', 'result._TYPE_', 'result.VALUE')
+
+# Create 'linr' column
 los_org_trend_a = los_org_trend_a.withColumn('linr', (F.col('_TYPE_') == 'PVALUE') & (F.col('VALUE') < 0.05).cast('int'))
 
 # Create subsets and merge
