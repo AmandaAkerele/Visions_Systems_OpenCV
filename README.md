@@ -1,8 +1,5 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
-from pyspark.ml.classification import LogisticRegression
-from pyspark.ml.feature import VectorAssembler
-import numpy as np
 
 # Initialize Spark session
 spark = SparkSession.builder.appName("Convert to PySpark").getOrCreate()
@@ -13,25 +10,32 @@ los_org_all_yr_b = los_org_all_yr_b.withColumn('PERCENTILE_90', F.col('PERCENTIL
                                    .withColumn('TIME', F.col('TIME').cast('float'))
 
 # Drop rows where either 'PERCENTILE_90' or 'TIME' is NaN after the conversion
-los_org_all_yr_b = los_org_all_yr_b.dropna(subset=['PERCENTILE_90', 'TIME'])
+los_org_all_yr_b.createOrReplaceTempView("los_org_all_yr_b")
+los_org_all_yr_b = spark.sql("""
+    SELECT * 
+    FROM los_org_all_yr_b 
+    WHERE PERCENTILE_90 IS NOT NULL AND TIME IS NOT NULL
+""")
 
-# Create a GroupBy object for the 'CORP_ID' variable
+# Group by 'CORP_ID' and perform logistic regression
 grouped = los_org_all_yr_b.groupBy('CORP_ID')
 
-# Define a function to perform logistic regression and return results
-def perform_logistic(group_data):
-    # Create a vector assembler
+# Define a UDF to perform logistic regression
+from pyspark.ml.classification import LogisticRegression
+from pyspark.ml.feature import VectorAssembler
+import numpy as np
+from pyspark.sql.types import FloatType
+from pyspark.sql.functions import udf
+
+def perform_logistic_udf(group_data):
     assembler = VectorAssembler(inputCols=["TIME"], outputCol="features")
     data = assembler.transform(group_data)
-
-    # Create and fit the model
+    
     lr = LogisticRegression(featuresCol="features", labelCol="PERCENTILE_90", maxIter=10)
     model = lr.fit(data)
-
-    # Extract coefficients
+    
     coef = model.coefficients[0]
     
-    # Compute standard error manually
     residuals = model.summary.residuals.collect()
     n = len(residuals)
     mse = sum([r ** 2 for r in residuals]) / n
@@ -39,34 +43,27 @@ def perform_logistic(group_data):
     
     t_val = coef / se
     p_val = model.summary.pValues[0]
-    l95b = coef - 1.96 * se  # Lower bound for 'time'
-    u95b = coef + 1.96 * se  # Upper bound for 'time'
+    l95b = coef - 1.96 * se
+    u95b = coef + 1.96 * se
+    
+    return coef, se, t_val, p_val, l95b, u95b
 
-    results_dict = {
-        'CORP_ID': group_data.select('CORP_ID').first()[0],
-        'PARAMS': coef,
-        'STDERR': se,
-        'T': t_val,
-        'PVALUE': p_val,
-        'L95B': l95b,
-        'U95B': u95b
-    }
+perform_logistic_sql = udf(perform_logistic_udf, returnType=FloatType())
 
-    return results_dict
-
-# Perform logistic regression for each group and collect results
-all_results = []
-for group_name in los_org_all_yr_b.select('TIME').distinct().rdd.flatMap(lambda x: x).collect():
-    group_data = los_org_all_yr_b.filter(F.col('TIME') == group_name)
-    all_results.append(perform_logistic(group_data))
-
-# Convert results to DataFrame
-los_org_trend = spark.createDataFrame(all_results)
+results = grouped.agg(perform_logistic_sql(F.collect_list(F.struct('TIME', 'PERCENTILE_90')).alias("data"))).select(
+    "CORP_ID",
+    "data.coef",
+    "data.se",
+    "data.t_val",
+    "data.p_val",
+    "data.l95b",
+    "data.u95b"
+).withColumnRenamed("coef", "PARAMS").withColumnRenamed("se", "STDERR").withColumnRenamed("t_val", "T").withColumnRenamed("p_val", "PVALUE").withColumnRenamed("l95b", "L95B").withColumnRenamed("u95b", "U95B")
 
 # Step 1: Creating los_org_trend_a with a new variable 'linr'
-los_org_trend_a = los_org_trend.withColumn('linr', 
-                                           (F.col('PVALUE') < 0.05) & 
-                                           (F.col('PVALUE').isNotNull())).withColumn('linr', F.when(F.col('linr'), 1).otherwise(0))
+los_org_trend_a = results.withColumn('linr', 
+                                     (F.col('PVALUE') < 0.05) & 
+                                     (F.col('PVALUE').isNotNull())).withColumn('linr', F.when(F.col('linr'), 1).otherwise(0))
 
 # Step 2: Creating subsets based on _TYPE_
 los_org_p_val = los_org_trend_a.filter(F.col('PVALUE').isNotNull()).select('CORP_ID', 'linr')
