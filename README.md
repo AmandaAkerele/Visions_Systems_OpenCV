@@ -1,162 +1,54 @@
-from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
-from pyspark.ml.classification import LogisticRegression
-from pyspark.ml.feature import VectorAssembler
-from pyspark.ml import Pipeline
+---------------------------------------------------------------------------
+AnalysisException                         Traceback (most recent call last)
+/tmp/ipykernel_324/595275628.py in <cell line: 22>()
+     20 
+     21 # Apply the OLS Pandas UDF to the DataFrame grouped by 'CORP_ID'
+---> 22 regression_results = los_org_all_yr_b.groupby('CORP_ID').apply(ols_regression)
+     23 
+     24 # Show the results
 
-# Initialize Spark session
-spark = SparkSession.builder.appName("Refactored PySpark Logistic Regression").getOrCreate()
+/usr/local/lib/python3.10/dist-packages/pyspark/sql/pandas/group_ops.py in apply(self, udf)
+    109         )
+    110 
+--> 111         return self.applyInPandas(udf.func, schema=udf.returnType)  # type: ignore[attr-defined]
+    112 
+    113     def applyInPandas(
 
-# Assuming 'los_org_all_yr_b' is a PySpark DataFrame
-# Convert columns to numeric, just in case they are not
-los_org_all_yr_b = los_org_all_yr_b.select(
-    F.col('CORP_ID'),
-    F.col('PERCENTILE_90').cast('float').alias('PERCENTILE_90'),
-    F.col('TIME').cast('float').alias('TIME')
-)
+/usr/local/lib/python3.10/dist-packages/pyspark/sql/pandas/group_ops.py in applyInPandas(self, func, schema)
+    228         udf = pandas_udf(func, returnType=schema, functionType=PandasUDFType.GROUPED_MAP)
+    229         df = self._df
+--> 230         udf_column = udf(*[df[col] for col in df.columns])
+    231         jdf = self._jgd.flatMapGroupsInPandas(udf_column._jc.expr())
+    232         return DataFrame(jdf, self.session)
 
-# Drop rows where either 'PERCENTILE_90' or 'TIME' is NaN
-los_org_all_yr_b = los_org_all_yr_b.dropna(subset=['PERCENTILE_90', 'TIME'])
+/usr/local/lib/python3.10/dist-packages/pyspark/sql/pandas/group_ops.py in <listcomp>(.0)
+    228         udf = pandas_udf(func, returnType=schema, functionType=PandasUDFType.GROUPED_MAP)
+    229         df = self._df
+--> 230         udf_column = udf(*[df[col] for col in df.columns])
+    231         jdf = self._jgd.flatMapGroupsInPandas(udf_column._jc.expr())
+    232         return DataFrame(jdf, self.session)
 
-# Aggregate data to create a feature column and fit a logistic regression model in a pipeline
-def logistic_regression_pipeline(data):
-    assembler = VectorAssembler(inputCols=["TIME"], outputCol="features")
-    lr = LogisticRegression(featuresCol="features", labelCol="PERCENTILE_90", maxIter=10)
-    pipeline = Pipeline(stages=[assembler, lr])
-    model = pipeline.fit(data)
-    return model
+/usr/local/lib/python3.10/dist-packages/pyspark/sql/dataframe.py in __getitem__(self, item)
+   3072         """
+   3073         if isinstance(item, str):
+-> 3074             jc = self._jdf.apply(item)
+   3075             return Column(jc)
+   3076         elif isinstance(item, Column):
 
-# Use Window to partition by 'CORP_ID' and apply the logistic regression pipeline
-from pyspark.sql.window import Window
-windowSpec = Window.partitionBy('CORP_ID')
+/usr/local/lib/python3.10/dist-packages/py4j/java_gateway.py in __call__(self, *args)
+   1320 
+   1321         answer = self.gateway_client.send_command(command)
+-> 1322         return_value = get_return_value(
+   1323             answer, self.gateway_client, self.target_id, self.name)
+   1324 
 
-# We perform logistic regression per 'CORP_ID' and collect models
-models = los_org_all_yr_b.groupBy('CORP_ID').applyInPandas(logistic_regression_pipeline, schema=los_org_all_yr_b.schema)
+/usr/local/lib/python3.10/dist-packages/pyspark/errors/exceptions/captured.py in deco(*a, **kw)
+    183                 # Hide where the exception came from that shows a non-Pythonic
+    184                 # JVM exception message.
+--> 185                 raise converted from None
+    186             else:
+    187                 raise
 
-# Extract necessary data from models (This part is illustrative; actual implementation may need adjustment based on the model's methods and attributes)
-def extract_model_data(model):
-    return {
-        'CORP_ID': model.uid,  # Example to get CORP_ID, replace with actual method to retrieve ID
-        'Coefficients': model.coefficients.tolist(),
-        'Intercept': model.intercept,
-        'TValues': model.summary.tValues,
-        'PValues': model.summary.pValues
-    }
-
-# Convert models to a DataFrame if not already one
-model_data = spark.createDataFrame([extract_model_data(m) for m in models.collect()])
-
-# Process and analyze results as per business logic (simplified here)
-results = model_data.withColumn('Significant', F.col('PValues') < 0.05)
-
-# Example transformation and action based on model results
-significant_results = results.filter('Significant').select('CORP_ID', 'Coefficients')
-non_significant_results = results.filter(~F.col('Significant')).select('CORP_ID', 'Intercept')
-
-# Continue with business logic to handle results
-# (The below is a placeholder to show how you might proceed)
-final_results = significant_results.join(non_significant_results, 'CORP_ID', 'outer')
+AnalysisException: [AMBIGUOUS_REFERENCE] Reference `CORP_PEER` is ambiguous, could be: [`CORP_PEER`, `CORP_PEER`].
 
 
-
-or 
-
-from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
-from pyspark.ml.regression import LinearRegression
-from pyspark.ml.feature import VectorAssembler
-from pyspark.ml import Pipeline
-
-# Initialize Spark session
-spark = SparkSession.builder.appName("Refactored PySpark Linear Regression").getOrCreate()
-
-# Assuming 'los_org_all_yr_b' is a PySpark DataFrame
-# Convert columns to numeric, just in case they are not
-los_org_all_yr_b = los_org_all_yr_b.select(
-    F.col('CORP_ID'),
-    F.col('PERCENTILE_90').cast('float').alias('PERCENTILE_90'),
-    F.col('TIME').cast('float').alias('TIME')
-)
-
-# Drop rows where either 'PERCENTILE_90' or 'TIME' is NaN
-los_org_all_yr_b = los_org_all_yr_b.dropna(subset=['PERCENTILE_90', 'TIME'])
-
-# Set up the DataFrame for Linear Regression
-assembler = VectorAssembler(inputCols=["TIME"], outputCol="features")
-data = assembler.transform(los_org_all_yr_b)
-data = data.select(F.col('CORP_ID'), F.col('PERCENTILE_90').alias('label'), F.col('features'))
-
-# Define Linear Regression model
-lr = LinearRegression(featuresCol="features", labelCol="label", maxIter=10, regParam=0.3)
-
-# Fit the model
-lr_model = lr.fit(data)
-
-# Print the coefficients and intercept for linear regression
-print("Coefficients: %s" % str(lr_model.coefficients))
-print("Intercept: %s" % str(lr_model.intercept))
-
-# Summarize the model over the training set and print out some metrics
-trainingSummary = lr_model.summary
-print("RMSE: %f" % trainingSummary.rootMeanSquaredError)
-print("r2: %f" % trainingSummary.r2)
-
-# Optionally, storing predictions
-predictions = lr_model.transform(data)
-predictions.select("CORP_ID", "prediction", "label", "features").show(5)
-
-# If further group-wise analysis needed, could group by 'CORP_ID' and calculate stats per group
-grouped_data = predictions.groupBy("CORP_ID").agg(
-    F.avg('prediction').alias('avg_prediction'),
-    F.stddev('prediction').alias('std_deviation'),
-    F.max('prediction').alias('max_prediction'),
-    F.min('prediction').alias('min_prediction')
-)
-
-grouped_data.show()
-
-# The model can also be used for various other analysis, like identifying trends per 'CORP_ID'
-
-
-or 
-
-pip install statsmodels pandas
-
-
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, pandas_udf, PandasUDFType
-import pandas as pd
-import statsmodels.api as sm
-
-# Initialize Spark session
-spark = SparkSession.builder.appName("PySparkStatsModelsIntegration").getOrCreate()
-
-# Assuming 'los_org_all_yr_b' is a pre-defined PySpark DataFrame
-# Convert columns to numeric, just in case they are not
-los_org_all_yr_b = los_org_all_yr_b.select(
-    col('CORP_ID'),
-    col('PERCENTILE_90').cast('float').alias('PERCENTILE_90'),
-    col('TIME').cast('float').alias('TIME')
-).dropna(subset=['PERCENTILE_90', 'TIME'])
-
-# Define a Pandas UDF for performing OLS regression
-@pandas_udf("CORP_ID string, slope float, intercept float, r_squared float", PandasUDFType.GROUPED_MAP)
-def ols_regression(pdf):
-    # Use statsmodels to fit a regression model
-    X = sm.add_constant(pdf['TIME'])  # adding a constant
-    model = sm.OLS(pdf['PERCENTILE_90'], X).fit()
-    return pd.DataFrame({
-        'CORP_ID': [pdf['CORP_ID'].iloc[0]],
-        'slope': [model.params['TIME']],
-        'intercept': [model.params['const']],
-        'r_squared': [model.rsquared]
-    })
-
-# Apply the OLS Pandas UDF to the DataFrame grouped by 'CORP_ID'
-regression_results = los_org_all_yr_b.groupby('CORP_ID').apply(ols_regression)
-
-# Show the results
-regression_results.show()
-
-# Stop the Spark session
-spark.stop()
