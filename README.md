@@ -1,43 +1,26 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col
+use this method below to handle duplicates 
 
-# Initialize Spark session
-spark = SparkSession.builder.appName("HandleAmbiguity").getOrCreate()
+# # Alias both DataFrames
+# df_fac_alias = df_fac.alias("fac")
+# df_dq_alias = df_dq.alias("dq")
 
-# Assuming DataFrame initialization and imports are done
+# # Perform the inner join using aliases
+# tmp_ed_facility_org_a = df_fac_alias.join(
+#     df_dq_alias,
+#     (col("fac.FACILITY_AM_CARE_NUM") == col("dq.FACILITY_AM_CARE_NUM")) &
+#     (col("fac.SUBMISSION_FISCAL_YEAR") == col("dq.FISCAL_YEAR")),
+#     'inner'
+# )
 
-def handle_ambiguous_columns(df, ambiguous_col_name, new_name):
-    # Temporarily rename columns to avoid ambiguity
-    temp_col_names = {col_name: f"{col_name}_{idx}" for idx, col_name in enumerate(df.columns, 1) if col_name == ambiguous_col_name}
-    
-    # Rename to temporary unique names
-    for original, temp in temp_col_names.items():
-        df = df.withColumnRenamed(original, temp)
+# # Select columns and handle duplicates
+# # List all columns from df_fac and selectively from df_dq to avoid duplicates
+# selected_columns = [col(f"fac.{column_name}") for column_name in df_fac.columns]
 
-    # Now safely rename the first occurrence (which we assume is the one to keep)
-    first_temp_col = next(iter(temp_col_names.values()))  # Get first item in dictionary values
-    df = df.withColumnRenamed(first_temp_col, new_name)
+# # Add columns from df_dq, renaming those that conflict
+# conflicting_columns = ['SITE_ID', 'FACILITY_AM_CARE_NUM', 'CORP_ID', 'REGION_ID', 'PROVINCE_ID', 'REGION_NAME']  # Adjust based on your data for future use
+# for column_name in df_dq.columns:
+#     if column_name not in conflicting_columns:
+#         selected_columns.append(col(f"dq.{column_name}"))
 
-    # Drop other temporary columns if any
-    for temp in temp_col_names.values():
-        if temp != first_temp_col:  # Avoid dropping the renamed valid column
-            df = df.drop(temp)
-
-    return df
-
-# Concatenate, merge, and prepare for renaming and dropping duplicates
-los_org_all_yr_b = (
-    los_org_20.unionByName(los_org_21, allowMissingColumns=True)
-    .unionByName(los_org_22_a, allowMissingColumns=True)
-    .join(los_org_3x3, on='CORP_ID', how='inner')
-    .withColumnRenamed("FISCAL_YEAR", "TIME")
-)
-
-# Handle ambiguous columns by renaming one and dropping the others
-los_org_all_yr_b = handle_ambiguous_columns(los_org_all_yr_b, "CORP_PEER", "CORP_PEER_NEW")
-
-# Show the result DataFrame structure
-los_org_all_yr_b.printSchema()
-
-# Stop the Spark session
-spark.stop()
+# # Construct the final DataFrame with selected columns
+# tmp_ed_facility_org_a = tmp_ed_facility_org_a.select(selected_columns)
