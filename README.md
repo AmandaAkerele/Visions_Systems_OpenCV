@@ -87,3 +87,4 @@ merged = merged.withColumn(
 
 # Final filtering
 los_org_trend_b = merged.join(ed_nacrs_flg_1_22, on='CORP_ID', how='left_anti')
+
