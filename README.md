@@ -1,7 +1,7 @@
-Hi Marissa, 
 
-Good Morning 
+Hi Marissa,
 
-I have a quick question please, 
+Good morning!
 
-I Have a meeting that starts at 1:35pm tomorrow, i was wondering if i could join Donut with David and leave when my meeting starts at 1:35pm? Would that be possible? 
+I hope you're doing well. I do apologise for the oversight, as I didn't realise I had a meeting scheduled at 1:35pm tomorrow. I was wondering if it would be possible for me to join Donut with David and gracefully excuse myself when my meeting starts?
+
