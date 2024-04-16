@@ -2,6 +2,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.ml.classification import LogisticRegression
 from pyspark.ml.feature import VectorAssembler
+import numpy as np
 
 # Initialize Spark session
 spark = SparkSession.builder.appName("Convert to PySpark").getOrCreate()
@@ -64,13 +65,12 @@ los_org_trend = spark.createDataFrame(all_results)
 
 # Step 1: Creating los_org_trend_a with a new variable 'linr'
 los_org_trend_a = los_org_trend.withColumn('linr', 
-                                           (F.col('_TYPE_') == 'PVALUE') & 
-                                           (F.col('VALUE') < 0.05) & 
-                                           (F.col('VALUE').isNotNull())).withColumn('linr', F.when(F.col('linr'), 1).otherwise(0))
+                                           (F.col('PVALUE') < 0.05) & 
+                                           (F.col('PVALUE').isNotNull())).withColumn('linr', F.when(F.col('linr'), 1).otherwise(0))
 
 # Step 2: Creating subsets based on _TYPE_
-los_org_p_val = los_org_trend_a.filter(F.col('_TYPE_') == 'PVALUE').select('CORP_ID', 'linr')
-los_org_parms = los_org_trend_a.filter(F.col('_TYPE_') == 'PARAMS').select('CORP_ID', 'VALUE')
+los_org_p_val = los_org_trend_a.filter(F.col('PVALUE').isNotNull()).select('CORP_ID', 'linr')
+los_org_parms = los_org_trend_a.filter(F.col('PARAMS').isNotNull()).select('CORP_ID', 'PARAMS')
 
 # Steps 3 and 4: Sorting and merging the datasets
 los_org_p_val_parms = los_org_p_val.join(los_org_parms, 'CORP_ID', 'inner').orderBy('CORP_ID')
@@ -81,11 +81,11 @@ los_org_p_val_parms = los_org_p_val_parms.withColumn('IMPROVEMENT_IND_CODE', F.l
 
 mask = (F.col('linr') == 1)
 los_org_p_val_parms = los_org_p_val_parms.withColumn('IMPROVEMENT_IND_CODE', 
-                                                     F.when(mask & (F.col('VALUE') > 0), '003')
+                                                     F.when(mask & (F.col('PARAMS') > 0), '003')
                                                      .otherwise(F.col('IMPROVEMENT_IND_CODE'))) \
                                          .withColumn('IMPROVEMENT_IND_E_DESC', 
-                                                     F.when(mask & (F.col('VALUE') > 0), 'Weakening')
-                                                     .when(mask & (F.col('VALUE') < 0), 'Improving')
+                                                     F.when(mask & (F.col('PARAMS') > 0), 'Weakening')
+                                                     .when(mask & (F.col('PARAMS') < 0), 'Improving')
                                                      .otherwise(F.col('IMPROVEMENT_IND_E_DESC')))
 
 # Step 6: Assuming ed_nacrs_flg_1_SL is another DataFrame you have
