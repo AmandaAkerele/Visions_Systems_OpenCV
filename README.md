@@ -23,10 +23,11 @@ for row in grouped.collect():
     y = row['PERCENTILE_90']
 
     # Create a DataFrame from the data
-    df = spark.createDataFrame(X, ["TIME", "const"]).withColumn("PERCENTILE_90", F.lit(None))
+    df = spark.createDataFrame(zip(row['TIME'], row['PERCENTILE_90']), ["TIME", "PERCENTILE_90"]).withColumn("const", F.lit(1))
     
-    # Cast 'TIME' column to float
+    # Cast 'TIME' and 'PERCENTILE_90' columns to float
     df = df.withColumn("TIME", F.col("TIME").cast(FloatType()))
+    df = df.withColumn("PERCENTILE_90", F.col("PERCENTILE_90").cast(FloatType()))
     
     # VectorAssembler
     assembler = VectorAssembler(inputCols=["TIME", "const"], outputCol="features")
@@ -82,56 +83,3 @@ merged = merged.withColumn(
 
 # Final filtering
 los_org_trend_b = merged.join(ed_nacrs_flg_1_22, on='CORP_ID', how='left_anti')
-
-
-
-solve error
-
-                                                                                
----------------------------------------------------------------------------
-IllegalArgumentException                  Traceback (most recent call last)
-/tmp/ipykernel_324/2808731751.py in <cell line: 20>()
-     35     # Linear Regression
-     36     lr = LinearRegression(featuresCol='features', labelCol='PERCENTILE_90', regParam=0.0)
----> 37     model = lr.fit(df)
-     38 
-     39     # Extract coefficients and confidence intervals
-
-/usr/local/lib/python3.10/dist-packages/pyspark/ml/base.py in fit(self, dataset, params)
-    203                 return self.copy(params)._fit(dataset)
-    204             else:
---> 205                 return self._fit(dataset)
-    206         else:
-    207             raise TypeError(
-
-/usr/local/lib/python3.10/dist-packages/pyspark/ml/wrapper.py in _fit(self, dataset)
-    379 
-    380     def _fit(self, dataset: DataFrame) -> JM:
---> 381         java_model = self._fit_java(dataset)
-    382         model = self._create_model(java_model)
-    383         return self._copyValues(model)
-
-/usr/local/lib/python3.10/dist-packages/pyspark/ml/wrapper.py in _fit_java(self, dataset)
-    376 
-    377         self._transfer_params_to_java()
---> 378         return self._java_obj.fit(dataset._jdf)
-    379 
-    380     def _fit(self, dataset: DataFrame) -> JM:
-
-/usr/local/lib/python3.10/dist-packages/py4j/java_gateway.py in __call__(self, *args)
-   1320 
-   1321         answer = self.gateway_client.send_command(command)
--> 1322         return_value = get_return_value(
-   1323             answer, self.gateway_client, self.target_id, self.name)
-   1324 
-
-/usr/local/lib/python3.10/dist-packages/pyspark/errors/exceptions/captured.py in deco(*a, **kw)
-    183                 # Hide where the exception came from that shows a non-Pythonic
-    184                 # JVM exception message.
---> 185                 raise converted from None
-    186             else:
-    187                 raise
-
-IllegalArgumentException: requirement failed: Column PERCENTILE_90 must be of type numeric but was actually of type void.
-
-
