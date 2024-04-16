@@ -1,69 +1,74 @@
-from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
-from pyspark.ml.classification import LogisticRegression
-from pyspark.ml.feature import VectorAssembler
-import numpy as np
+---------------------------------------------------------------------------
+PySparkTypeError                          Traceback (most recent call last)
+/tmp/ipykernel_324/607714401.py in <cell line: 39>()
+     37 
+     38 # Applying the logistic regression function to each group and collecting the results
+---> 39 all_results = [perform_logistic(group) for group in los_org_all_yr_b.groupby('CORP_ID').agg(F.collect_list('TIME').alias('TIME'))]
+     40 
+     41 # Convert results into a DataFrame
 
-# Initialize Spark session
-spark = SparkSession.builder.appName("Logistic Regression Analysis").getOrCreate()
+/tmp/ipykernel_324/607714401.py in <listcomp>(.0)
+     37 
+     38 # Applying the logistic regression function to each group and collecting the results
+---> 39 all_results = [perform_logistic(group) for group in los_org_all_yr_b.groupby('CORP_ID').agg(F.collect_list('TIME').alias('TIME'))]
+     40 
+     41 # Convert results into a DataFrame
 
-# Assuming 'los_org_all_yr_b' is already defined as a PySpark DataFrame
-# Ensure all necessary columns are cast to float where they are expected to be numeric
-los_org_all_yr_b = los_org_all_yr_b.withColumn('PERCENTILE_90', F.col('PERCENTILE_90').cast('float')) \
-                                   .withColumn('TIME', F.col('TIME').cast('float'))
+/tmp/ipykernel_324/607714401.py in perform_logistic(group_data)
+      9 def perform_logistic(group_data):
+     10     assembler = VectorAssembler(inputCols=["TIME"], outputCol="features")
+---> 11     data = assembler.transform(group_data)
+     12 
+     13     lr = LogisticRegression(featuresCol="features", labelCol="PERCENTILE_90", maxIter=10)
 
-# Drop any rows where 'PERCENTILE_90' or 'TIME' might be NaN
-los_org_all_yr_b = los_org_all_yr_b.dropna(subset=['PERCENTILE_90', 'TIME'])
+/usr/local/lib/python3.10/dist-packages/pyspark/ml/base.py in transform(self, dataset, params)
+    260                 return self.copy(params)._transform(dataset)
+    261             else:
+--> 262                 return self._transform(dataset)
+    263         else:
+    264             raise TypeError("Params must be a param map but got %s." % type(params))
 
-# Function to perform logistic regression on grouped data
-def perform_logistic(group_data):
-    assembler = VectorAssembler(inputCols=["TIME"], outputCol="features")
-    data = assembler.transform(group_data)
-    
-    lr = LogisticRegression(featuresCol="features", labelCol="PERCENTILE_90", maxIter=10)
-    model = lr.fit(data)
+/usr/local/lib/python3.10/dist-packages/pyspark/ml/wrapper.py in _transform(self, dataset)
+    396 
+    397         self._transfer_params_to_java()
+--> 398         return DataFrame(self._java_obj.transform(dataset._jdf), dataset.sparkSession)
+    399 
+    400 
 
-    # Extracting coefficients and computing statistics
-    coef = model.coefficients[0]
-    residuals = model.summary.residuals.rdd.map(lambda x: x[0]**2).collect()
-    n = len(residuals)
-    mse = sum(residuals) / n
-    se = np.sqrt(mse / n)
+/usr/local/lib/python3.10/dist-packages/py4j/java_gateway.py in __call__(self, *args)
+   1312 
+   1313     def __call__(self, *args):
+-> 1314         args_command, temp_args = self._build_args(*args)
+   1315 
+   1316         command = proto.CALL_COMMAND_NAME +\
 
-    t_val = coef / se
-    p_val = model.summary.pValues[0]
-    l95b = coef - 1.96 * se
-    u95b = coef + 1.96 * se
+/usr/local/lib/python3.10/dist-packages/py4j/java_gateway.py in _build_args(self, *args)
+   1275     def _build_args(self, *args):
+   1276         if self.converters is not None and len(self.converters) > 0:
+-> 1277             (new_args, temp_args) = self._get_args(args)
+   1278         else:
+   1279             new_args = args
 
-    return {
-        'CORP_ID': group_data.select('CORP_ID').first()[0],
-        'PARAMS': coef,
-        'STDERR': se,
-        'T': t_val,
-        'PVALUE': p_val,
-        'L95B': l95b,
-        'U95B': u95b
-    }
+/usr/local/lib/python3.10/dist-packages/py4j/java_gateway.py in _get_args(self, args)
+   1262                 for converter in self.gateway_client.converters:
+   1263                     if converter.can_convert(arg):
+-> 1264                         temp_arg = converter.convert(arg, self.gateway_client)
+   1265                         temp_args.append(temp_arg)
+   1266                         new_args.append(temp_arg)
 
-# Applying the logistic regression function to each group and collecting the results
-all_results = [perform_logistic(group) for group in los_org_all_yr_b.groupby('CORP_ID').agg(F.collect_list('TIME').alias('TIME'))]
+/usr/local/lib/python3.10/dist-packages/py4j/java_collections.py in convert(self, object, gateway_client)
+    508         ArrayList = JavaClass("java.util.ArrayList", gateway_client)
+    509         java_list = ArrayList()
+--> 510         for element in object:
+    511             java_list.add(element)
+    512         return java_list
 
-# Convert results into a DataFrame
-los_org_trend = spark.createDataFrame(all_results)
+/usr/local/lib/python3.10/dist-packages/pyspark/sql/column.py in __iter__(self)
+    716 
+    717     def __iter__(self) -> None:
+--> 718         raise PySparkTypeError(
+    719             error_class="NOT_ITERABLE", message_parameters={"objectName": "Column"}
+    720         )
 
-# Additional processing steps to create the final data sets
-los_org_trend = los_org_trend.withColumn('linr', (F.col('PVALUE') < 0.05).cast('int'))
-
-# Creating subsets and sorting/merging data as per the original requirement
-los_org_p_val = los_org_trend.filter(F.col('_TYPE_') == 'PVALUE').select('CORP_ID', 'linr')
-los_org_parms = los_org_trend.filter(F.col('_TYPE_') == 'PARAMS').select('CORP_ID', 'VALUE')
-los_org_p_val_parms = los_org_p_val.join(los_org_parms, 'CORP_ID', 'inner').orderBy('CORP_ID')
-
-# Assigning new variables based on conditions
-mask = F.col('linr') == 1
-los_org_p_val_parms = los_org_p_val_parms.withColumn('IMPROVEMENT_IND_CODE', F.when(mask & (F.col('VALUE') > 0), '003').otherwise('002'))
-los_org_p_val_parms = los_org_p_val_parms.withColumn('IMPROVEMENT_IND_E_DESC', F.when(mask & (F.col('VALUE') > 0), 'Weakening').when(mask & (F.col('VALUE') < 0), 'Improving').otherwise('No Change'))
-
-# Filtering with another DataFrame assuming it's called 'ed_nacrs_flg_1_SL'
-ed_nacrs_flg_1_SL_corp_ids = ed_nacrs_flg_1_SL.select('CORP_ID')
-los_org_trend_b = los_org_p_val_parms.join(ed_nacrs_flg_1_SL_corp_ids, 'CORP_ID', 'left_anti')
+PySparkTypeError: [NOT_ITERABLE] Column is not iterable.
+Selection deleted
