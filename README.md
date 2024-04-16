@@ -3,7 +3,8 @@ from pyspark.sql import functions as F
 import statsmodels.api as sm
 import pandas as pd
 
-
+# Initialize Spark session
+spark = SparkSession.builder.appName("Linear Regression with PySpark and Statsmodels").getOrCreate()
 
 # Function to perform linear regression and return results
 def perform_ols(data):
@@ -14,11 +15,14 @@ def perform_ols(data):
     
     results = []
     for param_type, value in zip(['PARAMS', 'STDERR', 'T', 'PVALUE', 'L95B', 'U95B'],
-                                 [model.params, model.bse, model.tvalues, model.pvalues,
-                                  [conf_int['TIME'][0]], [conf_int['TIME'][1]]]):
-        results.append({'CORP_ID': data.select('CORP_ID').first()[0], '_TYPE_': param_type, 'VALUE': value[0]})
+                                 [model.params[1], model.bse[1], model.tvalues[1], model.pvalues[1],
+                                  conf_int['const'][0], conf_int['const'][1]]):
+        results.append({'CORP_ID': data.select('CORP_ID').first()[0], '_TYPE_': param_type, 'VALUE': value})
     
     return results
+
+# Sample data (Replace this with your actual data)
+# los_org_all_yr_b = ...
 
 # Iterate over groups, perform regression, and store results
 all_results = []
@@ -48,26 +52,3 @@ merged = merged.withColumn('IMPROVEMENT_IND_CODE', F.when(mask & (F.col('VALUE')
 # Final filtering 
 ed_nacrs_flg_1_22_corp_ids = ed_nacrs_flg_1_22.select('CORP_ID')
 los_org_trend_b = merged.join(ed_nacrs_flg_1_22_corp_ids, 'CORP_ID', 'left_anti')
-
-
-solve the error below 
-
----------------------------------------------------------------------------
-IndexError                                Traceback (most recent call last)
-/tmp/ipykernel_324/1957905950.py in <cell line: 25>()
-     25 for group_name in los_org_all_yr_b.select('CORP_ID').distinct().rdd.flatMap(lambda x: x).collect():
-     26     group_data = los_org_all_yr_b.filter(F.col('CORP_ID') == group_name)
----> 27     all_results.extend(perform_ols(group_data))
-     28 
-     29 # Convert to DataFrame and analyze results
-
-/tmp/ipykernel_324/1957905950.py in perform_ols(data)
-     16     for param_type, value in zip(['PARAMS', 'STDERR', 'T', 'PVALUE', 'L95B', 'U95B'],
-     17                                  [model.params, model.bse, model.tvalues, model.pvalues,
----> 18                                   [conf_int['TIME'][0]], [conf_int['TIME'][1]]]):
-     19         results.append({'CORP_ID': data.select('CORP_ID').first()[0], '_TYPE_': param_type, 'VALUE': value[0]})
-     20 
-
-IndexError: only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices
-
-
