@@ -1,48 +1,20 @@
-from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
-from pyspark.ml.classification of LogisticRegression
-from pyspark.ml.feature import VectorAssembler
-import numpy as np
+solve error 
 
-# Initialize Spark session
-spark = SparkSession.builder.appName("Logistic Regression Analysis").getOrCreate()
+---------------------------------------------------------------------------
+IndexError                                Traceback (most recent call last)
+/tmp/ipykernel_324/50004701.py in <cell line: 27>()
+     27 for group_name in los_org_all_yr_b.select('CORP_ID').distinct().rdd.flatMap(lambda x: x).collect():
+     28     group_data = los_org_all_yr_b.filter(F.col('CORP_ID') == group_name)
+---> 29     all_results.extend(perform_ols(group_data))
+     30 
+     31 # Convert to DataFrame and analyze results
 
-# Assuming 'los_org_all_yr_b' is a DataFrame and already loaded
-# Make sure the 'PERCENTILE_90' and 'TIME' columns are of numeric type
-los_org_all_yr_b = los_org_all_yr_b.withColumn('PERCENTILE_90', F.col('PERCENTILE_90').cast('float')) \
-                                   .withColumn('TIME', F.col('TIME').cast('float'))
+/tmp/ipykernel_324/50004701.py in perform_ols(data)
+     15     for param_type, value in zip(['PARAMS', 'STDERR', 'T', 'PVALUE', 'L95B', 'U95B'],
+     16                                  [model.params[1], model.bse[1], model.tvalues[1], model.pvalues[1],
+---> 17                                   conf_int['const'][0], conf_int['const'][1]]):
+     18         results.append({'CORP_ID': data.select('CORP_ID').first()[0], '_TYPE_': param_type, 'VALUE': value})
+     19 
 
-# Drop any rows with NaN values in these columns
-los_org_all_yr_b = los_org_all_yr_b.dropna(subset=['PERCENTILE_90', 'TIME'])
+IndexError: only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices
 
-# Collecting distinct CORP_IDs to handle groups individually
-corp_ids = los_org_all_yr_b.select("CORP_ID").distinct().collect()
-
-all_results = []
-
-# Looping over each CORP_ID to apply logistic regression
-for corp_id_row in corp_ids:
-    corp_id = corp_id_row["CORP_ID"]
-    group_data = los_org_all_yr_b.filter(F.col("CORP_ID") == corp_id)
-    result = perform_logistic(group_data)
-    all_results.append(result)
-
-# Convert results into a DataFrame
-los_org_trend = spark.createDataFrame(all_results)
-
-# Further processing for creating variables and subsetting
-los_org_trend = los_org_trend.withColumn('linr', (F.col('PVALUE') < 0.05).cast('int'))
-
-# Filtering and sorting
-los_org_p_val = los_org_trend.filter(F.col('_TYPE_') == 'PVALUE').select('CORP_ID', 'linr')
-los_org_parms = los_org_trend.filter(F.col('_TYPE_') == 'PARAMS').select('CORP_ID', 'VALUE')
-los_org_p_val_parms = los_org_p_val.join(los_org_parms, 'CORP_ID', 'inner').orderBy('CORP_ID')
-
-# Variable assignment based on conditions
-mask = F.col('linr') == 1
-los_org_p_val_parms = los_org_p_val_parms.withColumn('IMPROVEMENT_IND_CODE', F.when(mask & (F.col('VALUE') > 0), '003').otherwise('002'))
-los_org_p_val_parms = los_org_p_val_parms.withColumn('IMPROVEMENT_IND_E_DESC', F.when(mask & (F.col('VALUE') > 0), 'Weakening').when(mask & (F.col('VALUE') < 0), 'Improving').otherwise('No Change'))
-
-# Assuming another DataFrame for final filtering
-ed_nacrs_flg_1_SL_corp_ids = ed_nacrs_flg_1_SL.select('CORP_ID')
-los_org_trend_b = los_org_p_val_parms.join(ed_nacrs_flg_1_SL_corp_ids, 'CORP_ID', 'left_anti')
