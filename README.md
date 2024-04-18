@@ -1,31 +1,48 @@
----------------------------------------------------------------------------
-AnalysisException                         Traceback (most recent call last)
-/tmp/ipykernel_324/4228166277.py in <cell line: 25>()
-     26     .filter(ranked.rank == total_counts.ninety_pct_precise)\
-     27     .groupBy("SUBMISSION_FISCAL_YEAR", "SITE_ID", "SITE_NAME", "SITE_PEER")\
----> 28     .agg(F.min("LOS_HOURS").alias("PERCENTILE_90"))
-     29 
-     30 # Custom rounding logic: If last digit is less than 6, add 0.06
+from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
+from pyspark.sql.window import Window
+from pyspark.sql.functions import col
 
-/usr/local/lib/python3.10/dist-packages/pyspark/sql/group.py in agg(self, *exprs)
-    184             assert all(isinstance(c, Column) for c in exprs), "all exprs should be Column"
-    185             exprs = cast(Tuple[Column, ...], exprs)
---> 186             jdf = self._jgd.agg(exprs[0]._jc, _to_seq(self.session._sc, [c._jc for c in exprs[1:]]))
-    187         return DataFrame(jdf, self.session)
-    188 
+spark = SparkSession.builder.appName("Site Percentile Calculation Enhanced").getOrCreate()
 
-/usr/local/lib/python3.10/dist-packages/py4j/java_gateway.py in __call__(self, *args)
-   1320 
-   1321         answer = self.gateway_client.send_command(command)
--> 1322         return_value = get_return_value(
-   1323             answer, self.gateway_client, self.target_id, self.name)
-   1324 
+windowSpec = Window.partitionBy("SUBMISSION_FISCAL_YEAR", "SITE_ID", "SITE_NAME", "SITE_PEER").orderBy("LOS_HOURS")
+ranked = ed_record_admit_22.withColumn("rank", F.row_number().over(windowSpec))
 
-/usr/local/lib/python3.10/dist-packages/pyspark/errors/exceptions/captured.py in deco(*a, **kw)
-    183                 # Hide where the exception came from that shows a non-Pythonic
-    184                 # JVM exception message.
---> 185                 raise converted from None
-    186             else:
-    187                 raise
+# Improved aliasing for clearer references
+total_counts = ranked.groupBy("SUBMISSION_FISCAL_YEAR", "SITE_ID", "SITE_NAME", "SITE_PEER").agg(
+    F.count("LOS_HOURS").alias("total"),
+    F.ceil(0.9 * F.count("LOS_HOURS")).alias("ninety_pct_precise")
+).alias("total_counts")
 
-AnalysisException: [AMBIGUOUS_REFERENCE] Reference `SUBMISSION_FISCAL_YEAR` is ambiguous, could be: [`ed`.`SUBMISSION_FISCAL_YEAR`, `ed`.`SUBMISSION_FISCAL_YEAR`].
+ranked = ranked.alias("ranked")
+
+# Explicitly specify DataFrame aliases in join conditions
+los_site_22 = ranked.join(
+    total_counts,
+    (col("ranked.SUBMISSION_FISCAL_YEAR") == col("total_counts.SUBMISSION_FISCAL_YEAR")) &
+    (col("ranked.SITE_ID") == col("total_counts.SITE_ID")) &
+    (col("ranked.SITE_NAME") == col("total_counts.SITE_NAME")) &
+    (col("ranked.SITE_PEER") == col("total_counts.SITE_PEER"))
+).filter(col("ranked.rank") == col("total_counts.ninety_pct_precise"))
+
+# Use the DataFrame alias to specify which columns to group by
+los_site_22 = los_site_22.groupBy(
+    col("ranked.SUBMISSION_FISCAL_YEAR"),
+    col("ranked.SITE_ID"),
+    col("ranked.SITE_NAME"),
+    col("ranked.SITE_PEER")
+).agg(F.min(col("ranked.LOS_HOURS")).alias("PERCENTILE_90"))
+
+# Custom rounding logic
+los_site_22 = los_site_22.withColumn(
+    "PERCENTILE_90", 
+    F.when(
+        col("PERCENTILE_90") - F.floor("PERCENTILE_90") < 0.06, 
+        col("PERCENTILE_90") + 0.06
+    ).otherwise(col("PERCENTILE_90"))
+)
+
+# Standard rounding to 2 decimal places
+los_site_22 = los_site_22.withColumn("PERCENTILE_90", F.round("PERCENTILE_90", 2))
+
+los_site_22.show(truncate=False)
