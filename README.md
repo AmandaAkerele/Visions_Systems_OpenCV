@@ -1,43 +1,27 @@
 from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
-from pyspark.sql.window import Window
+from pyspark.sql.functions import expr
 
-# Define a window partitioned by the necessary groups and ordered by LOS_HOURS
-windowSpec = Window.partitionBy("SUBMISSION_FISCAL_YEAR", "NEW_REGION_ID", "REGION_E_DESC").orderBy("LOS_HOURS")
+# Initialize Spark session if not already done
+spark = SparkSession.builder.appName("Accurate Percentile Calculation").getOrCreate()
 
-# Add a row number over the window
-ranked = ed_record_admit_with_ucc_22.withColumn("rank", F.row_number().over(windowSpec))  # Using row_number to get distinct ranks
+# Assuming 'ed_record_admit_with_ucc_22' is a DataFrame loaded in Spark
+# Example data loading (commented for context)
+# ed_record_admit_with_ucc_22 = spark.read.csv("data.csv", header=True, inferSchema=True)
 
-# Calculate the total number of entries per group and the ceiling of the 90th percentile rank
-total_counts = ranked.groupBy("SUBMISSION_FISCAL_YEAR", "NEW_REGION_ID", "REGION_E_DESC").agg(
-    F.count("LOS_HOURS").alias("total"),
-    F.ceil(0.9 * F.count("LOS_HOURS")).alias("ninety_pct_rank")  # Calculate the exact rank for the 90th percentile
-)
+# Calculate the 90th percentile directly using percentile_approx
+los_reg = ed_record_admit_with_ucc_22.groupBy("SUBMISSION_FISCAL_YEAR", "NEW_REGION_ID", "REGION_E_DESC") \
+    .agg(expr("percentile_approx(LOS_HOURS, 0.9)").alias("90th_Percentile_LOS"))
 
-# Properly alias all columns in the total_counts DataFrame to avoid ambiguity
-total_counts = total_counts.select(
-    F.col("SUBMISSION_FISCAL_YEAR").alias("total_SUBMISSION_FISCAL_YEAR"),
-    F.col("NEW_REGION_ID").alias("total_NEW_REGION_ID"),
-    F.col("REGION_E_DESC").alias("total_REGION_E_DESC"),
-    "total",
-    "ninety_pct_rank"
-)
+# Show initial results to check before rounding
+los_reg.show()
 
-# Join back on the original DataFrame to filter to approximately the 90th percentile
-cond = [
-    ranked.SUBMISSION_FISCAL_YEAR == total_counts.total_SUBMISSION_FISCAL_YEAR,
-    ranked.NEW_REGION_ID == total_counts.total_NEW_REGION_ID,
-    ranked.REGION_E_DESC == total_counts.total_REGION_E_DESC
-]
+# Apply rounding if necessary - Round down to one decimal place
+from pyspark.sql.functions import round
+los_reg = los_reg.withColumn("90th_Percentile_LOS", round("90th_Percentile_LOS", 1))
 
-ninety_pct = ranked.join(total_counts, cond)\
-    .filter(ranked.rank == total_counts.ninety_pct_rank)\
-    .groupBy("SUBMISSION_FISCAL_YEAR", "NEW_REGION_ID", "REGION_E_DESC")\
-    .agg(F.round(F.min("LOS_HOURS"), 1).alias("90th_Percentile_LOS"))  # Rounding to 1 decimal place
+# Show the final adjusted results
+los_reg.show()
 
-# Show the result
-ninety_pct.show()
-
-# Optionally convert to Pandas DataFrame for display purposes
-pandas_df = ninety_pct.toPandas()
+# Convert to Pandas DataFrame for better display (optional)
+pandas_df = los_reg.toPandas()
 display(pandas_df)
