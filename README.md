@@ -23,4 +23,10 @@ ninety_pct3 = ranked.join(
 )\
     .filter(ranked.rank == total_counts.ninety_pct_rank)\
     .groupBy(ranked.SUBMISSION_FISCAL_YEAR, ranked.NEW_REGION_ID, ranked.REGION_E_DESC)\
-    .agg(F.min(ranked.LOS
+    .agg(F.min(ranked.LOS_HOURS).alias("90th_Percentile_LOS"))
+
+# Round the 90th_Percentile_LOS to two decimal places
+ninety_pct3 = ninety_pct3.withColumn("90th_Percentile_LOS", F.round("90th_Percentile_LOS", 2))
+
+# Show the result
+ninety_pct3.show()
