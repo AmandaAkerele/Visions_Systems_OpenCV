@@ -6,7 +6,7 @@ from pyspark.sql.window import Window
 windowSpec = Window.partitionBy("SUBMISSION_FISCAL_YEAR", "NEW_REGION_ID", "REGION_E_DESC").orderBy("LOS_HOURS")
 
 # Add a row number over the window
-ranked = ed_record_admit_with_ucc_22.withColumn("rank", F.row_number().over(windowSpec))  # using row_number to get distinct ranks
+ranked = ed_record_admit_with_ucc_22.withColumn("rank", F.row_number().over(windowSpec))  # Using row_number to get distinct ranks
 
 # Calculate the total number of entries per group and the ceiling of the 90th percentile rank
 total_counts = ranked.groupBy("SUBMISSION_FISCAL_YEAR", "NEW_REGION_ID", "REGION_E_DESC").agg(
@@ -33,7 +33,7 @@ cond = [
 ninety_pct = ranked.join(total_counts, cond)\
     .filter(ranked.rank == total_counts.ninety_pct_rank)\
     .groupBy("SUBMISSION_FISCAL_YEAR", "NEW_REGION_ID", "REGION_E_DESC")\
-    .agg(F.min("LOS_HOURS").alias("90th_Percentile_LOS"))  # Get the minimum LOS_HOURS at the 90th percentile rank
+    .agg(F.round(F.min("LOS_HOURS"), 1).alias("90th_Percentile_LOS"))  # Rounding to 1 decimal place
 
 # Show the result
 ninety_pct.show()
