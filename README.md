@@ -14,16 +14,26 @@ total_counts = ranked.groupBy("SUBMISSION_FISCAL_YEAR", "NEW_REGION_ID", "REGION
     F.ceil(0.9 * F.count("LOS_HOURS")).alias("ninety_pct_rank")  # Calculate the exact rank for the 90th percentile
 )
 
+# Properly alias all columns in the total_counts DataFrame to avoid ambiguity
+total_counts = total_counts.select(
+    F.col("SUBMISSION_FISCAL_YEAR").alias("total_SUBMISSION_FISCAL_YEAR"),
+    F.col("NEW_REGION_ID").alias("total_NEW_REGION_ID"),
+    F.col("REGION_E_DESC").alias("total_REGION_E_DESC"),
+    "total",
+    "ninety_pct_rank"
+)
+
 # Join back on the original DataFrame to filter to approximately the 90th percentile
-ninety_pct3 = ranked.join(
-    total_counts,
-    (ranked.SUBMISSION_FISCAL_YEAR == total_counts.SUBMISSION_FISCAL_YEAR) &
-    (ranked.NEW_REGION_ID == total_counts.NEW_REGION_ID) &
-    (ranked.REGION_E_DESC == total_counts.REGION_E_DESC)
-)\
+cond = [
+    ranked.SUBMISSION_FISCAL_YEAR == total_counts.total_SUBMISSION_FISCAL_YEAR,
+    ranked.NEW_REGION_ID == total_counts.total_NEW_REGION_ID,
+    ranked.REGION_E_DESC == total_counts.total_REGION_E_DESC
+]
+
+ninety_pct3 = ranked.join(total_counts, cond)\
     .filter(ranked.rank == total_counts.ninety_pct_rank)\
-    .groupBy(ranked.SUBMISSION_FISCAL_YEAR, ranked.NEW_REGION_ID, ranked.REGION_E_DESC)\
-    .agg(F.min(ranked.LOS_HOURS).alias("90th_Percentile_LOS"))
+    .groupBy("SUBMISSION_FISCAL_YEAR", "NEW_REGION_ID", "REGION_E_DESC")\
+    .agg(F.min("LOS_HOURS").alias("90th_Percentile_LOS"))
 
 # Round the 90th_Percentile_LOS to two decimal places
 ninety_pct3 = ninety_pct3.withColumn("90th_Percentile_LOS", F.round("90th_Percentile_LOS", 2))
