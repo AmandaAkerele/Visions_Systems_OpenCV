@@ -1,31 +1,39 @@
----------------------------------------------------------------------------
-AnalysisException                         Traceback (most recent call last)
-/tmp/ipykernel_324/3056566202.py in <cell line: 19>()
-     20     .filter((ranked.rank / total_counts.total) >= 0.9)\
-     21     .groupBy("SUBMISSION_FISCAL_YEAR", "NEW_REGION_ID", "REGION_E_DESC")\
----> 22     .agg(F.min("LOS_HOURS").alias("90th_Percentile"))
-     23 
-     24 # Show the result
+from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
+from pyspark.sql.window import Window
 
-/usr/local/lib/python3.10/dist-packages/pyspark/sql/group.py in agg(self, *exprs)
-    184             assert all(isinstance(c, Column) for c in exprs), "all exprs should be Column"
-    185             exprs = cast(Tuple[Column, ...], exprs)
---> 186             jdf = self._jgd.agg(exprs[0]._jc, _to_seq(self.session._sc, [c._jc for c in exprs[1:]]))
-    187         return DataFrame(jdf, self.session)
-    188 
+# Define a window partitioned by the necessary groups and ordered by LOS_HOURS
+windowSpec = Window.partitionBy("SUBMISSION_FISCAL_YEAR", "NEW_REGION_ID", "REGION_E_DESC").orderBy("LOS_HOURS")
 
-/usr/local/lib/python3.10/dist-packages/py4j/java_gateway.py in __call__(self, *args)
-   1320 
-   1321         answer = self.gateway_client.send_command(command)
--> 1322         return_value = get_return_value(
-   1323             answer, self.gateway_client, self.target_id, self.name)
-   1324 
+# Add a row number over the window
+ranked = ed_record_admit_with_ucc_22.withColumn("rank", F.rank().over(windowSpec))
 
-/usr/local/lib/python3.10/dist-packages/pyspark/errors/exceptions/captured.py in deco(*a, **kw)
-    183                 # Hide where the exception came from that shows a non-Pythonic
-    184                 # JVM exception message.
---> 185                 raise converted from None
-    186             else:
-    187                 raise
+# Calculate the total number of entries per group
+total_counts = ranked.groupBy("SUBMISSION_FISCAL_YEAR", "NEW_REGION_ID", "REGION_E_DESC").agg(F.max("rank").alias("total"))
 
-AnalysisException: [AMBIGUOUS_REFERENCE] Reference `SUBMISSION_FISCAL_YEAR` is ambiguous, could be: [`SUBMISSION_FISCAL_YEAR`, `SUBMISSION_FISCAL_YEAR`].
+# Properly alias all columns in the total_counts DataFrame to avoid ambiguity
+total_counts = total_counts.select(
+    F.col("SUBMISSION_FISCAL_YEAR").alias("total_SUBMISSION_FISCAL_YEAR"),
+    F.col("NEW_REGION_ID").alias("total_NEW_REGION_ID"),
+    F.col("REGION_E_DESC").alias("total_REGION_E_DESC"),
+    "total"
+)
+
+# Join back on the original DataFrame to filter to approximately the 90th percentile
+cond = [
+    ranked.SUBMISSION_FISCAL_YEAR == total_counts.total_SUBMISSION_FISCAL_YEAR, 
+    ranked.NEW_REGION_ID == total_counts.total_NEW_REGION_ID, 
+    ranked.REGION_E_DESC == total_counts.total_REGION_E_DESC
+]
+
+ninety_pct = ranked.join(total_counts, cond)\
+    .filter((ranked.rank / total_counts.total) >= 0.9)\
+    .groupBy("SUBMISSION_FISCAL_YEAR", "NEW_REGION_ID", "REGION_E_DESC")\
+    .agg(F.min("LOS_HOURS").alias("90th_Percentile_LOS"))
+
+# Show the result
+ninety_pct.show()
+
+# Optionally convert to Pandas DataFrame for display purposes
+pandas_df = ninety_pct.toPandas()
+display(pandas_df)
