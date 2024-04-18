@@ -1,42 +1,31 @@
-from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
-from pyspark.sql.window import Window
+---------------------------------------------------------------------------
+AnalysisException                         Traceback (most recent call last)
+/tmp/ipykernel_324/4228166277.py in <cell line: 25>()
+     26     .filter(ranked.rank == total_counts.ninety_pct_precise)\
+     27     .groupBy("SUBMISSION_FISCAL_YEAR", "SITE_ID", "SITE_NAME", "SITE_PEER")\
+---> 28     .agg(F.min("LOS_HOURS").alias("PERCENTILE_90"))
+     29 
+     30 # Custom rounding logic: If last digit is less than 6, add 0.06
 
-spark = SparkSession.builder.appName("Site Percentile Calculation").getOrCreate()
+/usr/local/lib/python3.10/dist-packages/pyspark/sql/group.py in agg(self, *exprs)
+    184             assert all(isinstance(c, Column) for c in exprs), "all exprs should be Column"
+    185             exprs = cast(Tuple[Column, ...], exprs)
+--> 186             jdf = self._jgd.agg(exprs[0]._jc, _to_seq(self.session._sc, [c._jc for c in exprs[1:]]))
+    187         return DataFrame(jdf, self.session)
+    188 
 
-# Define window and ranking
-windowSpec = Window.partitionBy("SUBMISSION_FISCAL_YEAR", "SITE_ID", "SITE_NAME", "SITE_PEER").orderBy("LOS_HOURS")
-ranked = ed_record_admit_22.withColumn("rank", F.row_number().over(windowSpec))
+/usr/local/lib/python3.10/dist-packages/py4j/java_gateway.py in __call__(self, *args)
+   1320 
+   1321         answer = self.gateway_client.send_command(command)
+-> 1322         return_value = get_return_value(
+   1323             answer, self.gateway_client, self.target_id, self.name)
+   1324 
 
-# Increase accuracy of the percentile approximation by reducing the relative error
-total_counts = ranked.groupBy("SUBMISSION_FISCAL_YEAR", "SITE_ID", "SITE_NAME", "SITE_PEER").agg(
-    F.count("LOS_HOURS").alias("total"),
-    F.expr("percentile_approx(LOS_HOURS, 0.9, 100000)").alias("ninety_pct_precise")  # Using a larger sample size for accuracy
-)
+/usr/local/lib/python3.10/dist-packages/pyspark/errors/exceptions/captured.py in deco(*a, **kw)
+    183                 # Hide where the exception came from that shows a non-Pythonic
+    184                 # JVM exception message.
+--> 185                 raise converted from None
+    186             else:
+    187                 raise
 
-# Join and filter operations as before
-cond = [
-    ranked.SUBMISSION_FISCAL_YEAR == total_counts.total_SUBMISSION_FISCAL_YEAR,
-    ranked.SITE_ID == total_counts.total_SITE_ID,
-    ranked.SITE_NAME == total_counts.total_SITE_NAME,
-    ranked.SITE_PEER == total_counts.total_SITE_PEER
-]
-
-los_site_22 = ranked.join(total_counts, cond)\
-    .filter(ranked.rank == total_counts.ninety_pct_precise)\
-    .groupBy("SUBMISSION_FISCAL_YEAR", "SITE_ID", "SITE_NAME", "SITE_PEER")\
-    .agg(F.min("LOS_HOURS").alias("PERCENTILE_90"))
-
-# Custom rounding logic: If last digit is less than 6, add 0.06
-los_site_22 = los_site_22.withColumn(
-    "PERCENTILE_90", 
-    F.when(
-        F.col("PERCENTILE_90") - F.floor("PERCENTILE_90") < 0.06, 
-        F.col("PERCENTILE_90") + 0.06
-    ).otherwise(F.col("PERCENTILE_90"))
-)
-
-# Standard rounding to 2 decimal places
-los_site_22 = los_site_22.withColumn("PERCENTILE_90", F.round("PERCENTILE_90", 2))
-
-los_site_22.show(truncate=False)
+AnalysisException: [AMBIGUOUS_REFERENCE] Reference `SUBMISSION_FISCAL_YEAR` is ambiguous, could be: [`ed`.`SUBMISSION_FISCAL_YEAR`, `ed`.`SUBMISSION_FISCAL_YEAR`].
