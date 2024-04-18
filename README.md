@@ -1,32 +1,45 @@
-24/04/18 13:51:32 WARN SparkSession: Using an existing Spark session; only runtime SQL configurations will take effect.
----------------------------------------------------------------------------
-AnalysisException                         Traceback (most recent call last)
-/tmp/ipykernel_324/4147173742.py in <cell line: 31>()
-     29 
-     30 # Group and aggregate
----> 31 los_org_22 = los_org_22.groupBy("SUBMISSION_FISCAL_YEAR", "CORP_ID", "CORP_NAME", "CORP_PEER").agg(
-     32     F.min("LOS_HOURS").alias("PERCENTILE_90")
-     33 )
+from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
+from pyspark.sql.window import Window
 
-/usr/local/lib/python3.10/dist-packages/pyspark/sql/group.py in agg(self, *exprs)
-    184             assert all(isinstance(c, Column) for c in exprs), "all exprs should be Column"
-    185             exprs = cast(Tuple[Column, ...], exprs)
---> 186             jdf = self._jgd.agg(exprs[0]._jc, _to_seq(self.session._sc, [c._jc for c in exprs[1:]]))
-    187         return DataFrame(jdf, self.session)
-    188 
+# Initialize Spark session
+spark = SparkSession.builder.appName("Organization Percentile Calculation").getOrCreate()
 
-/usr/local/lib/python3.10/dist-packages/py4j/java_gateway.py in __call__(self, *args)
-   1320 
-   1321         answer = self.gateway_client.send_command(command)
--> 1322         return_value = get_return_value(
-   1323             answer, self.gateway_client, self.target_id, self.name)
-   1324 
+# Define window specification
+windowSpec = Window.partitionBy("SUBMISSION_FISCAL_YEAR", "CORP_ID", "CORP_NAME", "CORP_PEER").orderBy("LOS_HOURS")
 
-/usr/local/lib/python3.10/dist-packages/pyspark/errors/exceptions/captured.py in deco(*a, **kw)
-    183                 # Hide where the exception came from that shows a non-Pythonic
-    184                 # JVM exception message.
---> 185                 raise converted from None
-    186             else:
-    187                 raise
+# Ranking within each window
+ranked = ed_record_admit_22.withColumn("rank", F.row_number().over(windowSpec))
 
-AnalysisException: [AMBIGUOUS_REFERENCE] Reference `SUBMISSION_FISCAL_YEAR` is ambiguous, could be: [`ed`.`SUBMISSION_FISCAL_YEAR`, `ed`.`SUBMISSION_FISCAL_YEAR`].
+# Calculate total entries and 90th percentile rank
+total_counts = ranked.groupBy("SUBMISSION_FISCAL_YEAR", "CORP_ID", "CORP_NAME", "CORP_PEER").agg(
+    F.count("LOS_HOURS").alias("total"),
+    F.ceil(0.9 * F.count("LOS_HOURS")).alias("ninety_pct_rank")
+)
+
+# Join and filter, ensuring aliases are used to avoid ambiguity
+los_org_22 = ranked.alias("r").join(
+    total_counts.alias("t"),
+    (col("r.SUBMISSION_FISCAL_YEAR") == col("t.SUBMISSION_FISCAL_YEAR")) &
+    (col("r.CORP_ID") == col("t.CORP_ID")) &
+    (col("r.CORP_NAME") == col("t.CORP_NAME")) &
+    (col("r.CORP_PEER") == col("t.CORP_PEER"))
+).filter(col("r.rank") == col("t.ninety_pct_rank"))
+
+# Group and aggregate, using clear column references
+los_org_22 = los_org_22.groupBy(col("r.SUBMISSION_FISCAL_YEAR"), col("r.CORP_ID"), col("r.CORP_NAME"), col("r.CORP_PEER")).agg(
+    F.min(col("r.LOS_HOURS")).alias("PERCENTILE_90")
+)
+
+# Further operations as before
+filtered_rows_los = los_site_22.filter(col('SITE_ID').isin([5096, 5099, 5103, 5209])).select(
+    col('SUBMISSION_FISCAL_YEAR'),
+    col('SITE_ID').alias('CORP_ID'),
+    col('SITE_NAME').alias('CORP_NAME'),
+    col('SITE_PEER').alias('CORP_PEER'),
+    col('90th_Percentile_LOS').alias('PERCENTILE_90')
+)
+
+# Union and display
+los_org_22 = los_org_22.unionByName(filtered_rows_los, allowMissingColumns=True)
+los_org_22.show(truncate=False)
