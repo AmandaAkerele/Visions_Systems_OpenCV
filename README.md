@@ -1,70 +1,37 @@
-from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
-from pyspark.sql.types import DoubleType, StructType, StructField
-from pyspark.sql.window import Window
+there is a table named los_nt_record_ucc_22 in my dataframe. Why is it saying there is no table: 
 
-spark = SparkSession.builder.appName("Advanced Percentile Calculation").getOrCreate()
+---------------------------------------------------------------------------
+AnalysisException                         Traceback (most recent call last)
+/tmp/ipykernel_324/2438287252.py in <cell line: 2>()
+      1 # Example usage
+----> 2 los_nt_22 = calculate_percentile(spark.table("los_nt_record_ucc_22"), 'LOS_HOURS', [0, 0.5, 0.9, 0.999, 1], True)
+      3 los_nt_22.show()
+      4 
+      5 los_reg_22 = calculate_percentile(spark.table("los_nt_record_ucc_22"), 'LOS_HOURS', [0.9], True, ['SUBMISSION_FISCAL_YEAR', 'FACILITY_PROVINCE', 'NEW_REGION_ID', 'REGION_E_DESC'])
 
-# Define the schema for the UDAF's output
-schema = StructType([
-    StructField("percentile", DoubleType()),
-    StructField("ci_lower", DoubleType()),
-    StructField("ci_upper", DoubleType())
-])
+/usr/local/lib/python3.10/dist-packages/pyspark/sql/session.py in table(self, tableName)
+   1665         +---+
+   1666         """
+-> 1667         return DataFrame(self._jsparkSession.table(tableName), self)
+   1668 
+   1669     @property
 
-@F.udf(schema)
-def percentile_ci_udf(values, percentile, confidence_interval):
-    import numpy as np
-    values = sorted([v for v in values if v is not None])  # sorting and removing None values
-    n = len(values)
-    if n == 0:
-        return None
-    k = int((n - 1) * percentile)
-    lower_index = max(min(k, n - 1), 0)
-    upper_index = max(min(k + 1, n - 1), 0)
-    percentile_value = values[lower_index] + (values[upper_index] - values[lower_index]) * (n*percentile - k)
-    result = [round(percentile_value, 4)]
-    
-    if confidence_interval:
-        se = np.sqrt(percentile * (1 - percentile) / n)
-        z_score = 1.96  # for 95% confidence
-        ci_lower = percentile_value - z_score * se
-        ci_upper = percentile_value + z_score * se
-        result.extend([ci_lower, ci_upper])
-    
-    return tuple(result)
+/usr/local/lib/python3.10/dist-packages/py4j/java_gateway.py in __call__(self, *args)
+   1320 
+   1321         answer = self.gateway_client.send_command(command)
+-> 1322         return_value = get_return_value(
+   1323             answer, self.gateway_client, self.target_id, self.name)
+   1324 
 
-def calculate_percentile(df, metric, ppt, confidence_interval=False, bycols=None):
-    # Prepare the DataFrame for processing
-    col_list = [F.col(c) for c in bycols] if bycols else []
-    results = []
+/usr/local/lib/python3.10/dist-packages/pyspark/errors/exceptions/captured.py in deco(*a, **kw)
+    183                 # Hide where the exception came from that shows a non-Pythonic
+    184                 # JVM exception message.
+--> 185                 raise converted from None
+    186             else:
+    187                 raise
 
-    for p in ppt:
-        # Collect data into a list, calculate percentile and CI
-        agg_col = F.collect_list(metric).alias('data')
-        df_agg = df.groupBy(*col_list).agg(agg_col)
-        result_col = percentile_ci_udf(F.col('data'), F.lit(p), F.lit(confidence_interval))
-        df_result = df_agg.select(*col_list, result_col.alias('result'))
-        
-        # Flatten the structure for easy use
-        df_flattened = df_result.select(
-            *col_list,
-            F.col('result.percentile').alias(f'percentile_{int(p*100)}'),
-            F.col('result.ci_lower').alias(f'percentile_{int(p*100)}_ci_lower'),
-            F.col('result.ci_upper').alias(f'percentile_{int(p*100)}_ci_upper')
-        )
-        results.append(df_flattened)
-    
-    # Merge all percentile results into one DataFrame
-    final_df = results[0]
-    for df in results[1:]:
-        final_df = final_df.join(df, on=bycols, how='inner')
-    
-    return final_df
+AnalysisException: [TABLE_OR_VIEW_NOT_FOUND] The table or view `los_nt_record_ucc_22` cannot be found. Verify the spelling and correctness of the schema and catalog.
+If you did not qualify the name with a schema, verify the current_schema() output, or qualify the name with the correct schema and catalog.
+To tolerate the error on drop use DROP VIEW IF EXISTS or DROP TABLE IF EXISTS.;
+'UnresolvedRelation [los_nt_record_ucc_22], [], false
 
-# Example usage
-los_nt_22 = calculate_percentile(spark.table("los_nt_record_ucc_22"), 'LOS_HOURS', [0, 0.5, 0.9, 0.999, 1], True)
-los_nt_22.show()
-
-los_reg_22 = calculate_percentile(spark.table("los_nt_record_ucc_22"), 'LOS_HOURS', [0.9], True, ['SUBMISSION_FISCAL_YEAR', 'FACILITY_PROVINCE', 'NEW_REGION_ID', 'REGION_E_DESC'])
-los_reg_22.show()
