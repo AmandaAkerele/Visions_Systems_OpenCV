@@ -1,79 +1,70 @@
-import pyspark.sql.functions as F
-from pyspark.sql.types import DoubleType, StructType, StructField
-from pyspark.sql import Window
-import numpy as np
-
-# Define the UDF
-def calculate_percentile_ci(values_list, percentile, ci):
-    values_list = [x for x in values_list if x is not None]
-    values_list.sort()
-    n = len(values_list)
-    if n == 0:
-        return float('nan'), float('nan'), float('nan')
-    
-    # Calculate percentile
-    k = (n-1) * percentile
-    f = np.floor(k)
-    c = np.ceil(k)
-    if f == c:
-        percentile_value = values_list[int(k)]
-    else:
-        d0 = values_list[int(f)] * (c-k)
-        d1 = values_list[int(c)] * (k-f)
-        percentile_value = d0 + d1
-    
-    # Calculate confidence interval if needed
-    if ci:
-        z = 1.96  # 95% CI, hardcoded
-        se = np.sqrt(percentile * (1 - percentile) / n)
-        ci_lower = percentile_value - z * se
-        ci_upper = percentile_value + z * se
-        return round(percentile_value, 4), round(ci_lower, 4), round(ci_upper, 4)
-    else:
-        return round(percentile_value, 4), None, None
-
-# Register UDF
-schema = StructType([
-    StructField("percentile", DoubleType(), False),
-    StructField("ci_lower", DoubleType(), True),
-    StructField("ci_upper", DoubleType(), True)
-])
-percentile_ci_udf = F.udf(calculate_percentile_ci, schema)
-
-
 from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
+from pyspark.sql.types import DoubleType, StructType, StructField
+from pyspark.sql.window import Window
 
-# Initialize Spark Session
 spark = SparkSession.builder.appName("Advanced Percentile Calculation").getOrCreate()
 
-# Sample DataFrame loading
-# Assuming df is already loaded e.g., df = spark.read.csv("data.csv", header=True, inferSchema=True)
+# Define the schema for the UDAF's output
+schema = StructType([
+    StructField("percentile", DoubleType()),
+    StructField("ci_lower", DoubleType()),
+    StructField("ci_upper", DoubleType())
+])
 
-# Example DataFrame operation
-def calculate_percentiles(df, column_name, percentiles, ci, group_cols=None):
-    # Collect values into a list per group
-    if group_cols:
-        grouped_data = df.groupBy(group_cols).agg(F.collect_list(column_name).alias("values"))
-    else:
-        grouped_data = df.agg(F.collect_list(column_name).alias("values"))
+@F.udf(schema)
+def percentile_ci_udf(values, percentile, confidence_interval):
+    import numpy as np
+    values = sorted([v for v in values if v is not None])  # sorting and removing None values
+    n = len(values)
+    if n == 0:
+        return None
+    k = int((n - 1) * percentile)
+    lower_index = max(min(k, n - 1), 0)
+    upper_index = max(min(k + 1, n - 1), 0)
+    percentile_value = values[lower_index] + (values[upper_index] - values[lower_index]) * (n*percentile - k)
+    result = [round(percentile_value, 4)]
     
-    # Calculate percentile and CI for each percentile
+    if confidence_interval:
+        se = np.sqrt(percentile * (1 - percentile) / n)
+        z_score = 1.96  # for 95% confidence
+        ci_lower = percentile_value - z_score * se
+        ci_upper = percentile_value + z_score * se
+        result.extend([ci_lower, ci_upper])
+    
+    return tuple(result)
+
+def calculate_percentile(df, metric, ppt, confidence_interval=False, bycols=None):
+    # Prepare the DataFrame for processing
+    col_list = [F.col(c) for c in bycols] if bycols else []
     results = []
-    for p in percentiles:
-        result = grouped_data.withColumn("result", percentile_ci_udf(F.col("values"), F.lit(p), F.lit(ci)))
-        result = result.select(group_cols + [F.col("result.percentile").alias(f"percentile_{int(p*100)}"),
-                                             F.col("result.ci_lower").alias(f"ci_lower_{int(p*100)}"),
-                                             F.col("result.ci_upper").alias(f"ci_upper_{int(p*100)}")])
-        results.append(result)
+
+    for p in ppt:
+        # Collect data into a list, calculate percentile and CI
+        agg_col = F.collect_list(metric).alias('data')
+        df_agg = df.groupBy(*col_list).agg(agg_col)
+        result_col = percentile_ci_udf(F.col('data'), F.lit(p), F.lit(confidence_interval))
+        df_result = df_agg.select(*col_list, result_col.alias('result'))
+        
+        # Flatten the structure for easy use
+        df_flattened = df_result.select(
+            *col_list,
+            F.col('result.percentile').alias(f'percentile_{int(p*100)}'),
+            F.col('result.ci_lower').alias(f'percentile_{int(p*100)}_ci_lower'),
+            F.col('result.ci_upper').alias(f'percentile_{int(p*100)}_ci_upper')
+        )
+        results.append(df_flattened)
     
-    # Merge results
-    from functools import reduce
-    final_result = reduce(lambda x, y: x.join(y, group_cols), results)
-    return final_result
+    # Merge all percentile results into one DataFrame
+    final_df = results[0]
+    for df in results[1:]:
+        final_df = final_df.join(df, on=bycols, how='inner')
+    
+    return final_df
 
-# Applying the function
-percentiles = [0, 0.5, 0.9, 0.999, 1]
-group_cols = ['SUBMISSION_FISCAL_YEAR', 'FACILITY_PROVINCE', 'NEW_REGION_ID', 'REGION_E_DESC']
-df_result = calculate_percentiles(df, "LOS_HOURS", percentiles, True, group_cols)
-df_result.show()
+# Example usage
+los_nt_22 = calculate_percentile(spark.table("los_nt_record_ucc_22"), 'LOS_HOURS', [0, 0.5, 0.9, 0.999, 1], True)
+los_nt_22.show()
 
+los_reg_22 = calculate_percentile(spark.table("los_nt_record_ucc_22"), 'LOS_HOURS', [0.9], True, ['SUBMISSION_FISCAL_YEAR', 'FACILITY_PROVINCE', 'NEW_REGION_ID', 'REGION_E_DESC'])
+los_reg_22.show()
