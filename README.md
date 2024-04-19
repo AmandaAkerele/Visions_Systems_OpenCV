@@ -1,15 +1,15 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.types import DoubleType, StructType, StructField
+from pyspark.sql.window import Window
 
 # Initialize Spark session
 spark = SparkSession.builder.appName("Advanced Percentile Calculation").getOrCreate()
 
-# Assuming data is loaded into DataFrame `los_nt_record_ucc_22`, e.g., from a CSV, Parquet, etc.
-# For example, if your data is in a CSV:
-# los_nt_record_ucc_22 = spark.read.csv("path_to_los_nt_record_ucc_22.csv", header=True, inferSchema=True)
+# Example to load data from CSV, ensure the path and options are correct for your data source
+los_nt_record_ucc_22 = spark.read.option("header", "true").csv("/path/to/your/datafile.csv", inferSchema=True)
 
-# Define the schema for the UDAF's output
+# Define the schema for the UDF's output
 schema = StructType([
     StructField("percentile", DoubleType()),
     StructField("ci_lower", DoubleType()),
@@ -62,7 +62,7 @@ def calculate_percentile(df, metric, ppt, confidence_interval=False, bycols=None
     return final_df
 
 # Calculate percentiles for los_nt_record_ucc_22
-los_nt_22 = calculate_percentile(los_nt_record_ucc_22, 'LOS_HOURS', [0,0.5,0.9,0.999,1], True)
+los_nt_22 = calculate_percentile(los_nt_record_ucc_22, 'LOS_HOURS', [0, 0.5, 0.9, 0.999, 1], True)
 los_nt_22 = los_nt_22.select([F.col(c).alias(c.upper()) for c in los_nt_22.columns])  # Rename columns to uppercase
 
 # Calculate grouped percentiles for los_nt_record_ucc_22
