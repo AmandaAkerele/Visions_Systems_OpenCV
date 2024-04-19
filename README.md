@@ -1,48 +1,91 @@
-from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
-from pyspark.sql.window import Window
+#  The percentile calculation included in this python user-defined fucntion is to 
+#  replicate the SAS MACRO (calculate_percentile) included in file ED_percentile.sas.
+#  Note that the algorithm used for percentile calculation is different from what 
+#  SAS (PROC UNIVARIATE, PROC MEANS) uses for percentile calculation.
+#  Altman approach is used to calculated the confidence interval for percentiles
 
-spark = SparkSession.builder.appName("Refined Percentile Calculation").getOrCreate()
-
-windowSpec = Window.partitionBy("SUBMISSION_FISCAL_YEAR", "SITE_ID", "SITE_NAME", "SITE_PEER").orderBy("LOS_HOURS")
-ranked = ed_record_admit_22.withColumn("rank", F.row_number().over(windowSpec))
-
-# Using a higher accuracy setting in percentile_approx
-total_counts = ranked.groupBy("SUBMISSION_FISCAL_YEAR", "SITE_ID", "SITE_NAME", "SITE_PEER").agg(
-    F.count("LOS_HOURS").alias("total"),
-    F.percentile_approx("LOS_HOURS", 0.9, 1000000).alias("ninety_pct_precise")  # Increased accuracy
-)
-
-total_counts = total_counts.select(
-    F.col("SUBMISSION_FISCAL_YEAR").alias("total_SUBMISSION_FISCAL_YEAR"),
-    F.col("SITE_ID").alias("total_SITE_ID"),
-    F.col("SITE_NAME").alias("total_SITE_NAME"),
-    F.col("SITE_PEER").alias("total_SITE_PEER"),
-    "total",
-    "ninety_pct_precise"
-)
-
-cond = [
-    ranked.SUBMISSION_FISCAL_YEAR == total_counts.total_SUBMISSION_FISCAL_YEAR,
-    ranked.SITE_ID == total_counts.total_SITE_ID,
-    ranked.SITE_NAME == total_counts.total_SITE_NAME,
-    ranked.SITE_PEER == total_counts.total_SITE_PEER
-]
-
-los_site_22 = ranked.join(total_counts, cond)\
-    .filter(ranked.rank == total_counts.ninety_pct_precise)\
-    .groupBy("SUBMISSION_FISCAL_YEAR", "SITE_ID", "SITE_NAME", "SITE_PEER")\
-    .agg(F.min("LOS_HOURS").alias("PERCENTILE_90"))
-
-# Custom rounding logic: adjust if close to the next higher decimal
-los_site_22 = los_site_22.withColumn(
-    "PERCENTILE_90",
-    F.when(
-        F.col("PERCENTILE_90") % 1 >= 0.1,  # Custom condition to adjust rounding
-        F.ceil(F.col("PERCENTILE_90") * 10) / 10
-    ).otherwise(
-        F.round(F.col("PERCENTILE_90"), 1)
-    )
-)
-
-los_site_22.show(truncate=False)
+def percentile_ci(indata, percentile,confidence_interval=False):
+    indata = indata[~indata.isna()].sort_values(ignore_index=True).reset_index(drop=True)
+    ct = indata.size
+    if ct > 0:
+        kf = (ct - 1)*percentile 
+        pt_low_n = (np.floor(kf) + 1) - 1
+        pt_low_n = np.where(pt_low_n < 0, 0, pt_low_n)
+        pt_upp_n = (np.floor(kf) + 2) - 1
+        pt_upp_n = np.where(pt_upp_n > ct - 1, ct - 1, pt_upp_n)
+        pt_upp_n = np.where(pt_upp_n < 0, 0, pt_upp_n)
+        d = kf - np.floor(kf)
+        point_est = np.where(pd.isna(indata[pt_upp_n]), indata[pt_low_n] - indata[pt_low_n]*d,\
+                           indata[pt_low_n] + d*(indata[pt_upp_n] - indata[pt_low_n]))
+        point_est = round(point_est*10000)/10000
+    
+    # Altman CI
+        ci_low_n = round(ct*percentile - 1.96*np.sqrt(ct*percentile*(1 - percentile))) - 1
+        ci_low_n = np.where(ci_low_n < 0, 0, ci_low_n)
+        ci_upp_n = round(1 + ct*percentile + 1.96*np.sqrt(ct*percentile*(1 - percentile))) - 1
+        ci_upp_n = np.where(ci_upp_n > ct - 1, ct - 1, ci_upp_n)
+            
+        ci_low = np.where(percentile == 1 or percentile == 0, np.NaN, indata[ci_low_n])
+        ci_upp = np.where(percentile == 1 or percentile == 0, np.NaN, indata[ci_upp_n])
+    else:
+        point_est = np.NaN
+        ci_low = np.NaN
+        ci_upp = np.NaN
+        
+    if confidence_interval == True:
+        return point_est, ci_low, ci_upp 
+    else:
+        return point_est
+        
+def calculate_percentile(df, metric, ppt, confidence_interval = False, bycols = ''):
+    '''
+    Author: Mingyang Li
+    Date:  August 18, 2023
+    Version: v1    
+    Input:
+          df: Python dataframe
+          metric: A numerical column to based percentile number upon, only one column 
+              is allowed, eg. 'los_hours', 'percentile_90', 'wait_time_to_pia_hours'
+          ppt: a list of float numbers between 0 and 1, 
+              eg. [0.9], [0.2, 0.8], [1], [0, 0.1, 0.9975]
+              there is no limit on the number of percentiles to be calculated, 
+              also no limit on the number of decimals to be included.
+          confidence_interval: True or False to indicate whether confidence interval 
+              will be returned, the default value is False.    
+          bycols: a list of columns that define the groups on which the percentile will
+              be calculated. eg. ['fiscal_year','peer_group_id'],['fiscal_year']
+              There is no limit on how many columns to be included.
+              If the percenties are not calcualted by groups, then please don't specify 
+              anything. No groupings will be applied by default. 
+    output: 
+          a Python dataframe with percentile estiamte and its 95% two-sided confidence 
+          limits (if confidence_interval = True) by groups (if applicable)
+          if multiple percentiles to be calculated, all percentiles estimates will be 
+          on the same row.
+    '''  
+  
+    strg = [str(round(100*x)) if 100*x == round(100*x) else str(100*x).replace('.', '_') for x in ppt]
+    for i in range(len(ppt)):
+        if bycols == '':
+            df['__'] = 1
+            bycols = '__'
+        y = df.groupby(bycols).apply(lambda x: percentile_ci(x[metric], ppt[i], confidence_interval))
+        out = pd.DataFrame(y.tolist(), index=y.index).rename(columns = {0:'percentile_' + strg[i], 1:'percentile_' + strg[i] + '_ci_lower', 2 : 'percentile_' + strg[i] + '_ci_upper'}).reset_index()
+        if i == 0:
+            final = out;
+        else:
+            final = final.merge(out, on = bycols)
+    if bycols == '__':
+        final.drop(columns = ['__'], inplace = True)
+    return final
+# Below shows some examples of how the function may be called    
+#calculate_percentile(los_nt_record_ucc_21, 'los_hours', [0,0.5,0.9,0.999,1],\
+#                confidence_interval=True)
+#los_reg=calculate_percentile(los_nt_record_ucc_21, 'los_hours',ppt= [0.9],\
+#                bycols=['fiscal_year','facility_province','region_id','region_name'])
+#calculate_percentile(los_reg, 'percentile_90',ppt=[0.2,0.8],bycols=['fiscal_year']) 
+#calculate_percentile(tpia_nt_record_ucc_21, 'wait_time_to_pia_hours',ppt=[0.9],\
+#                bycols=['fiscal_year','facility_province','region_id','region_name'])
+#los_reg_20_80=calculate_percentile(los_reg_21_ta,'percentile_90',[0.2,0.8])
+#tpia_org_peer_20_80=calculate_percentile(tpia_org_21_ta, 'percentile_90',ppt=[0.2,0.8],\
+#                bycols=['fiscal_year','peer_group_id']) 
