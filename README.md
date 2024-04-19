@@ -79,13 +79,10 @@ def calculate_percentile(df, metric, ppt, confidence_interval = False, bycols = 
         final.drop(columns = ['__'], inplace = True)
     return final
 # Below shows some examples of how the function may be called    
-#calculate_percentile(los_nt_record_ucc_21, 'los_hours', [0,0.5,0.9,0.999,1],\
-#                confidence_interval=True)
-#los_reg=calculate_percentile(los_nt_record_ucc_21, 'los_hours',ppt= [0.9],\
-#                bycols=['fiscal_year','facility_province','region_id','region_name'])
-#calculate_percentile(los_reg, 'percentile_90',ppt=[0.2,0.8],bycols=['fiscal_year']) 
-#calculate_percentile(tpia_nt_record_ucc_21, 'wait_time_to_pia_hours',ppt=[0.9],\
-#                bycols=['fiscal_year','facility_province','region_id','region_name'])
-#los_reg_20_80=calculate_percentile(los_reg_21_ta,'percentile_90',[0.2,0.8])
-#tpia_org_peer_20_80=calculate_percentile(tpia_org_21_ta, 'percentile_90',ppt=[0.2,0.8],\
-#                bycols=['fiscal_year','peer_group_id']) 
+
+
+los_nt_22=calculate_percentile(los_nt_record_ucc_22, 'LOS_HOURS', [0,0.5,0.9,0.999,1],confidence_interval=True)
+los_nt_22=los_nt_22.rename(columns=lambda x: x.upper())
+
+los_reg_22=calculate_percentile(los_nt_record_ucc_22, 'LOS_HOURS',ppt= [0.9],bycols=['SUBMISSION_FISCAL_YEAR','FACILITY_PROVINCE','NEW_REGION_ID','REGION_E_DESC'])
+los_reg_22=los_reg_22.rename(columns=lambda x: x.upper())
