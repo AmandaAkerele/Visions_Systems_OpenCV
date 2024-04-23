@@ -1,57 +1,54 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, udf, collect_list, when, lit, size, array
-from pyspark.sql.types import FloatType, ArrayType
-import numpy as np
-from scipy.stats import linregress
+]from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, when, lit
+from pyspark.ml.feature import VectorAssembler
+from pyspark.ml.classification import LogisticRegression
+from pyspark.ml.linalg import Vectors
 
-# Initialize the Spark session
-spark = SparkSession.builder.appName("Regression Analysis").getOrCreate()
+spark = SparkSession.builder.appName("Logistic Regression Analysis").getOrCreate()
 
-# Assume los_org_all_yr_b is already loaded as a DataFrame
-# Convert columns to numeric and drop NaNs
+# Assume los_org_all_yr_b and ed_nacrs_flg_1 are already loaded as DataFrames
+# Conversion of column types and dropping NaNs are handled as per the provided code
 los_org_all_yr_b = los_org_all_yr_b.withColumn("PERCENTILE_90", col("PERCENTILE_90").cast("float"))
 los_org_all_yr_b = los_org_all_yr_b.withColumn("TIME", col("TIME").cast("float"))
 los_org_all_yr_b = los_org_all_yr_b.na.drop(subset=["PERCENTILE_90", "TIME"])
 
-# Group by 'CORP_ID' and collect necessary columns for regression, ensure groups have enough points
-grouped_data = los_org_all_yr_b.groupBy("CORP_ID").agg(
-    collect_list("TIME").alias("times"),
-    collect_list("PERCENTILE_90").alias("percentiles")
-).filter(size("times") >= 3)  # Ensure each group has at least 3 points for stable regression
+# Assume you've already transformed "PERCENTILE_90" to a binary variable for logistic regression
+# For example, we might decide that percentile values above 80 are 1, others are 0
+los_org_all_yr_b = los_org_all_yr_b.withColumn("label", when(col("PERCENTILE_90") >= 80, 1).otherwise(0))
 
-# Define a UDF for performing linear regression using scipy
-def perform_regression(times, percentiles):
-    if not times or not percentiles:
-        return [None, None, None, None, None, None]  # Updated to include more diagnostic data
-    try:
-        slope, intercept, r_value, p_value, std_err = linregress(times, percentiles)
-        return [float(slope), float(intercept), float(r_value), float(p_value), float(std_err), len(times)]
-    except Exception as e:
-        print(f"Error in regression: {str(e)}")
-        return [None, None, None, None, None, None]
+# Prepare data for logistic regression
+assembler = VectorAssembler(inputCols=["TIME"], outputCol="features")
+training_data = assembler.transform(los_org_all_yr_b)
 
-# Register the UDF
-regression_udf = udf(perform_regression, ArrayType(FloatType()))
+# Fit the logistic regression model
+lr = LogisticRegression(featuresCol="features", labelCol="label")
+model = lr.fit(training_data)
 
-# Apply the UDF to compute regression parameters
-results = grouped_data.withColumn("regression_results", regression_udf(col("times"), col("percentiles")))
+# Make predictions
+predictions = model.transform(training_data)
 
-# Expand the results into separate columns and define improvement indicators
-results = results.select(
-    "CORP_ID",
-    col("regression_results").getItem(0).alias("slope"),
-    col("regression_results").getItem(1).alias("intercept"),
-    col("regression_results").getItem(2).alias("r_value"),
-    col("regression_results").getItem(3).alias("p_value"),
-    col("regression_results").getItem(4).alias("std_err"),
-    col("regression_results").getItem(5).alias("n_points"),  # Number of data points used
-    when((col("p_value") < 0.05) & (col("slope") > 0), lit("001"))
-        .when((col("p_value") < 0.05) & (col("slope") < 0), lit("003"))
-        .otherwise(lit("002")).alias("IMPROVEMENT_IND_CODE"),
-    when(col("IMPROVEMENT_IND_CODE") == "001", lit("Improving"))
-        .when(col("IMPROVEMENT_IND_CODE") == "003", lit("Weakening"))
-        .otherwise(lit("No Change")).alias("IMPROVEMENT_IND_E_DESC")
+# Select example rows to display.
+results = predictions.select("CORP_ID", "features", "label", "probability", "prediction")
+
+# Define improvement indicators based on prediction results
+results = results.withColumn(
+    "IMPROVEMENT_IND_CODE",
+    when(col("prediction") == 1, lit("001")).otherwise(lit("002")),
+)
+results = results.withColumn(
+    "IMPROVEMENT_IND_E_DESC",
+    when(col("IMPROVEMENT_IND_CODE") == "001", lit("Improving")).otherwise(lit("No Change"))
 )
 
-# Show final results with diagnostics
-results.show(truncate=False)
+# Join with another DataFrame to exclude certain IDs (using left anti-join)
+results = results.join(
+    ed_nacrs_flg_1_SL,
+    results['CORP_ID'] == ed_nacrs_flg_1_SL['CORP_ID'],
+    'left_anti'
+)
+
+# Show results
+results.show()
+
+# Optional: Save results
+# results.write.format("parquet").save("/path/to/output")
