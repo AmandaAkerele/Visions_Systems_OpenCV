@@ -1,5 +1,9 @@
-# Rename column
-tpia_org_22_a = tpia_org_22.withColumnRenamed("SUBMISSION_FISCAL", "FISCAL_YEAR")
+# Dynamically rename 'SUBMISSION_FISCAL' to 'FISCAL_YEAR' and keep all other columns unchanged
+all_columns = [col(c).alias("FISCAL_YEAR") if c == "SUBMISSION_FISCAL" else col(c) for c in tpia_org_22.columns]
 
+tpia_org_22_a = tpia_org_22.select(*all_columns)
 
-THIS CODE IS NOT WORKING. I WAQNT TO RENAME SUBMISSION_FISCAL" TO BE "FISCAL_YEAR
+# Show the updated DataFrame
+tpia_org_22_a.printSchema()
+tpia_org_22_a.show()
+
