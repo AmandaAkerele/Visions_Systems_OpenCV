@@ -1,3 +1,1 @@
-I wanted to add to what Marcus sent in his email. 
-The GUD file for the indicators is a huge file and cannot accommodate the use of Pandas Library in Python. I also believe the DAD and NACRS Enriched file is also a huge file similar to the GUD File(please correct me if i am wrong). 
-If the Enriched file is as huge as the GUD file, pyspark will be most sufficient for use as pandas cannot be used to handle such big files. 
+I'd like to contribute to Marcus's email regarding the files. The GUD file containing the indicators is quite large and cannot be effectively handled using the Pandas Library in Python due to memory constraints. I also suspect that the DAD and NACRS Enriched file may be similarly large to the GUD File (please correct me if I'm mistaken). If the Enriched file is indeed as substantial as the GUD file, then pyspark would be the most suitable tool for handling it, given that Pandas may struggle with such large datasets due to memory limitations.s
