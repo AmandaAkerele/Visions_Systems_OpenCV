@@ -1,3 +1,3 @@
-Contribute to the development of new python program to update current production systems process/programs 
-Support hospital data transformation initiative activities as required.
-Support CAD Data production
+- Develop new Python and PySpark programs to update and optimize current production systems and processes, ensuring seamless integration and enhanced performance for large hospital datasets.
+- Support hospital data transformation initiatives by leveraging PySpark for efficient processing of large datasets and providing technical assistance as needed.
+- Maintain and enhance the CAD data supply chain by identifying improvement areas and implementing PySpark-based solutions to ensure data accuracy, efficiency, and reliability.
