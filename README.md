@@ -1,3 +1,3 @@
-- Develop new Python and PySpark programs to update and optimize current production systems and processes, ensuring seamless integration and enhanced performance for large hospital datasets.
-- Support hospital data transformation initiatives by leveraging PySpark for efficient processing of large datasets and providing technical assistance as needed.
-- Maintain and enhance the CAD data supply chain by identifying improvement areas and implementing PySpark-based solutions to ensure data accuracy, efficiency, and reliability.
+Support the HUB project in its implementation of automated indicators (IPA) and the transition of YHS InDepth to the new Hub infrastructure by providing requirements definition, Python code and end to end testing.
+
+Support CAD D&E peers
