@@ -1,10 +1,7 @@
----------------------------------------------------------------------------
-ModuleNotFoundError                       Traceback (most recent call last)
-/tmp/ipykernel_2209/1080488719.py in <cell line: 4>()
-      2 from typing import List, Optional
-      3 from pyspark.sql import functions as F
-----> 4 from rs_helper import rs_helper
-      5 from pyspark.sql.types import StringType
-      6 
+what is going on in this code below:
+# Create DataFrames t3 and t4 based on conditions
+t3 = df_fac[df_fac['NACRS_ED_FLG'] == 1][columns_to_keep].copy()
+t3['TYPE'] = 'SL'
+t3['IND'] = ''
 
-ModuleNotFoundError: No module named 'rs_helper'
+how is NACRS_ED_FLG being created
