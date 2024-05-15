@@ -1,8 +1,10 @@
-pip install re_helper
+---------------------------------------------------------------------------
+ModuleNotFoundError                       Traceback (most recent call last)
+/tmp/ipykernel_2209/1080488719.py in <cell line: 4>()
+      2 from typing import List, Optional
+      3 from pyspark.sql import functions as F
+----> 4 from rs_helper import rs_helper
+      5 from pyspark.sql.types import StringType
+      6 
 
-
-Defaulting to user installation because normal site-packages is not writeable
-Looking in indexes: https://rspm.ossds.cihi.ca/cihipypi/latest/simple
-ERROR: Could not find a version that satisfies the requirement re_helper (from versions: none)
-ERROR: No matching distribution found for re_helper
-Note: you may need to restart the kernel to use updated packages.
+ModuleNotFoundError: No module named 'rs_helper'
