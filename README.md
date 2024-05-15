@@ -1,3 +1,8 @@
-Support the HUB project in its implementation of automated indicators (IPA) and the transition of YHS InDepth to the new Hub infrastructure by providing requirements definition, Python code and end to end testing.
+pip install re_helper
 
-Support CAD D&E peers
+
+Defaulting to user installation because normal site-packages is not writeable
+Looking in indexes: https://rspm.ossds.cihi.ca/cihipypi/latest/simple
+ERROR: Could not find a version that satisfies the requirement re_helper (from versions: none)
+ERROR: No matching distribution found for re_helper
+Note: you may need to restart the kernel to use updated packages.
