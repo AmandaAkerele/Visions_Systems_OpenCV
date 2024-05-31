@@ -1,26 +1,32 @@
-whats happening in thi code 
+what is happening in this code 
+# Collect facility numbers to exclude based on 'TYPE' and 'IND'
+exclude_facility_nums_for_TPIA = ed_facility_org.filter(
+    (col('TYPE') == 'DQ') & (col('IND') == 'TPIA')
+).select('FACILITY_AM_CARE_NUM').distinct().rdd.flatMap(lambda x: x).collect()
 
-# Merge dataframes on specified columns and suffixes
-merged_df = df_fac.merge(df_dq, 
-                         left_on=['FACILITY_AM_CARE_NUM', 'SUBMISSION_FISCAL_YEAR'],
-                         right_on=['FACILITY_AM_CARE_NUM', 'FISCAL_YEAR'],
-                         suffixes=('_df_fac', '_df_dq'))
+exclude_types = ['SL', 'PS', 'DQ']
+exclude_facility_nums = ed_facility_org.filter(
+    col('TYPE').isin(exclude_types)
+).select('FACILITY_AM_CARE_NUM').distinct().rdd.flatMap(lambda x: x).collect()
 
-# Define a list of columns to keep
-columns_to_keep = [
-    'FACILITY_AM_CARE_NUM', 'SUBMISSION_FISCAL_YEAR', 'SITE_ID', 'CORP_ID',
-    'REGION_ID', 'PROVINCE_ID', 'NACRS_ED_FLG'
-]
+# Filter ed_records_22_bb_df DataFrame
+ed_record = ed_records_22_bb_df.filter(
+    ~col('FACILITY_AM_CARE_NUM').isin(exclude_facility_nums) &
+    ~col('FACILITY_AM_CARE_NUM').isin(exclude_facility_nums_for_TPIA)
+)
 
-# Add 'TYPE' column with values 'DQ' for merged_df
-merged_df['TYPE'] = 'DQ'
+# Collect facility numbers to exclude based on 'TYPE' and 'IND'
+exclude_facility_nums_for_ELOS = ed_facility_org.filter(
+    (col('TYPE') == 'DQ') & (col('IND') == 'ELOS')
+).select('FACILITY_AM_CARE_NUM').distinct().rdd.flatMap(lambda x: x).collect()
 
-# Create DataFrames t3 and t4 based on conditions
-t3 = df_fac[df_fac['NACRS_ED_FLG'] == 1][columns_to_keep].copy()
-t3['TYPE'] = 'SL'
-t3['IND'] = ''
+exclude_types = ['SL', 'PS', 'DQ']
+exclude_facility_nums = ed_facility_org.filter(
+    col('TYPE').isin(exclude_types)
+).select('FACILITY_AM_CARE_NUM').distinct().rdd.flatMap(lambda x: x).collect()
 
-ps = df_ps[df_ps['FISCAL_YEAR'].astype(str) == '2022']
-t4 = df_fac[df_fac['FACILITY_AM_CARE_NUM'].astype(str).isin(ps['FACILITY_AM_CARE_NUM'].astype(str))][columns_to_keep].copy()
-t4['TYPE'] = 'PS'
-t4['IND'] = ''
+# Create ed_record_admit_22 (LOS for admit without UCC for CORP LEVEL)
+ed_record_admit_22 = ed_records_admit_22_bb_df.filter(
+    ~col('FACILITY_AM_CARE_NUM').isin(exclude_facility_nums) &
+    ~col('FACILITY_AM_CARE_NUM').isin(exclude_facility_nums_for_ELOS)
+)
