@@ -1,7 +1,12 @@
-from pyspark.sql import functions as F
+ed_records_22_bb_df = ed_nodup_noucc_nosb_22.filter(~col('VISIT_DISPOSITION').isin(['61', '63']))
 
-# Group by 'CORP_ID' and count 'AM_CARE_KEY', then rename the column to 'ED_CNT'
-ED_CORP_22_df = ed_nodup_noucc_nosb_22.groupBy('CORP_ID').agg(F.count('AM_CARE_KEY').alias('ED_CNT'))
+solve error below 
 
-# Show the resulting DataFrame
-ED_CORP_22_df.show()
+
+ed_records_22_bb_df = ed_nodup_noucc_nosb_22.filter(~col('VISIT_DISPOSITION').isin(['61', '63']))
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+/tmp/ipykernel_290/3641738683.py in <cell line: 1>()
+----> 1 ed_records_22_bb_df = ed_nodup_noucc_nosb_22.filter(~col('VISIT_DISPOSITION').isin(['61', '63']))
+
+TypeError: 'str' object is not callable
