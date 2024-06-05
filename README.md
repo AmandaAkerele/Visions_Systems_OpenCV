@@ -1,32 +1,12 @@
-what is happening in this code 
-# Collect facility numbers to exclude based on 'TYPE' and 'IND'
-exclude_facility_nums_for_TPIA = ed_facility_org.filter(
-    (col('TYPE') == 'DQ') & (col('IND') == 'TPIA')
-).select('FACILITY_AM_CARE_NUM').distinct().rdd.flatMap(lambda x: x).collect()
+# Aggregating LOS_org_cnt
+tpia_org_cnt2 = ed_record_admit_noucc.groupby('SUBMISSION_FISCAL_YEAR', 'CORP_ID') \
+    .agg(sum(when(col('TIME_PHYSICAN_INIT_ASSESSMENT').isNotNull(), 1)).alias('tpia_calc_cnt')
+# Conditional DataFrame creation
+tpia_supp_org2 = tpia_org_cnt2.filter((col('tpia_calc_cnt') < 50) | ((col('tpia_calc_cnt') > 50) & (col('tpia_rec_pct') < 0.75)))
+tpia_rpt_org2 = tpia_org_cnt2.filter((col('tpia_calc_cnt') >= 50) | ((col('tpia_calc_cnt') < 50) & (col('tpia_rec_pct') >= 0.75)))
 
-exclude_types = ['SL', 'PS', 'DQ']
-exclude_facility_nums = ed_facility_org.filter(
-    col('TYPE').isin(exclude_types)
-).select('FACILITY_AM_CARE_NUM').distinct().rdd.flatMap(lambda x: x).collect()
-
-# Filter ed_records_22_bb_df DataFrame
-ed_record = ed_records_22_bb_df.filter(
-    ~col('FACILITY_AM_CARE_NUM').isin(exclude_facility_nums) &
-    ~col('FACILITY_AM_CARE_NUM').isin(exclude_facility_nums_for_TPIA)
-)
-
-# Collect facility numbers to exclude based on 'TYPE' and 'IND'
-exclude_facility_nums_for_ELOS = ed_facility_org.filter(
-    (col('TYPE') == 'DQ') & (col('IND') == 'ELOS')
-).select('FACILITY_AM_CARE_NUM').distinct().rdd.flatMap(lambda x: x).collect()
-
-exclude_types = ['SL', 'PS', 'DQ']
-exclude_facility_nums = ed_facility_org.filter(
-    col('TYPE').isin(exclude_types)
-).select('FACILITY_AM_CARE_NUM').distinct().rdd.flatMap(lambda x: x).collect()
-
-# Create ed_record_admit_22 (LOS for admit without UCC for CORP LEVEL)
-ed_record_admit_22 = ed_records_admit_22_bb_df.filter(
-    ~col('FACILITY_AM_CARE_NUM').isin(exclude_facility_nums) &
-    ~col('FACILITY_AM_CARE_NUM').isin(exclude_facility_nums_for_ELOS)
-)
+solve error below 
+File "/tmp/ipykernel_7001/2044627681.py", line 3
+    .agg(sum(when(col('TIME_PHYSICAN_INIT_ASSESSMENT').isNotNull(), 1)).alias('tpia_calc_cnt')
+        ^
+SyntaxError: '(' was never closed
