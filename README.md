@@ -1,22 +1,4 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, lit
-
-# Initialize Spark session
-spark = SparkSession.builder.appName("ResolveAmbiguity").getOrCreate()
-
-# Sample data for df_org_dim
-data_df_org_dim = [
-    (1, 'A', 29061), (2, 'B', 48006), (3, 'C', 48008), (4, 'D', 48015)
-]
-columns_df_org_dim = ['org_id', 'corp_id', 'FACILITY_AM_CARE_NUM']
-df_org_dim = spark.createDataFrame(data_df_org_dim, columns_df_org_dim)
-
-# Sample data for ed_nodup_nosb_22
-data_ed_nodup_nosb_22 = [
-    (1,), (2,), (3,), (4,)
-]
-columns_ed_nodup_nosb_22 = ['org_id']
-ed_nodup_nosb_22 = spark.createDataFrame(data_ed_nodup_nosb_22, columns_ed_nodup_nosb_22)
+solve ther issue below correctly 
 
 # Prepare data for stand alones
 alone = spark.createDataFrame(
@@ -38,15 +20,9 @@ alone = spark.createDataFrame(
 # Join df_org_dim with ed_nodup_nosb_22 based on org_id
 df_fac = df_org_dim.join(ed_nodup_nosb_22, 'org_id')
 
-# Join df_fac with alone to add NACRS_ED_FLG column, resolving ambiguity by aliasing
-df_fac = df_fac.alias('df_fac').join(
-    alone.alias('alone'), 
-    (col('df_fac.corp_id') == col('alone.CORP_ID')) & (col('df_fac.FACILITY_AM_CARE_NUM') == col('alone.FACILITY_AM_CARE_NUM')), 
-    how='left'
-).select(
-    col('df_fac.*'), 
-    col('alone.NACRS_ED_FLG')
-)
+# Join df_fac with alone to add NACRS_ED_FLG column
+df_fac = df_fac.join(alone, (df_fac.corp_id == alone.CORP_ID) & (df_fac.FACILITY_AM_CARE_NUM == alone.FACILITY_AM_CARE_NUM), how='left') \
+               .select(df_fac["*"], alone["NACRS_ED_FLG"])
 
 # Fill null NACRS_ED_FLG values with 0
 df_fac = df_fac.fillna({'NACRS_ED_FLG': 0})
@@ -63,3 +39,36 @@ t3 = t3.withColumn('TYPE', lit('SL')).withColumn('IND', lit(''))
 
 # Show t3 DataFrame
 t3.show()
+
+
+---------------------------------------------------------------------------
+AnalysisException                         Traceback (most recent call last)
+/tmp/ipykernel_293/2428858143.py in <cell line: 22>()
+     20 
+     21 # Join df_fac with alone to add NACRS_ED_FLG column
+---> 22 df_fac = df_fac.join(alone, (df_fac.corp_id == alone.CORP_ID) & (df_fac.FACILITY_AM_CARE_NUM == alone.FACILITY_AM_CARE_NUM), how='left') \
+     23                .select(df_fac["*"], alone["NACRS_ED_FLG"])
+     24 
+
+/usr/local/lib/python3.10/dist-packages/pyspark/sql/dataframe.py in __getattr__(self, name)
+   3124                 "'%s' object has no attribute '%s'" % (self.__class__.__name__, name)
+   3125             )
+-> 3126         jc = self._jdf.apply(name)
+   3127         return Column(jc)
+   3128 
+
+/usr/local/lib/python3.10/dist-packages/py4j/java_gateway.py in __call__(self, *args)
+   1320 
+   1321         answer = self.gateway_client.send_command(command)
+-> 1322         return_value = get_return_value(
+   1323             answer, self.gateway_client, self.target_id, self.name)
+   1324 
+
+/usr/local/lib/python3.10/dist-packages/pyspark/errors/exceptions/captured.py in deco(*a, **kw)
+    183                 # Hide where the exception came from that shows a non-Pythonic
+    184                 # JVM exception message.
+--> 185                 raise converted from None
+    186             else:
+    187                 raise
+
+AnalysisException: [AMBIGUOUS_REFERENCE] Reference `corp_id` is ambiguous, could be: [`corp_id`, `corp_id`].
