@@ -1,27 +1,32 @@
-correctly convert the code below to pyspark.
+ed_facility_org should have 4 results but it is only generating 1 result. Please help me correct the code 
 
-Please ensure the calcuation is accurate 
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, count, lit
 
-# For corp level without UCC
-# Vectorized approach for 'tpia_rec' calculation
-ed_record['tpia_rec'] = 'Y'
-ed_record.loc[ed_record['TIME_PHYSICAN_INIT_ASSESSMENT'].isna() | (ed_record['TIME_PHYSICAN_INIT_ASSESSMENT'].str.strip() == ''), 'tpia_rec'] = 'B'
-ed_record.loc[ed_record['TIME_PHYSICAN_INIT_ASSESSMENT'] == '9999', 'tpia_rec'] = 'N'
 
-# Filter records not equal to 'B'
-tpia_org_cnt = ed_record[ed_record['tpia_rec'] != 'B']
+# # Convert CORP_ID columns to string if necessary
+# df_fac = df_fac.withColumn('CORP_ID', col('CORP_ID').cast('string'))
+# result_df = result_df.withColumn('CORP_ID', col('CORP_ID').cast('string'))
 
-# Aggregation
-tpia_org_rec = tpia_org_cnt.groupby(['SUBMISSION_FISCAL_YEAR', 'CORP_ID']).agg(
-    Total_CASE=('AM_CARE_KEY', 'count'),
-    tpia_calc_cnt=('tpia_rec', lambda x: (x == 'Y').sum()),
-    tpia_elig_cnt=('tpia_rec', lambda x: (x.isin(['Y', 'N'])).sum())
-).reset_index()
+# Filter df_fac based on CORP_ID
+# filtered_df_fac = t4.filter(col('org_id').isin([row['org_id'] for row in result_df.select('org_id').distinct().collect()]))
 
-# Calculate percentage and sort
-tpia_org_rec['tpia_rec_pct'] = tpia_org_rec['tpia_calc_cnt'] / tpia_org_rec['Total_CASE']
-tpia_org_rec.sort_values(by=['CORP_ID'], inplace=True)
+df_fac = df_org_dim.join(ed_nodup_nosb_22.select('org_id').distinct(), 'org_id')
 
-# Conditional DataFrame creation
-tpia_supp_org = tpia_org_rec.query("(tpia_calc_cnt < 50) or (tpia_calc_cnt > 50 and tpia_rec_pct < 0.75)")
-tpia_rpt_org = tpia_org_rec.query("(tpia_calc_cnt >= 50) or (tpia_calc_cnt < 50 and tpia_rec_pct >= 0.75)")
+# # Group by org_id and count
+tmp_cnt_ed_facility_org = df_fac.groupBy('corp_id').agg(count('*').alias('CORP_CNT'))
+
+# Merge result_df with tmp_cnt_ed_facility_org
+ed_facility_org = t4.join(tmp_cnt_ed_facility_org, on='corp_id', how='inner')
+
+# Sort the DataFrame by 'TYPE' and 'FACILITY_AM_CARE_NUM'
+ed_facility_org = ed_facility_org.orderBy(['TYPE', 'FACILITY_AM_CARE_NUM'])
+
+# Rename columns 'REGION_NAME_x' and 'REGION_NAME_y' to 'REGION_NAME'
+# ed_facility_org = ed_facility_org.withColumnRenamed('REGION_NAME_x', 'REGION_NAME').withColumnRenamed('REGION_NAME_y', 'REGION_NAME')
+
+# Remove duplicated columns and reset index
+# ed_facility_org = ed_facility_org.dropDuplicates().select([col for col in ed_facility_org.columns if col != 'index'])
+
+# Show the result
+ed_facility_org.show()
