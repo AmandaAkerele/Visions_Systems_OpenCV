@@ -1,6 +1,3 @@
-merge the df_fac with SL 
-
-
 # Filter df_fac based on org_id present in ed_nodup_nosb_22
 df_fac = df_org_dim.join(ed_nodup_nosb_22.select('org_id').distinct(), 'org_id')
 
@@ -21,5 +18,12 @@ SL = spark.createDataFrame(
     ['CORP_ID', 'FACILITY_AM_CARE_NUM', 'NACRS_ED_FLG']
 )
 
+# Join df_fac with SL to add NACRS_ED_FLG column
+df_fac1 = df_fac.join(SL, (df_fac.corp_id == SL.CORP_ID) & (df_fac.FACILITY_AM_CARE_NUM == SL.FACILITY_AM_CARE_NUM), how='left') \
+               .select(df_fac["*"], SL["NACRS_ED_FLG"])
 
-to generate final dataframe named for df_fac1
+# Fill null NACRS_ED_FLG values with 0
+df_fac1 = df_fac1.fillna({'NACRS_ED_FLG': 0})
+
+# Show the final DataFrame df_fac1
+df_fac1.show()
