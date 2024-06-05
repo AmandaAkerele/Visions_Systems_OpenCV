@@ -1,33 +1,27 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, when, sum
+correctly convert the code below to pyspark.
 
-# Initialize Spark session
-spark = SparkSession.builder.appName("ResolveAmbiguity").getOrCreate()
+Please ensure the calcuation is accurate 
 
-# Assuming ed_record_admit_noucc is already defined and available
-# Sample DataFrame for demonstration purposes
-data = [
-    (2023, 101, 1, 0.8),
-    (2023, 102, None, 0.7),
-    (2023, 103, 1, 0.9)
-]
-columns = ['SUBMISSION_FISCAL_YEAR', 'CORP_ID', 'TIME_PHYSICAN_INIT_ASSESSMENT', 'tpia_rec_pct']
-ed_record_admit_noucc = spark.createDataFrame(data, columns)
+# For corp level without UCC
+# Vectorized approach for 'tpia_rec' calculation
+ed_record['tpia_rec'] = 'Y'
+ed_record.loc[ed_record['TIME_PHYSICAN_INIT_ASSESSMENT'].isna() | (ed_record['TIME_PHYSICAN_INIT_ASSESSMENT'].str.strip() == ''), 'tpia_rec'] = 'B'
+ed_record.loc[ed_record['TIME_PHYSICAN_INIT_ASSESSMENT'] == '9999', 'tpia_rec'] = 'N'
 
-# Aggregating LOS_org_cnt
-tpia_org_cnt2 = ed_record_admit_noucc.groupby('SUBMISSION_FISCAL_YEAR', 'CORP_ID').agg(
-    sum(when(col('TIME_PHYSICAN_INIT_ASSESSMENT').isNotNull(), 1).otherwise(0)).alias('tpia_calc_cnt')
-)
+# Filter records not equal to 'B'
+tpia_org_cnt = ed_record[ed_record['tpia_rec'] != 'B']
+
+# Aggregation
+tpia_org_rec = tpia_org_cnt.groupby(['SUBMISSION_FISCAL_YEAR', 'CORP_ID']).agg(
+    Total_CASE=('AM_CARE_KEY', 'count'),
+    tpia_calc_cnt=('tpia_rec', lambda x: (x == 'Y').sum()),
+    tpia_elig_cnt=('tpia_rec', lambda x: (x.isin(['Y', 'N'])).sum())
+).reset_index()
+
+# Calculate percentage and sort
+tpia_org_rec['tpia_rec_pct'] = tpia_org_rec['tpia_calc_cnt'] / tpia_org_rec['Total_CASE']
+tpia_org_rec.sort_values(by=['CORP_ID'], inplace=True)
 
 # Conditional DataFrame creation
-tpia_supp_org2 = tpia_org_cnt2.filter(
-    (col('tpia_calc_cnt') < 50) | ((col('tpia_calc_cnt') > 50) & (col('tpia_rec_pct') < 0.75))
-)
-
-tpia_rpt_org2 = tpia_org_cnt2.filter(
-    (col('tpia_calc_cnt') >= 50) | ((col('tpia_calc_cnt') < 50) & (col('tpia_rec_pct') >= 0.75))
-)
-
-# Show the results
-tpia_supp_org2.show()
-tpia_rpt_org2.show()
+tpia_supp_org = tpia_org_rec.query("(tpia_calc_cnt < 50) or (tpia_calc_cnt > 50 and tpia_rec_pct < 0.75)")
+tpia_rpt_org = tpia_org_rec.query("(tpia_calc_cnt >= 50) or (tpia_calc_cnt < 50 and tpia_rec_pct >= 0.75)")
