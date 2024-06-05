@@ -38,9 +38,15 @@ alone = spark.createDataFrame(
 # Join df_org_dim with ed_nodup_nosb_22 based on org_id
 df_fac = df_org_dim.join(ed_nodup_nosb_22, 'org_id')
 
-# Join df_fac with alone to add NACRS_ED_FLG column
-df_fac = df_fac.join(alone, (df_fac.corp_id == alone.CORP_ID) & (df_fac.FACILITY_AM_CARE_NUM == alone.FACILITY_AM_CARE_NUM), how='left') \
-               .select(df_fac["*"], alone["NACRS_ED_FLG"])
+# Join df_fac with alone to add NACRS_ED_FLG column, resolving ambiguity by aliasing
+df_fac = df_fac.alias('df_fac').join(
+    alone.alias('alone'), 
+    (col('df_fac.corp_id') == col('alone.CORP_ID')) & (col('df_fac.FACILITY_AM_CARE_NUM') == col('alone.FACILITY_AM_CARE_NUM')), 
+    how='left'
+).select(
+    col('df_fac.*'), 
+    col('alone.NACRS_ED_FLG')
+)
 
 # Fill null NACRS_ED_FLG values with 0
 df_fac = df_fac.fillna({'NACRS_ED_FLG': 0})
