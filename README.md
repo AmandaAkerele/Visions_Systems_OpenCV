@@ -38,7 +38,7 @@ alone = spark.createDataFrame(
 # Join df_org_dim with ed_nodup_nosb_22 based on org_id
 df_fac = df_org_dim.join(ed_nodup_nosb_22, 'org_id')
 
-# Join df_fac with alone to add NACRS_ED_FLG column using explicit references to avoid ambiguity
+# Join df_fac with alone to add NACRS_ED_FLG column
 df_fac = df_fac.join(alone, (df_fac.corp_id == alone.CORP_ID) & (df_fac.FACILITY_AM_CARE_NUM == alone.FACILITY_AM_CARE_NUM), how='left') \
                .select(df_fac["*"], alone["NACRS_ED_FLG"])
 
@@ -57,9 +57,3 @@ t3 = t3.withColumn('TYPE', lit('SL')).withColumn('IND', lit(''))
 
 # Show t3 DataFrame
 t3.show()
-
-# Assuming t4 DataFrame creation
-data_t4 = [
-    ('A', 'Other1', 'Type1', 100),
-    ('B', 'Other2', 'Type2', 200),
-    ('C', 'Other3', 'Type3
