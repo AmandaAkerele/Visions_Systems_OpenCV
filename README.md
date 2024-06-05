@@ -1,42 +1,57 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, count
+firstly create a NACRS_ED_FLG in df_fac based on the below 
 
-# Initialize Spark session
-spark = SparkSession.builder.appName("ResolveAmbiguity").getOrCreate()
+#prepare data for stand alones
+alone = spark.createDataFrame(
+    [
+        (99012,29061,1),
+        (80335,48006,1),
+        (80335,48008,1),
+        (80337,48015,1),
+        (80337,48022,1),
+        (80337,48023,1),
+        (80337,48024,1),
+        (80345,48029,1),
+        (80338,48032,1),
+        (80339,48037,1),
+        (80340,48039,1),
+        (80344,48044,1),
+        (80341,48053,1),
+        (80345,48063,1),
+        (80347,48076,1),
+        (80348,48083,1),
+        (80348,48085,1),
+        (80348,48086,1),
+        (80338,48116,1),
+        (80347,48117,1),
+        (80337,48120,1),
+        (80338,48121,1),
+        (5160, 54242,1),
+        (7043,71117,1),
+        (7070,71163,1),
+        (973,88050,1),
+        (1006,88080,1),
+        (986,88132,1),
+        (20390,88142,1),
+        (99718,88149,1),
+        (99724,88155,1),
+        (20282,88349,1),
+        (20400,88350,1),
+        (99725,88391,1),
+        (99726,88394,1),
+        (80226,88578,1),
+        (80517,88595,1),
+        (99768,88922,1
+)
+    ],
+    ['CORP_ID','FACILITY_AM_CARE_NUM', 'NACRS_ED_FLG']  
+)
 
-# Sample data for demonstration purposes
-data_df_org_dim = [
-    (1, 'A'), (2, 'B'), (3, 'C'), (4, 'D')
-]
-columns_df_org_dim = ['org_id', 'corp_id']
-df_org_dim = spark.createDataFrame(data_df_org_dim, columns_df_org_dim)
+alone.printSchema()
 
-data_ed_nodup_nosb_22 = [
-    (1,), (2,), (3,), (4,)
-]
-columns_ed_nodup_nosb_22 = ['org_id']
-ed_nodup_nosb_22 = spark.createDataFrame(data_ed_nodup_nosb_22, columns_ed_nodup_nosb_22)
 
-data_t4 = [
-    ('A', 'Other1', 'Type1', 100),
-    ('B', 'Other2', 'Type2', 200),
-    ('C', 'Other3', 'Type3', 300),
-    ('D', 'Other4', 'Type4', 400)
-]
-columns_t4 = ['corp_id', 'OTHER_COLUMN', 'TYPE', 'FACILITY_AM_CARE_NUM']
-t4 = spark.createDataFrame(data_t4, columns_t4)
+alone.show()
 
-# Join df_org_dim with ed_nodup_nosb_22 based on org_id
-df_fac = df_org_dim.join(ed_nodup_nosb_22, 'org_id')
-
-# Group by org_id and corp_id and count occurrences
-tmp_cnt_ed_facility_org = df_fac.groupBy(df_org_dim['org_id'], df_org_dim['corp_id']).agg(count('*').alias('CORP_CNT'))
-
-# Merge t4 with tmp_cnt_ed_facility_org on both org_id and corp_id
-ed_facility_org = t4.join(tmp_cnt_ed_facility_org, (t4['corp_id'] == tmp_cnt_ed_facility_org['corp_id']) & (t4['corp_id'] == tmp_cnt_ed_facility_org['corp_id']), 'left')
-
-# Sort the DataFrame by 'TYPE' and 'FACILITY_AM_CARE_NUM'
-ed_facility_org = ed_facility_org.orderBy(['TYPE', 'FACILITY_AM_CARE_NUM'])
-
-# Show the result
-ed_facility_org.show()
+# Create DataFrames t3 and t4 based on conditions
+t3 = df_fac[df_fac['NACRS_ED_FLG'] == 1][columns_to_keep].copy()
+t3['TYPE'] = 'SL'
+t3['IND'] = ''
