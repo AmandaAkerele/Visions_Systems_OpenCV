@@ -1,34 +1,14 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, when, trim
+# Aggregation
+tpia_org_rec = tpia_org_cnt.groupby(['SUBMISSION_FISCAL_YEAR', 'CORP_ID']).agg(
+    Total_CASE=('AM_CARE_KEY', 'count'),
+    tpia_calc_cnt=('tpia_rec', lambda x: (x == 'Y').sum()),
+    tpia_elig_cnt=('tpia_rec', lambda x: (x.isin(['Y', 'N'])).sum())
+).reset_index()
 
-# Initialize Spark session
-spark = SparkSession.builder.appName("tpia_rec_calculation").getOrCreate()
+# Calculate percentage and sort
+tpia_org_rec['tpia_rec_pct'] = tpia_org_rec['tpia_calc_cnt'] / tpia_org_rec['Total_CASE']
+tpia_org_rec.sort_values(by=['CORP_ID'], inplace=True)
 
-# Sample DataFrame for demonstration purposes
-data = [
-    (1, 'Y', 'some_value'), 
-    (2, 'Y', '9999'), 
-    (3, 'Y', None), 
-    (4, 'Y', ' ')
-]
-columns = ['ID', 'OTHER_COLUMN', 'TIME_PHYSICAN_INIT_ASSESSMENT']
-ed_record = spark.createDataFrame(data, columns)
-
-# For corp level without UCC
-# Vectorized approach for 'tpia_rec' calculation
-ed_record = ed_record.withColumn(
-    'tpia_rec',
-    when(
-        col('TIME_PHYSICAN_INIT_ASSESSMENT').isNull() | (trim(col('TIME_PHYSICAN_INIT_ASSESSMENT')) == ''),
-        'B'
-    ).when(
-        col('TIME_PHYSICAN_INIT_ASSESSMENT') == '9999',
-        'N'
-    ).otherwise('Y')
-)
-
-# Filter records not equal to 'B'
-tpia_org_cnt = ed_record.filter(col('tpia_rec') != 'B')
-
-# Show the result
-tpia_org_cnt.show()
+# Conditional DataFrame creation
+tpia_supp_org = tpia_org_rec.query("(tpia_calc_cnt < 50) or (tpia_calc_cnt > 50 and tpia_rec_pct < 0.75)")
+tpia_rpt_org = tpia_org_rec.query("(tpia_calc_cnt >= 50) or (tpia_calc_cnt < 50 and tpia_rec_pct >= 0.75)")
