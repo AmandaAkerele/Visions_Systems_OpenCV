@@ -1,24 +1,45 @@
-use inner and left join for the joining of t4 to tmp_cnt_ed_facility_org and ensure the joinig is correct to reflect the corrent count for CORP_CNT
-
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, count, lit
+from pyspark.sql.functions import col, count
 
-df_fac = df_org_dim.join(ed_nodup_nosb_22.select('org_id').distinct(), 'org_id')
+# Initialize Spark session
+spark = SparkSession.builder.appName("ResolveAmbiguity").getOrCreate()
 
-# # Group by org_id and count
+# Sample data for demonstration purposes
+data_df_org_dim = [
+    (1, 'A'), (2, 'B'), (3, 'C'), (4, 'D')
+]
+columns_df_org_dim = ['org_id', 'corp_id']
+df_org_dim = spark.createDataFrame(data_df_org_dim, columns_df_org_dim)
+
+data_ed_nodup_nosb_22 = [
+    (1,), (2,), (3,), (4,)
+]
+columns_ed_nodup_nosb_22 = ['org_id']
+ed_nodup_nosb_22 = spark.createDataFrame(data_ed_nodup_nosb_22, columns_ed_nodup_nosb_22)
+
+data_t4 = [
+    ('A', 'Other1', 'Type1', 100),
+    ('B', 'Other2', 'Type2', 200),
+    ('C', 'Other3', 'Type3', 300),
+    ('D', 'Other4', 'Type4', 400)
+]
+columns_t4 = ['corp_id', 'OTHER_COLUMN', 'TYPE', 'FACILITY_AM_CARE_NUM']
+t4 = spark.createDataFrame(data_t4, columns_t4)
+
+# Join df_org_dim with ed_nodup_nosb_22 based on org_id
+df_fac = df_org_dim.join(ed_nodup_nosb_22, 'org_id')
+
+# Group by corp_id and count occurrences
 tmp_cnt_ed_facility_org = df_fac.groupBy('corp_id').agg(count('*').alias('CORP_CNT'))
 
-# Merge result_df with tmp_cnt_ed_facility_org
-ed_facility_org = t4.join(tmp_cnt_ed_facility_org, on='corp_id', how='inner')
+# Merge t4 with tmp_cnt_ed_facility_org on corp_id using inner join to only keep matching records
+inner_join_result = t4.join(tmp_cnt_ed_facility_org, 'corp_id', 'inner')
+
+# Perform a left join to ensure all corp_id values from t4 are preserved and count is accurately reflected
+ed_facility_org = t4.join(tmp_cnt_ed_facility_org, 'corp_id', 'left')
 
 # Sort the DataFrame by 'TYPE' and 'FACILITY_AM_CARE_NUM'
 ed_facility_org = ed_facility_org.orderBy(['TYPE', 'FACILITY_AM_CARE_NUM'])
-
-# Rename columns 'REGION_NAME_x' and 'REGION_NAME_y' to 'REGION_NAME'
-# ed_facility_org = ed_facility_org.withColumnRenamed('REGION_NAME_x', 'REGION_NAME').withColumnRenamed('REGION_NAME_y', 'REGION_NAME')
-
-# Remove duplicated columns and reset index
-# ed_facility_org = ed_facility_org.dropDuplicates().select([col for col in ed_facility_org.columns if col != 'index'])
 
 # Show the result
 ed_facility_org.show()
