@@ -1,27 +1,37 @@
-correctly convert this code below to pyspark 
+from pyspark.sql import functions as F
 
-# For Peer level
+# Assume ed_record_22_Peer is your starting DataFrame
+tpia_peer_cnt_a_df = ed_record_22_Peer.withColumn('tpia_rec', F.lit('B'))
 
-tpia_peer_cnt_a_df = ed_record_22_Peer.copy()
-tpia_peer_cnt_a_df['tpia_rec'] = 'B'
-tpia_peer_cnt_a_df.loc[tpia_peer_cnt_a_df['TIME_PHYSICAN_INIT_ASSESSMENT'].str.strip() == '', 'tpia_rec'] = 'B'
-tpia_peer_cnt_a_df.loc[tpia_peer_cnt_a_df['TIME_PHYSICAN_INIT_ASSESSMENT'] == '9999', 'tpia_rec'] = 'N'
-tpia_peer_cnt_a_df.loc[~tpia_peer_cnt_a_df['TIME_PHYSICAN_INIT_ASSESSMENT'].isin(['9999', '']), 'tpia_rec'] = 'Y'
+# Update tpia_rec based on conditions in TIME_PHYSICAN_INIT_ASSESSMENT column
+tpia_peer_cnt_a_df = tpia_peer_cnt_a_df.withColumn(
+    'tpia_rec',
+    F.when(F.col('TIME_PHYSICAN_INIT_ASSESSMENT').isNull() | F.trim(F.col('TIME_PHYSICAN_INIT_ASSESSMENT')) == '', 'B') \
+    .when(F.col('TIME_PHYSICAN_INIT_ASSESSMENT') == '9999', 'N') \
+    .otherwise('Y')
+)
 
-tpia_peer_cnt_df = tpia_peer_cnt_a_df[tpia_peer_cnt_a_df['tpia_rec'] !='B']
+# Filter out records where tpia_rec is not 'B'
+tpia_peer_cnt_df = tpia_peer_cnt_a_df.filter(F.col('tpia_rec') != 'B')
 
-tpia_peer_rec_df = tpia_peer_cnt_df.groupby(['SUBMISSION_FISCAL_YEAR', 'SITE_PEER']).agg(
-    tpia_calc_cnt = pd.NamedAgg(column='tpia_rec', aggfunc=lambda x: (x == 'Y').sum()),
-    tpia_elig_cnt= pd.NamedAgg(column='tpia_rec', aggfunc=lambda x: (x.isin(['Y', 'N'])).sum()),
-    tpia_rec_pct=pd.NamedAgg(column='tpia_rec', aggfunc=lambda x: (x == 'Y').sum() / len(x))
-).reset_index()
+# Group by and aggregate calculations
+tpia_peer_rec_df = tpia_peer_cnt_df.groupBy('SUBMISSION_FISCAL_YEAR', 'SITE_PEER').agg(
+    F.sum(F.when(F.col('tpia_rec') == 'Y', 1).otherwise(0)).alias('tpia_calc_cnt'),
+    F.sum(F.when(F.col('tpia_rec').isin(['Y', 'N']), 1).otherwise(0)).alias('tpia_elig_cnt')
+).withColumn(
+    'tpia_rec_pct',
+    (F.col('tpia_calc_cnt') / F.col('tpia_elig_cnt'))
+)
 
-tpia_supp_peer_df = tpia_peer_rec_df[(tpia_peer_rec_df['tpia_calc_cnt'] < 50)]
+# Filter for suppression check
+tpia_supp_peer_df = tpia_peer_rec_df.filter(F.col('tpia_calc_cnt') < 50)
 
-# If the DataFrame is empty, there's no suppression at the "peer" level 
+# Check if DataFrames are empty and print message if they are
+tpia_peer_rec_df_count = tpia_peer_rec_df.count()
+tpia_supp_peer_df_count = tpia_supp_peer_df.count()
 
-if tpia_peer_rec_df.empty:
+if tpia_peer_rec_df_count == 0:
     print("No suppression at peer level.")
-    
-if tpia_supp_peer_df.empty:
+
+if tpia_supp_peer_df_count == 0:
     print("No suppression at peer level.")
