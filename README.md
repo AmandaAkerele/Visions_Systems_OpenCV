@@ -1,8 +1,10 @@
-on this code below
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col
 
-create dataframe SL before performing filtering then after filtering create final dataframe SL_filtered
+# Assuming 'spark' is your SparkSession
+spark = SparkSession.builder.appName("Data Filtering").getOrCreate()
 
-# Full data as a list of tuples to create list of SL
+# Full data as a list of tuples to create DataFrame SL
 data = [
     (99012, 29061, 1), (80335, 48006, 2), (80335, 48008, 2), (80337, 48015, 5),
     (80337, 48022, 5), (80337, 48023, 5), (80337, 48024, 5), (80345, 48029, 2),
@@ -16,16 +18,17 @@ data = [
     (80517, 88595, 1), (99768, 88922, 1)
 ]
 
-# Filtering data before creating DataFrame to exclude '54242'
-filtered_data = [row for row in data if row[1] != 54242]
+# Creating initial DataFrame from the data
+SL = spark.createDataFrame(data, ['CORP_ID', 'FACILITY_AM_CARE_NUM', 'CNT_SITE'])
 
-# Creating DataFrame from the filtered data
-SL = spark.createDataFrame(filtered_data, ['CORP_ID', 'FACILITY_AM_CARE_NUM', 'CNT_SITE'])
+# Filtering data to exclude '54242' and creating SL_filtered DataFrame
+SL_filtered = SL.filter(col('FACILITY_AM_CARE_NUM') != 54242)
 
-# Show the DataFrame structure and preview some data
+# Show the DataFrame structure and preview some data for both DataFrames
 SL.printSchema()
 SL.show(truncate=False)
+SL_filtered.show(truncate=False)
 
-# Count the number of entries in the DataFrame
-count_entries = SL.count()
+# Count the number of entries in the filtered DataFrame
+count_entries = SL_filtered.count()
 print("Number of entries after filtering: ", count_entries)
