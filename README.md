@@ -1,33 +1,27 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col
+correctly convert this code below to pyspark 
 
-# Spark session initialization (if not already created)
-spark = SparkSession.builder.appName("Standalone Data Processing").getMaster("local").getOrCreate()
+# For Peer level
 
-# Full data as a list of tuples
-data = [
-    (99012, 29061, 1), (80335, 48006, 2), (80335, 48008, 2), (80337, 48015, 5),
-    (80337, 48022, 5), (80337, 48023, 5), (80337, 48024, 5), (80345, 48029, 2),
-    (80338, 48032, 3), (80339, 48037, 1), (80340, 48039, 1), (80344, 48044, 1),
-    (80341, 48053, 1), (80345, 48063, 2), (80347, 48076, 2), (80348, 48083, 3),
-    (80348, 48085, 3), (80348, 48086, 3), (80338, 48116, 3), (80347, 48117, 2),
-    (80337, 48120, 5), (80338, 48121, 3), (7043, 71117, 1), (7070, 71163, 1),
-    (973, 88050, 1), (5160, 54242, 1), (1006, 88080, 1), (986, 88132, 1),
-    (20390, 88142, 1), (99718, 88149, 1), (99724, 88155, 1), (20282, 88349, 1),
-    (20400, 88350, 1), (99725, 88391, 1), (99726, 88394, 1), (80226, 88578, 1),
-    (80517, 88595, 1), (99768, 88922, 1)
-]
+tpia_peer_cnt_a_df = ed_record_22_Peer.copy()
+tpia_peer_cnt_a_df['tpia_rec'] = 'B'
+tpia_peer_cnt_a_df.loc[tpia_peer_cnt_a_df['TIME_PHYSICAN_INIT_ASSESSMENT'].str.strip() == '', 'tpia_rec'] = 'B'
+tpia_peer_cnt_a_df.loc[tpia_peer_cnt_a_df['TIME_PHYSICAN_INIT_ASSESSMENT'] == '9999', 'tpia_rec'] = 'N'
+tpia_peer_cnt_a_df.loc[~tpia_peer_cnt_a_df['TIME_PHYSICAN_INIT_ASSESSMENT'].isin(['9999', '']), 'tpia_rec'] = 'Y'
 
-# Filtering data before creating DataFrame to exclude '54242'
-filtered_data = [row for row in data if row[1] != 54242]
+tpia_peer_cnt_df = tpia_peer_cnt_a_df[tpia_peer_cnt_a_df['tpia_rec'] !='B']
 
-# Creating DataFrame from the filtered data
-df = spark.createDataFrame(filtered_data, ['CORP_ID', 'FACILITY_AM_CARE_NUM', 'CNT_SITE'])
+tpia_peer_rec_df = tpia_peer_cnt_df.groupby(['SUBMISSION_FISCAL_YEAR', 'SITE_PEER']).agg(
+    tpia_calc_cnt = pd.NamedAgg(column='tpia_rec', aggfunc=lambda x: (x == 'Y').sum()),
+    tpia_elig_cnt= pd.NamedAgg(column='tpia_rec', aggfunc=lambda x: (x.isin(['Y', 'N'])).sum()),
+    tpia_rec_pct=pd.NamedAgg(column='tpia_rec', aggfunc=lambda x: (x == 'Y').sum() / len(x))
+).reset_index()
 
-# Show the DataFrame structure and preview some data
-df.printSchema()
-df.show(truncate=False)
+tpia_supp_peer_df = tpia_peer_rec_df[(tpia_peer_rec_df['tpia_calc_cnt'] < 50)]
 
-# Count the number of entries in the DataFrame
-count_entries = df.count()
-print("Number of entries after filtering: ", count_entries)
+# If the DataFrame is empty, there's no suppression at the "peer" level 
+
+if tpia_peer_rec_df.empty:
+    print("No suppression at peer level.")
+    
+if tpia_supp_peer_df.empty:
+    print("No suppression at peer level.")
