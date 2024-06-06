@@ -2,11 +2,12 @@ from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
 # Assuming 'spark' is your SparkSession and 'ed_record_with_ucc_22' is a DataFrame already loaded
+
 # Apply conditions to create the 'tpia_rec' column
 ed_record_with_ucc_22 = ed_record_with_ucc_22.withColumn(
     'tpia_rec',
-    F.when(F.col('TIME_PHYSICAN_INIT_ASSESSMENT').isNull() | (F.trim(F.col('TIME_PHYSICAN_INIT_ASSESSMENT')) == ''), 'B') \
-    .when(F.col('TIME_PHYSICAN_INIT_ASSESSMENT') == '9999', 'N') \
+    F.when(F.col('TIME_PHYSICAN_INIT_ASSESSMENT').isNull() | (F.trim(F.col('TIME_PHYSICAN_INIT_ASSESSMENT')) == ''), 'B')
+    .when(F.col('TIME_PHYSICAN_INIT_ASSESSMENT') == '9999', 'N')
     .otherwise('Y')
 )
 
@@ -22,6 +23,9 @@ tpia_reg_rec = tpia_reg_cnt.groupBy('SUBMISSION_FISCAL_YEAR', 'NEW_REGION_ID').a
     'tpia_rec_pct',
     F.col('tpia_calc_cnt') / F.col('Total_CASE')
 )
+
+# Remove rows where 'ads_region_id' is null
+tpia_reg_rec = tpia_reg_rec.filter(F.col('NEW_REGION_ID').isNotNull())
 
 # Filter DataFrame based on specific conditions for suppression and reporting
 tpia_supp_reg = tpia_reg_rec.filter(
