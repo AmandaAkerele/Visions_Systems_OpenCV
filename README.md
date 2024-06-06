@@ -1,10 +1,55 @@
-from pyspark.sql.functions import col
+recreate this code below to be efficient 
 
-# Filter out records where FACILITY_AM_CARE_NUM is not '54242'
-filtered_records = ed_records_22_bb_df.filter(col('FACILITY_AM_CARE_NUM') != '54242')
+#prepare data for stand alones
+alone = spark.createDataFrame(
+    [
+        (99012,29061,1),
+        (80335,48006,2),
+        (80335,48008,2),
+        (80337,48015,5),
+        (80337,48022,5),
+        (80337,48023,5),
+        (80337,48024,5),
+        (80345,48029,2),
+        (80338,48032,3),
+        (80339,48037,1),
+        (80340,48039,1),
+        (80344,48044,1),
+        (80341,48053,1),
+        (80345,48063,2),
+        (80347,48076,2),
+        (80348,48083,3),
+        (80348,48085,3),
+        (80348,48086,3),
+        (80338,48116,3),
+        (80347,48117,2),
+        (80337,48120,5),
+        (80338,48121,3),      
+        (7043,71117,1),
+        (7070,71163,1),
+        (973,88050,1),
+        (5160,54242,1),
+        (1006,88080,1),
+        (986,88132,1),
+        (20390,88142,1),
+        (99718,88149,1),
+        (99724,88155,1),
+        (20282,88349,1),
+        (20400,88350,1),
+        (99725,88391,1),
+        (99726,88394,1),
+        (80226,88578,1),
+        (80517,88595,1),
+        (99768,88922,1
+)
+    ],
+    ['CORP_ID','FACILITY_AM_CARE_NUM', 'CNT_SITE']  # add your column names here
+)
 
-# Get a list of FACILITY_AM_CARE_NUM from SL DataFrame to exclude (for UCC and standalone)
-exclusion_list = [row['FACILITY_AM_CARE_NUM'] for row in SL.select('FACILITY_AM_CARE_NUM').collect()]
+alone.printSchema()
 
-# Create a peer group by excluding the records with FACILITY_AM_CARE_NUM in the exclusion list
-ed_record_22_Peer = filtered_records.filter(~col('FACILITY_AM_CARE_NUM').isin(exclusion_list))
+
+alone.show()
+
+alone_a=alone.filter(~col('FACILITY_AM_CARE_NUM').isin(['54242']))
+alone_a.count()
