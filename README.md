@@ -21,7 +21,7 @@ tpia_org_rec_ucc_22 = tpia_org_cnt_ucc_22.groupBy('SUBMISSION_FISCAL_YEAR', 'COR
     _sum(when(col('tpia_rec').isin(['Y', 'N']), 1).otherwise(0)).alias('tpia_elig_cnt')
 ).withColumn(
     'tpia_rec_pct',
-    col('tpia_calc_cnt') / col('Total_CASE')
+    col('tpia_calc_cnt') / col('tpia_elig_cnt')  # Ensure it's calculated over eligible cases
 )
 
 # Filter 'tpia_org_rec_ucc' based on conditions
@@ -36,3 +36,4 @@ tpia_rpt_org_ucc_22 = tpia_org_rec_ucc_22.filter(
 # Show results (optional, can be removed or modified per use-case)
 tpia_supp_org_ucc_22.show()
 tpia_rpt_org_ucc_22.show()
+
