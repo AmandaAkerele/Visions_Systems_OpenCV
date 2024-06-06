@@ -1,33 +1,38 @@
-please convert the code to pyspakr below. Ensure accuracy in calculation and ensure the row counts are correct 
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, when, sum as _sum, count
 
-# For corp level with ucc
-# Create a Dataframe tpia_org_cnt_ucc_22_a
-ed_record_with_ucc_22['tpia_rec'] = 'B'  
-ed_record_with_ucc_22.loc[ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT'] == '9999', 'tpia_rec'] = 'N'
-ed_record_with_ucc_22.loc[ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT'].notna() & 
-                          (ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT'] != '9999'), 'tpia_rec'] = 'Y'
+# Assuming 'spark' is your SparkSession and 'ed_record_with_ucc_22' is a DataFrame already loaded
 
-# Filter out rows with tpia_rec_22 equal to "B"
-tpia_org_cnt_ucc_22 = ed_record_with_ucc_22[ed_record_with_ucc_22['tpia_rec'] != 'B']
-ed_record_with_ucc_22[ed_record_with_ucc_22['tpia_rec'] != 'B']
+# Creating the 'tpia_rec' column with default value 'B' and then updating based on conditions
+ed_record_with_ucc_22 = ed_record_with_ucc_22.withColumn(
+    'tpia_rec',
+    when(col('TIME_PHYSICAN_INIT_ASSESSMENT') == '9999', 'N')
+    .when(col('TIME_PHYSICAN_INIT_ASSESSMENT').isNotNull() & (col('TIME_PHYSICAN_INIT_ASSESSMENT') != '9999'), 'Y')
+    .otherwise('B')
+)
 
-tpia_org_rec_ucc_22 = tpia_org_cnt_ucc_22.groupby(['SUBMISSION_FISCAL_YEAR', 'CORP_ID']).agg(
-    Total_CASE=pd.NamedAgg(column='AM_CARE_KEY', aggfunc='count'),
-    tpia_calc_cnt=pd.NamedAgg(column='tpia_rec', aggfunc=lambda x: (x == 'Y').sum()),
-    tpia_elig_cnt=pd.NamedAgg(column='tpia_rec', aggfunc=lambda x: (x.isin(['Y', 'N'])).sum()),
-    tpia_rec_pct=pd.NamedAgg(column='tpia_rec', aggfunc=lambda x: (x == 'Y').sum() / len(x))
-).reset_index()
+# Filtering out rows with tpia_rec equal to "B"
+tpia_org_cnt_ucc_22 = ed_record_with_ucc_22.filter(col('tpia_rec') != 'B')
 
+# Group by and aggregate data
+tpia_org_rec_ucc_22 = tpia_org_cnt_ucc_22.groupBy('SUBMISSION_FISCAL_YEAR', 'CORP_ID').agg(
+    count('AM_CARE_KEY').alias('Total_CASE'),
+    _sum(when(col('tpia_rec') == 'Y', 1).otherwise(0)).alias('tpia_calc_cnt'),
+    _sum(when(col('tpia_rec').isin(['Y', 'N']), 1).otherwise(0)).alias('tpia_elig_cnt')
+).withColumn(
+    'tpia_rec_pct',
+    col('tpia_calc_cnt') / col('Total_CASE')
+)
 
 # Filter 'tpia_org_rec_ucc' based on conditions
-tpia_supp_org_ucc_22 = tpia_org_rec_ucc_22[(tpia_org_rec_ucc_22['tpia_calc_cnt']<50) | 
-                                           ((tpia_org_rec_ucc_22['tpia_calc_cnt'] >50) & 
-                                            (tpia_org_rec_ucc_22['tpia_rec_pct'] < 0.75))]
+tpia_supp_org_ucc_22 = tpia_org_rec_ucc_22.filter(
+    (col('tpia_calc_cnt') < 50) | ((col('tpia_calc_cnt') > 50) & (col('tpia_rec_pct') < 0.75))
+)
 
-tpia_rpt_org_ucc_22 = tpia_org_rec_ucc_22[(tpia_org_rec_ucc_22['tpia_calc_cnt'] >=50) | 
-                                          ((tpia_org_rec_ucc_22['tpia_calc_cnt'] < 50) & 
-                                           (tpia_org_rec_ucc_22['tpia_rec_pct'] >=0.75))]
+tpia_rpt_org_ucc_22 = tpia_org_rec_ucc_22.filter(
+    (col('tpia_calc_cnt') >= 50) | ((col('tpia_calc_cnt') < 50) & (col('tpia_rec_pct') >= 0.75))
+)
 
-
- 
-
+# Show results (optional, can be removed or modified per use-case)
+tpia_supp_org_ucc_22.show()
+tpia_rpt_org_ucc_22.show()
