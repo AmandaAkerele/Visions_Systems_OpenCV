@@ -1,37 +1,31 @@
-from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
+on this code below
 
-# Assuming 'spark' is your SparkSession and 'ed_record_with_ucc_22' is a DataFrame already loaded
+create dataframe SL before performing filtering then after filtering create final dataframe SL_filtered
 
-# Apply conditions to create the 'tpia_rec' column
-ed_record_with_ucc_22 = ed_record_with_ucc_22.withColumn(
-    'tpia_rec',
-    F.when(F.col('TIME_PHYSICAN_INIT_ASSESSMENT').isNull() | (F.trim(F.col('TIME_PHYSICAN_INIT_ASSESSMENT')) == ''), 'B')
-    .when(F.col('TIME_PHYSICAN_INIT_ASSESSMENT') == '9999', 'N')
-    .otherwise('Y')
-)
+# Full data as a list of tuples to create list of SL
+data = [
+    (99012, 29061, 1), (80335, 48006, 2), (80335, 48008, 2), (80337, 48015, 5),
+    (80337, 48022, 5), (80337, 48023, 5), (80337, 48024, 5), (80345, 48029, 2),
+    (80338, 48032, 3), (80339, 48037, 1), (80340, 48039, 1), (80344, 48044, 1),
+    (80341, 48053, 1), (80345, 48063, 2), (80347, 48076, 2), (80348, 48083, 3),
+    (80348, 48085, 3), (80348, 48086, 3), (80338, 48116, 3), (80347, 48117, 2),
+    (80337, 48120, 5), (80338, 48121, 3), (7043, 71117, 1), (7070, 71163, 1),
+    (973, 88050, 1), (5160, 54242, 1), (1006, 88080, 1), (986, 88132, 1),
+    (20390, 88142, 1), (99718, 88149, 1), (99724, 88155, 1), (20282, 88349, 1),
+    (20400, 88350, 1), (99725, 88391, 1), (99726, 88394, 1), (80226, 88578, 1),
+    (80517, 88595, 1), (99768, 88922, 1)
+]
 
-# Filter out records where 'tpia_rec' is not 'B'
-tpia_reg_cnt = ed_record_with_ucc_22.filter(F.col('tpia_rec') != 'B')
+# Filtering data before creating DataFrame to exclude '54242'
+filtered_data = [row for row in data if row[1] != 54242]
 
-# Group by and aggregate data, ensuring accurate counting
-tpia_reg_rec = tpia_reg_cnt.groupBy('SUBMISSION_FISCAL_YEAR', 'NEW_REGION_ID').agg(
-    F.count(F.lit(1)).alias('Total_CASE'),  # Count all cases within each group
-    F.sum(F.when(F.col('tpia_rec') == 'Y', 1).otherwise(0)).alias('tpia_calc_cnt'),  # Count only cases where 'tpia_rec' is 'Y'
-    F.sum(F.when(F.col('tpia_rec').isin(['Y', 'N']), 1).otherwise(0)).alias('tpia_elig_cnt')  # Count cases where 'tpia_rec' is 'Y' or 'N'
-).withColumn(
-    'tpia_rec_pct',
-    F.col('tpia_calc_cnt') / F.col('tpia_elig_cnt')
-)
+# Creating DataFrame from the filtered data
+SL = spark.createDataFrame(filtered_data, ['CORP_ID', 'FACILITY_AM_CARE_NUM', 'CNT_SITE'])
 
-# Remove rows where 'ads_region_id' is null
-tpia_reg_rec = tpia_reg_rec.filter(F.col('NEW_REGION_ID').isNotNull())
+# Show the DataFrame structure and preview some data
+SL.printSchema()
+SL.show(truncate=False)
 
-# Filter DataFrame based on specific conditions for suppression and reporting
-tpia_supp_reg = tpia_reg_rec.filter(
-    (F.col('tpia_calc_cnt') < 50) | ((F.col('tpia_calc_cnt') > 50) & (F.col('tpia_rec_pct') < 0.75))
-)
-
-tpia_rpt_reg = tpia_reg_rec.filter(
-    (F.col('tpia_calc_cnt') >= 50) | ((F.col('tpia_calc_cnt') < 50) & (F.col('tpia_rec_pct') >= 0.75))
-)
+# Count the number of entries in the DataFrame
+count_entries = SL.count()
+print("Number of entries after filtering: ", count_entries)
