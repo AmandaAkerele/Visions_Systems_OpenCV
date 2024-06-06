@@ -14,14 +14,14 @@ ed_record_with_ucc_22 = ed_record_with_ucc_22.withColumn(
 # Filter out records where 'tpia_rec' is not 'B'
 tpia_reg_cnt = ed_record_with_ucc_22.filter(F.col('tpia_rec') != 'B')
 
-# Group by and aggregate data
+# Group by and aggregate data, ensuring accurate counting
 tpia_reg_rec = tpia_reg_cnt.groupBy('SUBMISSION_FISCAL_YEAR', 'NEW_REGION_ID').agg(
-    F.count('AM_CARE_KEY').alias('Total_CASE'),
-    F.sum(F.when(F.col('tpia_rec') == 'Y', 1).otherwise(0)).alias('tpia_calc_cnt'),
-    F.sum(F.when(F.col('tpia_rec').isin(['Y', 'N']), 1).otherwise(0)).alias('tpia_elig_cnt')
+    F.count(F.lit(1)).alias('Total_CASE'),  # Count all cases within each group
+    F.sum(F.when(F.col('tpia_rec') == 'Y', 1).otherwise(0)).alias('tpia_calc_cnt'),  # Count only cases where 'tpia_rec' is 'Y'
+    F.sum(F.when(F.col('tpia_rec').isin(['Y', 'N']), 1).otherwise(0)).alias('tpia_elig_cnt')  # Count cases where 'tpia_rec' is 'Y' or 'N'
 ).withColumn(
     'tpia_rec_pct',
-    F.col('tpia_calc_cnt') / F.col('Total_CASE')
+    F.col('tpia_calc_cnt') / F.col('tpia_elig_cnt')
 )
 
 # Remove rows where 'ads_region_id' is null
