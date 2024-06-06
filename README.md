@@ -24,9 +24,6 @@ filtered_data = [row for row in data if row[1] != 54242]
 # Creating DataFrame from the filtered data
 df = spark.createDataFrame(filtered_data, ['CORP_ID', 'FACILITY_AM_CARE_NUM', 'CNT_SITE'])
 
-# Cache the DataFrame to optimize multiple actions
-df.cache()
-
 # Show the DataFrame structure and preview some data
 df.printSchema()
 df.show(truncate=False)
@@ -34,6 +31,3 @@ df.show(truncate=False)
 # Count the number of entries in the DataFrame
 count_entries = df.count()
 print("Number of entries after filtering: ", count_entries)
-
-# If the cached DataFrame is no longer needed, it's a good practice to unpersist it
-df.unpersist()
