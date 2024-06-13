@@ -14,7 +14,7 @@ corp_filtered = corp_count.filter(F.col("years_in_percentile_90") >= 3)
 # Join back with the original DataFrame to get the full records for these ORG_IDs
 corp_comp = corp_all.join(corp_filtered, on="CORP_ID", how="inner").filter(F.col("SUBMISSION_FISCAL_YEAR") == str(closed_year-1))
 corp_trend = corp_all.join(corp_filtered, on="CORP_ID", how="inner") \
-    .filter(F.col("SUBMISSION_FISCAL_YEAR").isin(str(int(closed_year)-1), str(int(closed_year)-2), str(int(closed_year)-3))) 
+    .filter(F.col("SUBMISSION_FISCAL_YEAR").isin(str(int(closed_year)-1), str(int(closed_year)-2), str(int(closed_year)-3)))  
 # Drop the temporary column   str(closed_year)
 #los_org_3x3 = los_org_3x3.drop("in_percentile_90", "years_in_percentile_90")
 # Show the result
