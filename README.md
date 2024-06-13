@@ -1,17 +1,11 @@
-Good Morning All
+Good morning, everyone,
 
-As discussed I wanted to give a breakdown of the issues we have faced with the server
+As we've discussed previously, I'd like to outline the challenges we've been encountering with the server, particularly within the OSSDS environment.
 
+Frequently, while working, we've experienced issues with the kernel crashing. This disrupts our workflow significantly, as we are forced to reconnect to the server and start our data processes from scratch. This has severely impacted how we operate.
 
-On frequest occasion will working the OSSDS environment 
+I've also noticed that in the past two weeks, the server seems to perform better during the evening and early morning hours, from 7 PM to 3 AM, as opposed to usual business hours.
 
+Additionally, there have been instances where my environment was mistakenly mapped to another team's shared folder. This error prevented me from accessing the CAD environment and caused delays in getting to my team's folders.
 
-We have faced issues with the kernel dying which has disrupted our work flow Therefore having to reconnect the server and starting from the beginning to run the data. This has massively interrupted the way we work. 
-
-Also observed that the system that in the last 2 weeks the server has operated better in the evening/early hours of the morning (7pm – 3am) when compared to the usual office hours. 
-
-Environment being mapped to another teams sharedfolder. On 2 occasions, I have observed my environment being mapped to another teams folder (thereby not giving me access to the CAD environment which has also led to delays in accessing my teams folder)
-
-
-
-Generally the environment has been unstable lately as we hope that with this new deployment we will not face this issues going forward. 
+Overall, the environment has been quite unstable lately. We are hopeful that with the upcoming deployment, these issues will no longer persist moving forward.
