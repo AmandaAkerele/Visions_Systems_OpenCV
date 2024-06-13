@@ -1,34 +1,17 @@
-recreate this code below 
+Good Morning All
 
-#los_peer_aa.show()
-    los_peer_aa = los_peer_a.withColumn('ID', when(col('acute_peer_group_code') == 'T', 2)\
-                                        .when(col('acute_peer_group_code') == 'H1', 3) .when(col('acute_peer_group_code') == 'H2', 4)\
-                                        .when(col('acute_peer_group_code') == 'H3', 5) .otherwise(None) ) 
-    
-    
-     # Rename ID columns to a common name, let's say "ID"
-    los_nt = los_nt.withColumn("ORG_ID", lit(1))
-    los_prov = los_prov.withColumnRenamed("adm_prov_id", "ORG_ID")
-    los_reg = los_reg.withColumnRenamed("adm_region_id", "ORG_ID")
-    los_corp_a = los_corp_a.withColumnRenamed("CORP_ID", "ORG_ID").withColumnRenamed("acute_peer_group_code", "reporting_entity_code")
-    los_peer= los_peer_aa.withColumnRenamed("ID", "ORG_ID").withColumnRenamed("acute_peer_group_code", "reporting_entity_code")
+As discussed I wanted to give a breakdown of the issues we have faced with the server
 
-    # Define the common schema
-    common_columns = ["ORG_ID", "SUBMISSION_FISCAL_YEAR","PERCENTILE_90","reporting_entity_code"]
 
-    
-     # Select the common columns or add missing columns with null values
-    los_nt = los_nt.select([col(c).alias(c) if c in los_nt.columns else lit(None).alias(c) for c in common_columns])
-    los_prov = los_prov.select([col(c).alias(c) if c in los_prov.columns else lit(None).alias(c) for c in common_columns])
-    los_reg = los_reg.select([col(c).alias(c) if c in los_reg.columns else lit(None).alias(c) for c in common_columns])
-    los_corp_a = los_corp_a.select([col(c).alias(c) if c in los_corp_a.columns else lit(None).alias(c) for c in common_columns])
-    los_peer = los_peer.select([col(c).alias(c) if c in los_peer.columns else lit(None).alias(c) for c in common_columns])
+On frequest occasion will working the OSSDS environment 
 
-# Union the DataFrames
-    stacked_df = los_nt.unionByName(los_prov).unionByName(los_reg).unionByName(los_corp_a).unionByName(los_peer).orderBy('ORG_ID')
 
-# Show the result
-#stacked_df.show()
+We have faced issues with the kernel dying which has disrupted our work flow Therefore having to reconnect the server and starting from the beginning to run the data. This has massively interrupted the way we work. 
 
-# Append the processed DataFrame to final_data list
-    stacked_all.append(stacked_df)
+Also observed that the system that in the last 2 weeks the server has operated better in the evening/early hours of the morning (7pm – 3am) when compared to the usual office hours. 
+
+Environment being mapped to another teams sharedfolder. On 2 occasions, I have observed my environment being mapped to another teams folder (thereby not giving me access to the CAD environment which has also led to delays in accessing my teams folder)
+
+
+
+Generally the environment has been unstable lately as we hope that with this new deployment we will not face this issues going forward. 
