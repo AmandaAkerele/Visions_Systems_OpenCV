@@ -1,3 +1,7 @@
-Yes, yesterday  when I signed in to access the CAD shared folder through the OSSDS environment, I noticed that my environment was mapped to another teams folder, I could not see the CAD folder on all occasions I launched my OSSDS VM this was the reason I wasn’t able to do any work yesterday (together with the OSSDS connection issues) as my server was not mapped correctly. I informed Mariam about this issues and the ATT Team. I also raised a CIHInow ticket on this issue and brought it up at our team meeting. I noticed that this issue has now been resolved. 
+Certainly! Here's a rephrased version:
 
-I did not have access to the CAD shared folder, but
+---
+
+Yes, yesterday when I logged into the OSSDS environment to access the CAD shared folder, I realized that my environment was incorrectly mapped to another team's folder. As a result, I couldn't locate the CAD folder at any point during my sessions on the OSSDS VM. This mapping error, compounded by the ongoing connection issues with OSSDS, prevented me from accomplishing any work yesterday. I notified Mariam and the ATT Team about these issues, submitted a CIHInow ticket, and discussed it at our team meeting. I'm pleased to report that the issue has now been resolved.
+
+However, I was unable to access the CAD shared folder during this time.
