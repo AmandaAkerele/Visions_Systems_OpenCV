@@ -1,1 +1,14 @@
-Thank you for your trust and support, despite our brief time together. I'm truly grateful for all the feedback you've given me. Working in CAD has been a tremendous blessing. I feel incredibly at peace working alongside such a fantastic team. Thank you for including me in this remarkable group. I've learned a great deal in a short period, all thanks to the solid foundation you've established. I eagerly look forward to your return and hope to meet you in person soon.
+how do i push my changes to my setup.py 
+
+hanges not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+        modified:   packages/Indicator_811/setup.py
+
+no changes added to commit (use "git add" and/or "git commit -a")
+cihiusr@dsui-aakerele:~/indicator-pipeline-automation$ git add .
+cihiusr@dsui-aakerele:~/indicator-pipeline-automation$ git commmit -m "changes to setup"
+git: 'commmit' is not a git command. See 'git --help'.
+
+The most similar command is
+        commit
