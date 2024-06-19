@@ -1,10 +1,1 @@
-Trend Analysis
-Trend analysis in the script is primarily conducted through regression analysis and period-over-period comparison. This involves:
-
-Linear Regression: A user-defined function (UDF) applies linear regression to yearly percentile data to determine trends in waiting times. This helps identify whether performance (e.g., waiting times) is improving, worsening, or stable over time based on the regression slope and statistical significance (p-value).
-Trend Identification: The script flags facilities showing significant positive or negative trends, categorizing them for reporting as improving or deteriorating. This is crucial for understanding long-term changes in healthcare service delivery.
-2. Performance Benchmarking
-The script benchmarks facilities against predefined thresholds to categorize their performance:
-
-Percentile Calculations: It computes the 90th percentile for waiting times to assess delays in care delivery, a common metric in healthcare for evaluating service levels.
-Comparison against Benchmarks: Facilities are compared to regional and peer-group benchmarks based on percentile ranks. Facilities are classified into categories such as "Above", "Same", or "Below" benchmark, allowing stakeholders to quickly identify outliers and top performers.
+Thank you for your trust and support, despite our brief time together. I'm truly grateful for all the feedback you've given me. Working in CAD has been a tremendous blessing. I feel incredibly at peace working alongside such a fantastic team. Thank you for including me in this remarkable group. I've learned a great deal in a short period, all thanks to the solid foundation you've established. I eagerly look forward to your return and hope to meet you in person soon.
