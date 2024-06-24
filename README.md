@@ -1,1 +1,1 @@
-Testing out the DuckDB.. is it a SQL language query engine more than a data storage?  
+Yes, DuckDB is mainly a fast SQL query engine for analytics rather than a traditional data storage system.
