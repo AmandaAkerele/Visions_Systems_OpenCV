@@ -1,13 +1,15 @@
-What went well? 
-There was full support from members of staff from the Digital Solutions Team and the ITS team.  
+### What Went Well
 
-Previous experience working on the shallow slice pilot project helped in establishing an understanding of the automation process.  
+- **Strong Team Support**: We received full support from the Digital Solutions Team and the ITS team, which was essential for our progress.
 
-Support staff were knowledgeable in providing adequate support to the team.  
+- **Leveraging Previous Experience**: Our prior work on the shallow slice pilot project provided a solid understanding of the automation process.
 
-Over the course of working with the DAD & NACRS enriched data and org_dim table that was newly introduced to us,  analyst grew confident in accessing and capturing the data within the environment. Although fast paced.  
+- **Knowledgeable Support Staff**: The support staff were highly knowledgeable and offered the necessary assistance to the team.
 
+- **Building Confidence**: Throughout the project, analysts became more confident in accessing and capturing data within the environment, particularly when working with the newly introduced DAD & NACRS enriched data and org_dim table, despite the fast pace.
 
-At the time the automation pilot project commenced, most of us were still in the stage of preparing our indicators analysis before passing it through the automation stage, as a result, there was lapse in receiving information because most of the team were behind in trying to understand the elements within the DAD & NACRS enriched file and the oi/org_dim_tables that was newly introduced to us. It would have been better if ..  
+### Areas for Improvement
 
-Some members of the team did not have experience using gitlab and so within  the period of automation, some analyst had to take some crash courses on the basic concept of gitlab to work in the remote dev/uat environment. It would have been better if ...  
+- **Project Timing and Preparation**: When the automation pilot project began, many team members were still preparing their indicator analyses. This caused delays in information flow as the team was focused on understanding the elements within the DAD & NACRS enriched files and the newly introduced oi/org_dim tables. It would have been beneficial to allocate more time for this understanding phase before starting the automation project.
+
+- **GitLab Proficiency**: Some team members lacked experience with GitLab. During the automation period, some analysts had to take crash courses on the basic concepts of GitLab to work in the remote dev/uat environment. It would have been better if the team had received GitLab training prior to the project's commencement.
