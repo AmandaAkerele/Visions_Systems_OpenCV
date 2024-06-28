@@ -1,5 +1,5 @@
 what changed in this code 
- # Stack all processed DataFrames using reduce and unionAll()
+  # Stack all processed DataFrames using reduce and unionAll()
     final_set = reduce(lambda x, y: x.unionAll(y), stacked_all)
     
     final_set=final_set.withColumn("reporting_entity_code_text", col('ORG_ID').cast("string"))
@@ -11,11 +11,8 @@ what changed in this code
     .withColumn("reporting_entity_type_code", lit("ORG"))\
     .withColumn("indicator_code", lit("810")).withColumn("metric_code", lit("PCTL_90")).withColumn("breakdown_type_code_l1", lit("N/A"))\
     .withColumn("breakdown_value_code_l1", lit("N/A")).withColumn("breakdown_type_code_l2", lit("N/A"))\
-    .withColumn("metric_descriptor_group_code", lit(None).cast(StringType()))\
-    .withColumn("metric_descriptor_code", lit(" "))\
-    .withColumn('missing_reason_code' , lit(None).cast(StringType()))\
-    .withColumn("breakdown_type_code_l3", lit("N/A")).withColumn("breakdown_value_code_l3", lit("N/A"))\
-    .withColumn("segment_type_code", lit("N/A")).withColumn("segment_value_code", lit("N/A")).withColumn("reporting_type_code", lit("Pub"))\
+    .withColumn("metric_descriptor_group_code", lit(" ")).withColumn("metric_descriptor_code", lit(" "))\
+    .withColumn("missing_reason_code", lit(" "))\
     .withColumn("breakdown_value_code_l2", lit("N/A")).withColumn("metric_result", col("PERCENTILE_90")).withColumn("public_metric_result", col("PERCENTILE_90"))
     desired_columns = [
         "reporting_period_code",
@@ -27,11 +24,6 @@ what changed in this code
         "breakdown_value_code_l1",
         "breakdown_type_code_l2",
         "breakdown_value_code_l2",
-        "breakdown_type_code_l3",
-        "breakdown_value_code_l3",
-        "segment_type_code",
-        "segment_value_code",
-        "reporting_type_code",
         "metric_result",
         "metric_descriptor_group_code",
         "metric_descriptor_code",
@@ -53,7 +45,8 @@ what changed in this code
     
     # Define the window specification to partition by ORG_ID and order by year
     windowSpec = Window.partitionBy("CORP_ID").orderBy("SUBMISSION_FISCAL_YEAR")
-    
+    #get the corp all from stacked dataframes
+    corp_all = reduce(lambda x, y: x.unionAll(y), los_corp_all)
     # Add a column to flag the rows that are in the PERCENTILE_90
     corp_all = corp_all.withColumn("in_percentile_90", F.when(F.col("PERCENTILE_90"). isNotNull(), 1).otherwise(0))
     #corp_all.show(5)
@@ -73,7 +66,8 @@ what changed in this code
     
     # Define the window specification to partition by ORG_ID and order by year
     windowSpec = Window.partitionBy("adm_region_id").orderBy("SUBMISSION_FISCAL_YEAR")
-    
+    #get the reg all data set from stacked 
+    reg_all = reduce(lambda x, y: x.unionAll(y), los_reg_all)
     # Add a column to flag the rows that are in the PERCENTILE_90
     reg_all = reg_all.withColumn("in_percentile_90", F.when(F.col("PERCENTILE_90"). isNotNull(), 1).otherwise(0))
     #corp_all.show(5)
@@ -133,8 +127,8 @@ what changed in this code
     # Uncomment this line to show the result
     # result_corp.show()
     result_corp_a = result_corp.withColumn("COMPARE_IND_CODE", lit(" ")) \
-                                 .withColumn("metric_descriptor_group_code", lit(None).cast(StringType())) \
-                                 .withColumn('missing_reason_code' , lit(None).cast(StringType())) \
+                                 .withColumn("metric_descriptor_group_code", lit(" ")) \
+                                 .withColumn("missing_reason_code", lit(" ")) \
                                  .withColumn("metric_descriptor_code", lit(" ")) \
                                  .withColumn("COMPARE_IND_CODE", when(col("percentile_90") < col("percentile_20"), "001")
                                              .when((col("percentile_90") >= col("percentile_20")) & (col("percentile_90") <= col("percentile_80")), "002")
@@ -152,8 +146,8 @@ what changed in this code
         
     result_reg = reg_comp.join(los_reg_base, on="SUBMISSION_FISCAL_YEAR", how="inner").select("*")
     result_reg_a = result_reg.withColumn("COMPARE_IND_CODE", lit(" ")) \
-                                 .withColumn("metric_descriptor_group_code", lit(None).cast(StringType())) \
-                                 .withColumn('missing_reason_code' , lit(None).cast(StringType())) \
+                                 .withColumn("metric_descriptor_group_code", lit(" ")) \
+                                 .withColumn("missing_reason_code", lit(" ")) \
                                  .withColumn("metric_descriptor_code", lit(" ")) \
                                  .withColumn("COMPARE_IND_CODE", when(col("percentile_90") < col("percentile_20"), "001")
                                              .when((col("percentile_90") >= col("percentile_20")) & (col("percentile_90") <= col("percentile_80")), "002")
@@ -168,11 +162,9 @@ what changed in this code
     
     
     corp_comp_final = result_corp_a.withColumn("reporting_period_code", F.concat(F.lit("FY"), F.col("SUBMISSION_FISCAL_YEAR"))).withColumnRenamed("CORP_ID", "reporting_entity_code")\
-    .withColumn("reporting_entity_type_code", lit("ORG")).withColumn("indicator_code", lit("810"))\
-    .withColumn("breakdown_type_code_l3", lit("N/A")).withColumn("breakdown_value_code_l3", lit("N/A"))\
+    .withColumn("reporting_entity_type_code", lit("ORG ")).withColumn("indicator_code", lit("810"))\
     .withColumn("metric_code", lit("PCTL_90")).withColumn("breakdown_type_code_l1", lit("N/A"))\
     .withColumn("breakdown_value_code_l1", lit("N/A")).withColumn("breakdown_type_code_l2", lit("N/A")).withColumn("breakdown_value_code_l2", lit("N/A"))\
-    .withColumn("segment_type_code", lit("N/A")).withColumn("segment_value_code", lit("N/A")).withColumn("reporting_type_code", lit("Pub"))\
     .withColumn("metric_result", lit(0)).withColumn("public_metric_result", lit(0))\
     .drop("PERCENTILE_20").drop("PERCENTILE_80").drop("acute_peer_group_code").drop("COMPARE_IND_CODE").drop("PERCENTILE_90").drop("SUBMISSION_FISCAL_YEAR")
     corp_comp_final=corp_comp_final.withColumn("reporting_entity_code_text", col('reporting_entity_code').cast("string"))
@@ -188,11 +180,6 @@ what changed in this code
         "breakdown_value_code_l1",
         "breakdown_type_code_l2",
         "breakdown_value_code_l2",
-        "breakdown_type_code_l3",
-        "breakdown_value_code_l3",
-        "segment_type_code",
-        "segment_value_code",
-        "reporting_type_code",
         "metric_result",
         "metric_descriptor_group_code",
         "metric_descriptor_code",
@@ -206,12 +193,10 @@ what changed in this code
     #corp_comp_final.printSchema()
     
     reg_comp_final = result_reg_a.withColumn("reporting_period_code", F.concat(F.lit("FY"), F.col("SUBMISSION_FISCAL_YEAR"))).withColumnRenamed("adm_region_id", "reporting_entity_code")\
-    .withColumn("reporting_entity_type_code", lit("ORG")).withColumn("indicator_code", lit("810"))\
-    .withColumn("metric_code", lit("PCTL_90")).withColumn("breakdown_type_code_l1", lit("N/A"))\
+    .withColumn("reporting_entity_type_code", lit("ORG ")).withColumn("indicator_code", lit("810"))\
+    .withColumn("metric_code", lit("PCTL_90_90")).withColumn("breakdown_type_code_l1", lit("N/A"))\
     .withColumn("breakdown_value_code_l1", lit("N/A")).withColumn("breakdown_type_code_l2", lit("N/A")).withColumn("breakdown_value_code_l2", lit("N/A"))\
     .withColumn("metric_result", lit(0)).withColumn("public_metric_result", lit(0))\
-    .withColumn("breakdown_type_code_l3", lit("N/A")).withColumn("breakdown_value_code_l3", lit("N/A"))\
-    .withColumn("segment_type_code", lit("N/A")).withColumn("segment_value_code", lit("N/A")).withColumn("reporting_type_code", lit("Pub"))\
     .drop("PERCENTILE_20").drop("PERCENTILE_80").drop("acute_peer_group_code").drop("COMPARE_IND_CODE").drop("PERCENTILE_90").drop("SUBMISSION_FISCAL_YEAR")
     reg_comp_final=reg_comp_final.withColumn("reporting_entity_code_text", col('reporting_entity_code').cast("string"))
     reg_comp_final=reg_comp_final.drop("reporting_entity_code").drop('ORG_ID')
@@ -226,11 +211,6 @@ what changed in this code
         "breakdown_value_code_l1",
         "breakdown_type_code_l2",
         "breakdown_value_code_l2",
-        "breakdown_type_code_l3",
-        "breakdown_value_code_l3",
-        "segment_type_code",
-        "segment_value_code",
-        "reporting_type_code",
         "metric_result",
         "metric_descriptor_group_code",
         "metric_descriptor_code",
@@ -274,7 +254,7 @@ what changed in this code
     # Define improvement indicators
     merged = merged.withColumn("IMPROVEMENT_IND_CODE", lit("002"))
     merged = merged.withColumn("metric_descriptor_code", lit("NoChange"))
-    merged = merged.withColumn('missing_reason_code' , lit(None).cast(StringType()))
+    merged = merged.withColumn("missing_reason_code", lit(" "))
      
     # Applying the logic from the provided method
     mask = (merged['p_value'] < 0.05) & (merged['slope'] > 0)
@@ -284,15 +264,13 @@ what changed in this code
     mask = (merged['p_value'] < 0.05) & (merged['slope'] < 0)
     merged = merged.withColumn("IMPROVEMENT_IND_CODE", when(mask, lit("001")).otherwise(col("IMPROVEMENT_IND_CODE")))
     merged = merged.withColumn("metric_descriptor_group_code", when(col("IMPROVEMENT_IND_CODE") .isNotNull(), "PerformanceTrend").otherwise(" "))
-    corp_trend_df = merged.withColumn("metric_descriptor_code", when(mask, lit("Improve")).otherwise(col("metric_descriptor_code")))
+    corp_trend_df = merged.withColumn("metric_descriptor_code", when(mask, lit("Improving")).otherwise(col("metric_descriptor_code")))
     corp_trend_df = corp_trend_df.select("CORP_ID","IMPROVEMENT_IND_CODE","metric_descriptor_code","metric_descriptor_group_code","missing_reason_code")
     corp_trend_df=corp_trend_df.withColumn("SUBMISSION_FISCAL_YEAR", lit(str(closed_year-1)))
     corp_trend_final = corp_trend_df.withColumn("reporting_period_code", F.concat(F.lit("FY"), F.col("submission_fiscal_year"))).withColumnRenamed("CORP_ID", "reporting_entity_code")\
-    .withColumn("reporting_entity_type_code", lit("ORG")).withColumn("indicator_code", lit("810"))\
+    .withColumn("reporting_entity_type_code", lit("ORG ")).withColumn("indicator_code", lit("810"))\
     .withColumn("metric_code", lit("PCTL_90")).withColumn("breakdown_type_code_l1", lit("N/A"))\
     .withColumn("breakdown_value_code_l1", lit("N/A")).withColumn("breakdown_type_code_l2", lit("N/A")).withColumn("breakdown_value_code_l2", lit("N/A"))\
-    .withColumn("breakdown_type_code_l3", lit("N/A")).withColumn("breakdown_value_code_l3", lit("N/A"))\
-    .withColumn("segment_type_code", lit("N/A")).withColumn("segment_value_code", lit("N/A")).withColumn("reporting_type_code", lit("Pub"))\
     .withColumn("metric_result", lit(0)).withColumn("public_metric_result", lit(0)).drop("SUBMISSION_FISCAL_YEAR").drop("IMPROVEMENT_IND_CODE")
     corp_trend_final=corp_trend_final.withColumn("reporting_entity_code_text", col('reporting_entity_code').cast("string"))
     corp_trend_final=corp_trend_final.drop("reporting_entity_code")
@@ -307,11 +285,6 @@ what changed in this code
         "breakdown_value_code_l1",
         "breakdown_type_code_l2",
         "breakdown_value_code_l2",
-        "breakdown_type_code_l3",
-        "breakdown_value_code_l3",
-        "segment_type_code",
-        "segment_value_code",
-        "reporting_type_code",
         "metric_result",
         "metric_descriptor_group_code",
         "metric_descriptor_code",
@@ -344,7 +317,7 @@ what changed in this code
     # Define improvement indicators
     merged = merged.withColumn("IMPROVEMENT_IND_CODE", lit("002"))
     merged = merged.withColumn("metric_descriptor_code", lit("NoChange"))
-    merged = merged.withColumn('missing_reason_code' , lit(None).cast(StringType()))
+    merged = merged.withColumn("missing_reason_code", lit(" "))
      
     # Applying the logic from the provided method
     mask = (merged['p_value'] < 0.05) & (merged['slope'] > 0)
@@ -355,15 +328,13 @@ what changed in this code
     merged = merged.withColumn("IMPROVEMENT_IND_CODE", when(mask, lit("001")).otherwise(col("IMPROVEMENT_IND_CODE")))
     merged = merged.withColumn("metric_descriptor_group_code", when(col("IMPROVEMENT_IND_CODE") .isNotNull(), "PerformanceTrend").otherwise(" "))
     
-    reg_trend_df = merged.withColumn("metric_descriptor_code", when(mask, lit("Improve")).otherwise(col("metric_descriptor_code")))
+    reg_trend_df = merged.withColumn("metric_descriptor_code", when(mask, lit("Improving")).otherwise(col("metric_descriptor_code")))
     reg_trend_df = reg_trend_df.select("adm_region_id","IMPROVEMENT_IND_CODE","metric_descriptor_code","metric_descriptor_group_code","missing_reason_code")
     reg_trend_df=reg_trend_df.withColumn("SUBMISSION_FISCAL_YEAR", lit(str(closed_year-1)))
     reg_trend_final = reg_trend_df.withColumn("reporting_period_code", F.concat(F.lit("FY"), F.col("submission_fiscal_year"))).withColumnRenamed("adm_region_id", "reporting_entity_code")\
-    .withColumn("reporting_entity_type_code", lit("ORG")).withColumn("indicator_code", lit("810"))\
+    .withColumn("reporting_entity_type_code", lit("ORG ")).withColumn("indicator_code", lit("810"))\
     .withColumn("metric_code", lit("PCTL_90")).withColumn("breakdown_type_code_l1", lit("N/A"))\
     .withColumn("breakdown_value_code_l1", lit("N/A")).withColumn("breakdown_type_code_l2", lit("N/A")).withColumn("breakdown_value_code_l2", lit("N/A"))\
-    .withColumn("breakdown_type_code_l3", lit("N/A")).withColumn("breakdown_value_code_l3", lit("N/A"))\
-    .withColumn("segment_type_code", lit("N/A")).withColumn("segment_value_code", lit("N/A")).withColumn("reporting_type_code", lit("Pub"))\
     .withColumn("metric_result", lit(0)).withColumn("public_metric_result", lit(0)).drop("SUBMISSION_FISCAL_YEAR").drop("IMPROVEMENT_IND_CODE")
     
     reg_trend_final=reg_trend_final.withColumn("reporting_entity_code_text", col('reporting_entity_code').cast("string"))
@@ -379,11 +350,6 @@ what changed in this code
         "breakdown_value_code_l1",
         "breakdown_type_code_l2",
         "breakdown_value_code_l2",
-        "breakdown_type_code_l3",
-        "breakdown_value_code_l3",
-        "segment_type_code",
-        "segment_value_code",
-        "reporting_type_code",
         "metric_result",
         "metric_descriptor_group_code",
         "metric_descriptor_code",
@@ -403,16 +369,18 @@ what changed in this code
 
 
     # Stack all dataframes using reduce and unionAll()
-    
+    los_supp_corp = reduce(lambda x, y: x.unionAll(y), los_supp_orgs)
+    los_supp_reg = reduce(lambda x, y: x.unionAll(y), los_supp_regs)
+    los_supp_peer = reduce(lambda x, y: x.unionAll(y), los_supp_peers)
     #reg_all = reduce(lambda x, y: x.unionAll(y), los_reg_all)
     #corp_all = reduce(lambda x, y: x.unionAll(y), los_corp_all)
-    
-    
+    ucc_all_corp = reduce(lambda x, y: x.unionAll(y), ucc_all) 
+    ps_all_corp = reduce(lambda x, y: x.unionAll(y), ps_all)
     
     # Save intermediate or additional data for business area usage/reference (e.g.: for external data requests, DQ verification)
-    intermediate_data_dict["data_submission_810" + str(closed_year-1) + "_" + datetime.now().strftime('%Y_%m_%d_%H_%M_%S')] = data_submission_810
-    intermediate_data_dict["corp_all"+ str(closed_year-1) + "_" + datetime.now().strftime('%Y_%m_%d_%H_%M_%S')] = corp_all
-    intermediate_data_dict["reg_all"+ str(closed_year-1) + "_" + datetime.now().strftime('%Y_%m_%d_%H_%M_%S')] = reg_all
+    intermediate_data_dict["data_sub_810" + str(closed_year-1) + "_" + datetime.now().strftime('%Y_%m_%d_%H_%M_%S')] = data_submission_810
+    intermediate_data_dict["los_corp_all"+ str(closed_year-1) + "_" + datetime.now().strftime('%Y_%m_%d_%H_%M_%S')] = corp_all
+    intermediate_data_dict["los_reg_all"+ str(closed_year-1) + "_" + datetime.now().strftime('%Y_%m_%d_%H_%M_%S')] = reg_all
     intermediate_data_dict["los_supp_corp"+ str(closed_year-1) + "_" + datetime.now().strftime('%Y_%m_%d_%H_%M_%S')] = los_supp_corp
     intermediate_data_dict["los_supp_peer"+ str(closed_year-1) + "_" + datetime.now().strftime('%Y_%m_%d_%H_%M_%S')] = los_supp_peer
     intermediate_data_dict["los_supp_reg"+ str(closed_year-1) + "_" + datetime.now().strftime('%Y_%m_%d_%H_%M_%S')] = los_supp_reg
@@ -426,6 +394,8 @@ what changed in this code
     
     # Return both output_df and dictionary of intermediate dataframes
     return output_df, intermediate_data_dict
+
+
 
 this is the new code below: what new thing was added to the new code below that is not in the code above:
  # Stack all processed DataFrames using reduce and unionAll()
