@@ -1,26 +1,32 @@
-recreate this code to look totally different 
+from pyspark.sql import functions as F
+from functools import reduce
 
-# Filter and group the data for numerator
-    numerator = df_list[index].filter(
-        (col('AMCARE_GROUP_CODE') == 'ED') &
-        (col('ED_VISIT_IND_CODE') == '1') &
-        (col('amcare_type_code') == '11')
-    ).groupBy('SUBMISSION_FISCAL_YEAR', 'FACILITY_AM_CARE_NUM').agg(count(lit(1)).alias('numerator'))
-    
-        # Filter and group the data for denominator
-    denominator = df_list[index].filter(
-        (col('AMCARE_GROUP_CODE') == 'ED') &
-        (col('ED_VISIT_IND_CODE') == '1')
-    ).groupBy('SUBMISSION_FISCAL_YEAR', 'FACILITY_AM_CARE_NUM').agg(count(lit(1)).alias('denominator'))
-    
-        # Merge numerator and denominator
-    ucc = numerator.join(denominator, on=['SUBMISSION_FISCAL_YEAR', 'FACILITY_AM_CARE_NUM'], how='inner')
-    
-        # Calculate ucc_pct
-    ucc = ucc.withColumn('ucc_pct', col('numerator') / col('denominator')).orderBy(col('FACILITY_AM_CARE_NUM'))
-    ucc = ucc.where(ucc['ucc_pct'] >= 0.98)
-        # trying code here Filter out rows that are in ucc
-        #ucc_filtered = df_list[index].filter(~col('FACILITY_AM_CARE_NUM').isin([row['FACILITY_AM_CARE_NUM'] for row in ucc.select('FACILITY_AM_CARE_NUM').collect()]))
-    # Append the ucc df to make a list
-    ucc_all.append(ucc)
-    ucc_all_corp = reduce(lambda x, y: x.unionAll(y), ucc_all) 
+# Combine all DataFrames in df_list into a single DataFrame
+combined_df = reduce(lambda x, y: x.unionByName(y), df_list)
+
+# Define the conditions for numerator and denominator
+numerator_condition = (F.col('AMCARE_GROUP_CODE') == 'ED') & (F.col('ED_VISIT_IND_CODE') == '1') & (F.col('amcare_type_code') == '11')
+denominator_condition = (F.col('AMCARE_GROUP_CODE') == 'ED') & (F.col('ED_VISIT_IND_CODE') == '1')
+
+# Apply the conditions and create temporary dataframes
+numerator_temp = combined_df.filter(numerator_condition)
+denominator_temp = combined_df.filter(denominator_condition)
+
+# Group by necessary columns and aggregate
+numerator = numerator_temp.groupBy('SUBMISSION_FISCAL_YEAR', 'FACILITY_AM_CARE_NUM').count().withColumnRenamed('count', 'numerator')
+denominator = denominator_temp.groupBy('SUBMISSION_FISCAL_YEAR', 'FACILITY_AM_CARE_NUM').count().withColumnRenamed('count', 'denominator')
+
+# Join numerator and denominator dataframes
+ucc = numerator.join(denominator, on=['SUBMISSION_FISCAL_YEAR', 'FACILITY_AM_CARE_NUM'])
+
+# Calculate the UCC percentage and filter
+ucc = ucc.withColumn('ucc_pct', F.col('numerator') / F.col('denominator')).filter(F.col('ucc_pct') >= 0.98)
+
+# Append the ucc df to make a list
+ucc_all.append(ucc)
+
+# Combine all dataframes in the list
+ucc_all_corp = reduce(lambda x, y: x.unionByName(y), ucc_all)
+
+# Show the final result
+ucc_all_corp.show()
