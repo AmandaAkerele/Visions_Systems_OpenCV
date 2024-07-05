@@ -1,56 +1,12 @@
-make this code work 
 
+    # List of facility with UCC records
 
-from pyspark.sql import functions as F
-from functools import reduce
-
-# Combine all DataFrames in df_list into a single DataFrame
-combined_df = reduce(lambda x, y: x.unionByName(y), df_nacrs[index])
-
-# Define the conditions for numerator and denominator
-numerator_condition = (F.col('AMCARE_GROUP_CODE') == 'ED') & (F.col('ED_VISIT_IND_CODE') == '1') & (F.col('amcare_type_code') == '11')
-denominator_condition = (F.col('AMCARE_GROUP_CODE') == 'ED') & (F.col('ED_VISIT_IND_CODE') == '1')
-
-# Apply the conditions and create temporary dataframes
-numerator_temp = combined_df.filter(numerator_condition)
-denominator_temp = combined_df.filter(denominator_condition)
-
-# Group by necessary columns and aggregate
-numerator = numerator_temp.groupBy('SUBMISSION_FISCAL_YEAR', 'FACILITY_AM_CARE_NUM').count().withColumnRenamed('count', 'numerator')
-denominator = denominator_temp.groupBy('SUBMISSION_FISCAL_YEAR', 'FACILITY_AM_CARE_NUM').count().withColumnRenamed('count', 'denominator')
-
-# Join numerator and denominator dataframes
-ucc = numerator.join(denominator, on=['SUBMISSION_FISCAL_YEAR', 'FACILITY_AM_CARE_NUM'])
-
-# Calculate the UCC percentage and filter
-ucc = ucc.withColumn('ucc_pct', F.col('numerator') / F.col('denominator')).filter(F.col('ucc_pct') >= 0.98)
-
-# Append the ucc df to make a list
-ucc_all.append(ucc)
-
-# Combine all dataframes in the list
-ucc_all_corp = reduce(lambda x, y: x.unionByName(y), ucc_all)
-
-# Show the final result
-ucc_all_corp.shape()
-
-
-error 
-
-------------------------------
-TypeError                                 Traceback (most recent call last)
-/tmp/ipykernel_279/416719634.py in <cell line: 5>()
-      3 
-      4 # Combine all DataFrames in df_list into a single DataFrame
-----> 5 combined_df = reduce(lambda x, y: x.unionByName(y), df_nacrs[index])
-      6 
-      7 # Define the conditions for numerator and denominator
-
-/tmp/ipykernel_279/416719634.py in <lambda>(x, y)
-      3 
-      4 # Combine all DataFrames in df_list into a single DataFrame
-----> 5 combined_df = reduce(lambda x, y: x.unionByName(y), df_nacrs[index])
-      6 
-      7 # Define the conditions for numerator and denominator
-
-TypeError: 'Column' object is not callable
+    ucc_records = ed_nodup_nosb_22.filter(ed_nodup_nosb_22.amcare_type_code == '11')
+    
+    ucc_fac = ucc_records.select('org_id', 'FACILITY_AM_CARE_NUM').dropDuplicates()
+    
+    numerator = ucc_records.groupby("org_id", "FACILITY_AM_CARE_NUM").count().withColumnRenamed('count', 'numerator')
+    denominator = ed_nodup_nosb_22.groupby("ORG_ID", "FACILITY_AM_CARE_NUM").count().withColumnRenamed('count', 'denominator').select('ORG_ID', 'denominator')
+    
+    ucc_fac_count_1 = numerator.join(denominator, ['org_id'], "left")
+    ucc_fac_count = ucc_fac_count_1.withColumn('ucc_pct', (ucc_fac_count_1.numerator/ucc_fac_count_1.denominator)*100)
