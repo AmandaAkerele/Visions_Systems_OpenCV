@@ -1,8 +1,11 @@
+make this code work 
+
+
 from pyspark.sql import functions as F
 from functools import reduce
 
 # Combine all DataFrames in df_list into a single DataFrame
-combined_df = reduce(lambda x, y: x.unionByName(y), df_list)
+combined_df = reduce(lambda x, y: x.unionByName(y), df_nacrs[index])
 
 # Define the conditions for numerator and denominator
 numerator_condition = (F.col('AMCARE_GROUP_CODE') == 'ED') & (F.col('ED_VISIT_IND_CODE') == '1') & (F.col('amcare_type_code') == '11')
@@ -29,4 +32,25 @@ ucc_all.append(ucc)
 ucc_all_corp = reduce(lambda x, y: x.unionByName(y), ucc_all)
 
 # Show the final result
-ucc_all_corp.show()
+ucc_all_corp.shape()
+
+
+error 
+
+------------------------------
+TypeError                                 Traceback (most recent call last)
+/tmp/ipykernel_279/416719634.py in <cell line: 5>()
+      3 
+      4 # Combine all DataFrames in df_list into a single DataFrame
+----> 5 combined_df = reduce(lambda x, y: x.unionByName(y), df_nacrs[index])
+      6 
+      7 # Define the conditions for numerator and denominator
+
+/tmp/ipykernel_279/416719634.py in <lambda>(x, y)
+      3 
+      4 # Combine all DataFrames in df_list into a single DataFrame
+----> 5 combined_df = reduce(lambda x, y: x.unionByName(y), df_nacrs[index])
+      6 
+      7 # Define the conditions for numerator and denominator
+
+TypeError: 'Column' object is not callable
