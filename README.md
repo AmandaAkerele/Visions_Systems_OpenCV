@@ -1,13 +1,11 @@
----------------------------------------------------------------------------
-AttributeError                            Traceback (most recent call last)
-/tmp/ipykernel_12720/1688301693.py in <cell line: 1>()
-----> 1 tpia_supp_org_ucc_22.filter(tpia_supp_org_ucc_22.year == 2022).show()
+# Get current date
+current_date = datetime.now()
 
-/usr/local/lib/python3.10/dist-packages/pyspark/sql/dataframe.py in __getattr__(self, name)
-   3121         """
-   3122         if name not in self.columns:
--> 3123             raise AttributeError(
-   3124                 "'%s' object has no attribute '%s'" % (self.__class__.__name__, name)
-   3125             )
+# Determine the comparison date as March 31 of the current year
+comparison_date = datetime(datetime.now().year, 3, 31)
 
-AttributeError: 'DataFrame' object has no attribute 'year'
+# Date processing to determine the fiscal years range
+if current_date > comparison_date:
+    closed_year = current_date.year - 1
+else:
+    closed_year = current_date.year - 2
