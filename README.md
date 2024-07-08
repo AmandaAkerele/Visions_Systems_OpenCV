@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, when, count, sum as sum_col, expr
+from pyspark.sql.functions import col, when, count, sum as sum_col, expr, trim
 
 # Initialize Spark session
 spark = SparkSession.builder.appName("tpia_calculation").getOrCreate()
@@ -9,7 +9,7 @@ spark = SparkSession.builder.appName("tpia_calculation").getOrCreate()
 # For corp level without UCC
 ed_record = ed_record.withColumn(
     'tpia_rec',
-    when(col('TIME_PHYSICAN_INIT_ASSESSMENT').isNull() | (col('TIME_PHYSICAN_INIT_ASSESSMENT').strip() == ''), 'B')
+    when(col('TIME_PHYSICAN_INIT_ASSESSMENT').isNull() | (trim(col('TIME_PHYSICAN_INIT_ASSESSMENT')) == ''), 'B')
     .when(col('TIME_PHYSICAN_INIT_ASSESSMENT') == '9999', 'N')
     .otherwise('Y')
 )
@@ -35,7 +35,7 @@ tpia_rpt_org = tpia_org_rec.filter((col('tpia_calc_cnt') >= 50) | ((col('tpia_ca
 # For corp level with UCC
 ed_record_with_ucc_22 = ed_record_with_ucc_22.withColumn(
     'tpia_rec',
-    when(col('TIME_PHYSICAN_INIT_ASSESSMENT').isNull() | (col('TIME_PHYSICAN_INIT_ASSESSMENT').strip() == ''), 'B')
+    when(col('TIME_PHYSICAN_INIT_ASSESSMENT').isNull() | (trim(col('TIME_PHYSICAN_INIT_ASSESSMENT')) == ''), 'B')
     .when(col('TIME_PHYSICAN_INIT_ASSESSMENT') == '9999', 'N')
     .otherwise('Y')
 )
@@ -59,17 +59,3 @@ tpia_supp_org.show()
 tpia_rpt_org.show()
 tpia_supp_org_ucc_22.show()
 tpia_rpt_org_ucc_22.show()
-
-
-
-                                                                            
----------------------------------------------------------------------------
-TypeError                                 Traceback (most recent call last)
-/tmp/ipykernel_16197/733427122.py in <cell line: 41>()
-    406     ed_record = ed_record.withColumn(
-    407         'tpia_rec',
---> 408         when(col('TIME_PHYSICAN_INIT_ASSESSMENT').isNull() | (col('TIME_PHYSICAN_INIT_ASSESSMENT').strip() == ''), 'B')
-    409         .when(col('TIME_PHYSICAN_INIT_ASSESSMENT') == '9999', 'N')
-    410         .otherwise('Y')
-
-TypeError: 'Column' object is not callable
