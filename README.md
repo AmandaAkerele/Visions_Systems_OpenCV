@@ -59,3 +59,17 @@ tpia_supp_org.show()
 tpia_rpt_org.show()
 tpia_supp_org_ucc_22.show()
 tpia_rpt_org_ucc_22.show()
+
+
+
+                                                                            
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+/tmp/ipykernel_16197/733427122.py in <cell line: 41>()
+    406     ed_record = ed_record.withColumn(
+    407         'tpia_rec',
+--> 408         when(col('TIME_PHYSICAN_INIT_ASSESSMENT').isNull() | (col('TIME_PHYSICAN_INIT_ASSESSMENT').strip() == ''), 'B')
+    409         .when(col('TIME_PHYSICAN_INIT_ASSESSMENT') == '9999', 'N')
+    410         .otherwise('Y')
+
+TypeError: 'Column' object is not callable
