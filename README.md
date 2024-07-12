@@ -1,61 +1,95 @@
+using this code and result generated explain the result to collegaues 
+
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, when, count, sum as sum_col, expr, trim
-
+from pyspark.sql.functions import col, trim
+ 
 # Initialize Spark session
-spark = SparkSession.builder.appName("tpia_calculation").getOrCreate()
+spark = SparkSession.builder \
+    .appName('CheckLeadingTrailingSpaces') \
+    .config("spark.driver.maxResultSize", "2g") \
+    .getOrCreate()
+ 
+def find_leading_trailing_spaces(df):
+    """
+    Identifies columns with leading or trailing spaces and returns a dictionary
+    with column names and the count of rows that contain such spaces,
+    along with a sample of rows showing the spaces.
+    Args:
+    df (pyspark.sql.DataFrame): The dataframe containing the data.
+    Returns:
+    dict: A dictionary with column names as keys, and a tuple containing the count of rows with spaces 
+          and a sample of rows as values.
+    """
+    spaces_info = {}
+ 
+    for col_name, dtype in df.dtypes:
+        if dtype == 'string':
+            # Filter rows with leading or trailing spaces
+            rows_with_spaces = df.filter(
+                (col(col_name) != trim(col(col_name))) | 
+                (col(col_name).rlike(r'^\s+')) | 
+                (col(col_name).rlike(r'\s+$'))
+            )
+            # Count the rows with spaces
+            count = rows_with_spaces.count()
+            if count > 0:
+                # Collect a sample of rows with spaces
+                sample_rows = rows_with_spaces.select(col_name).limit(2).collect()
+                sample_values = [row[col_name] for row in sample_rows]
+                spaces_info[col_name] = (count, sample_values)
+ 
+    return spaces_info
+ 
+try:
+    # Example usage:
+    # Load your parquet file
+    # df = spark.read.parquet("output_with_spaces.parquet")
+ 
+    # Check for leading and trailing spaces
+    spaces_info = find_leading_trailing_spaces(df)
+ 
+    # Display the columns, counts of rows with leading or trailing spaces, and sample rows
+    if spaces_info:
+        for col, (count, samples) in spaces_info.items():
+            print(f"Column '{col}' has leading or trailing spaces in {count} rows.")
+            for sample in samples:
+                print(f"Sample row: '{sample}'")
+    else:
+        print("No leading or trailing spaces found in any columns.")
+finally:
+    # Stop the Spark session
+    spark.stop()
 
-# Assuming ed_record and ed_record_with_ucc_22 are already loaded as Spark DataFrames
 
-# For corp level without UCC
-ed_record = ed_record.withColumn(
-    'tpia_rec',
-    when(col('TIME_PHYSICAN_INIT_ASSESSMENT').isNull() | (trim(col('TIME_PHYSICAN_INIT_ASSESSMENT')) == ''), 'B')
-    .when(col('TIME_PHYSICAN_INIT_ASSESSMENT') == '9999', 'N')
-    .otherwise('Y')
-)
+result 
 
-# Filter records not equal to 'B'
-tpia_org_cnt = ed_record.filter(col('tpia_rec') != 'B')
-
-# Aggregation
-tpia_org_rec = tpia_org_cnt.groupBy('SUBMISSION_FISCAL_YEAR', 'CORP_ID').agg(
-    count('AM_CARE_KEY').alias('Total_CASE'),
-    sum_col(when(col('tpia_rec') == 'Y', 1).otherwise(0)).alias('tpia_calc_cnt'),
-    sum_col(when(col('tpia_rec').isin(['Y', 'N']), 1).otherwise(0)).alias('tpia_elig_cnt')
-)
-
-# Calculate percentage and sort
-tpia_org_rec = tpia_org_rec.withColumn('tpia_rec_pct', col('tpia_calc_cnt') / col('Total_CASE'))
-tpia_org_rec = tpia_org_rec.orderBy('CORP_ID')
-
-# Conditional DataFrame creation
-tpia_supp_org = tpia_org_rec.filter((col('tpia_calc_cnt') < 50) | ((col('tpia_calc_cnt') > 50) & (col('tpia_rec_pct') < 0.75)))
-tpia_rpt_org = tpia_org_rec.filter((col('tpia_calc_cnt') >= 50) | ((col('tpia_calc_cnt') < 50) & (col('tpia_rec_pct') >= 0.75)))
-
-# For corp level with UCC
-ed_record_with_ucc_22 = ed_record_with_ucc_22.withColumn(
-    'tpia_rec',
-    when(col('TIME_PHYSICAN_INIT_ASSESSMENT').isNull() | (trim(col('TIME_PHYSICAN_INIT_ASSESSMENT')) == ''), 'B')
-    .when(col('TIME_PHYSICAN_INIT_ASSESSMENT') == '9999', 'N')
-    .otherwise('Y')
-)
-
-# Filter out rows with tpia_rec_22 equal to "B"
-tpia_org_cnt_ucc_22 = ed_record_with_ucc_22.filter(col('tpia_rec') != 'B')
-
-# Aggregation
-tpia_org_rec_ucc_22 = tpia_org_cnt_ucc_22.groupBy('SUBMISSION_FISCAL_YEAR', 'CORP_ID').agg(
-    count('AM_CARE_KEY').alias('Total_CASE'),
-    sum_col(when(col('tpia_rec') == 'Y', 1).otherwise(0)).alias('tpia_calc_cnt'),
-    sum_col(when(col('tpia_rec').isin(['Y', 'N']), 1).otherwise(0)).alias('tpia_elig_cnt')
-).withColumn('tpia_rec_pct', col('tpia_calc_cnt') / col('Total_CASE'))
-
-# Filter 'tpia_org_rec_ucc' based on conditions
-tpia_supp_org_ucc_22 = tpia_org_rec_ucc_22.filter((col('tpia_calc_cnt') < 50) | ((col('tpia_calc_cnt') > 50) & (col('tpia_rec_pct') < 0.75)))
-tpia_rpt_org_ucc_22 = tpia_org_rec_ucc_22.filter((col('tpia_calc_cnt') >= 50) | ((col('tpia_calc_cnt') < 50) & (col('tpia_rec_pct') >= 0.75)))
-
-# Display the results
-tpia_supp_org.show()
-tpia_rpt_org.show()
-tpia_supp_org_ucc_22.show()
-tpia_rpt_org_ucc_22.show()
+Column 'facility_site_name' has leading or trailing spaces in 21415773 rows.
+Sample row: 'Palmerston                         '
+Sample row: 'Palmerston                         '
+Column 'TRIAGE_TIME' has leading or trailing spaces in 6910456 rows.
+Sample row: '    '
+Sample row: '    '
+Column 'facility_name' has leading or trailing spaces in 20928713 rows.
+Sample row: 'North Wellington Healthcare        '
+Sample row: 'North Wellington Healthcare        '
+Column 'REGISTRATION_TIME' has leading or trailing spaces in 27455 rows.
+Sample row: '    '
+Sample row: '    '
+Column 'DISPOSITION_TIME' has leading or trailing spaces in 2646636 rows.
+Sample row: '    '
+Sample row: '    '
+Column 'TIME_PHYSICAN_INIT_ASSESSMENT' has leading or trailing spaces in 8569440 rows.
+Sample row: '    '
+Sample row: '    '
+Column 'ED_VISIT_IND_CODE' has leading or trailing spaces in 6795883 rows.
+Sample row: ' '
+Sample row: ' '
+Column 'problem_01' has leading or trailing spaces in 16117134 rows.
+Sample row: 'K590   '
+Sample row: 'J987   '
+Column 'problem_02' has leading or trailing spaces in 9266909 rows.
+Sample row: 'W46    '
+Sample row: 'W54    '
+Column 'problem_03' has leading or trailing spaces in 5105478 rows.
+Sample row: 'U9820  '
+Sample row: 'U980   '
