@@ -1,95 +1,70 @@
-using this code and result generated explain the result to collegaues 
+this calcualtion below is incorrect 
 
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, trim
- 
-# Initialize Spark session
-spark = SparkSession.builder \
-    .appName('CheckLeadingTrailingSpaces') \
-    .config("spark.driver.maxResultSize", "2g") \
-    .getOrCreate()
- 
-def find_leading_trailing_spaces(df):
-    """
-    Identifies columns with leading or trailing spaces and returns a dictionary
-    with column names and the count of rows that contain such spaces,
-    along with a sample of rows showing the spaces.
-    Args:
-    df (pyspark.sql.DataFrame): The dataframe containing the data.
-    Returns:
-    dict: A dictionary with column names as keys, and a tuple containing the count of rows with spaces 
-          and a sample of rows as values.
-    """
-    spaces_info = {}
- 
-    for col_name, dtype in df.dtypes:
-        if dtype == 'string':
-            # Filter rows with leading or trailing spaces
-            rows_with_spaces = df.filter(
-                (col(col_name) != trim(col(col_name))) | 
-                (col(col_name).rlike(r'^\s+')) | 
-                (col(col_name).rlike(r'\s+$'))
-            )
-            # Count the rows with spaces
-            count = rows_with_spaces.count()
-            if count > 0:
-                # Collect a sample of rows with spaces
-                sample_rows = rows_with_spaces.select(col_name).limit(2).collect()
-                sample_values = [row[col_name] for row in sample_rows]
-                spaces_info[col_name] = (count, sample_values)
- 
-    return spaces_info
- 
-try:
-    # Example usage:
-    # Load your parquet file
-    # df = spark.read.parquet("output_with_spaces.parquet")
- 
-    # Check for leading and trailing spaces
-    spaces_info = find_leading_trailing_spaces(df)
- 
-    # Display the columns, counts of rows with leading or trailing spaces, and sample rows
-    if spaces_info:
-        for col, (count, samples) in spaces_info.items():
-            print(f"Column '{col}' has leading or trailing spaces in {count} rows.")
-            for sample in samples:
-                print(f"Sample row: '{sample}'")
-    else:
-        print("No leading or trailing spaces found in any columns.")
-finally:
-    # Stop the Spark session
-    spark.stop()
+the Total_CASE, tpia_calc_cnt and tpia_elig_cnt have wrong values. 
 
+Example for a record where 
+CORP_ID is 933, the correct Total_CASE should be 10925, tpia_calc_cnt should be 831 and tpia_elig_cnt should be 10925 and finally tpia_rec_pct should be 0.0760640732 
+instead i am getting a wrong calculation as Total_CASE= 11293,  tpia_calc_cnt = 1199, tpia_elig_cnt= 11293 and a wrong tpia_rec_pct as 0.10617196
 
-result 
+Please correct the code below to ensure the records are calculated accurately to match 
 
-Column 'facility_site_name' has leading or trailing spaces in 21415773 rows.
-Sample row: 'Palmerston                         '
-Sample row: 'Palmerston                         '
-Column 'TRIAGE_TIME' has leading or trailing spaces in 6910456 rows.
-Sample row: '    '
-Sample row: '    '
-Column 'facility_name' has leading or trailing spaces in 20928713 rows.
-Sample row: 'North Wellington Healthcare        '
-Sample row: 'North Wellington Healthcare        '
-Column 'REGISTRATION_TIME' has leading or trailing spaces in 27455 rows.
-Sample row: '    '
-Sample row: '    '
-Column 'DISPOSITION_TIME' has leading or trailing spaces in 2646636 rows.
-Sample row: '    '
-Sample row: '    '
-Column 'TIME_PHYSICAN_INIT_ASSESSMENT' has leading or trailing spaces in 8569440 rows.
-Sample row: '    '
-Sample row: '    '
-Column 'ED_VISIT_IND_CODE' has leading or trailing spaces in 6795883 rows.
-Sample row: ' '
-Sample row: ' '
-Column 'problem_01' has leading or trailing spaces in 16117134 rows.
-Sample row: 'K590   '
-Sample row: 'J987   '
-Column 'problem_02' has leading or trailing spaces in 9266909 rows.
-Sample row: 'W46    '
-Sample row: 'W54    '
-Column 'problem_03' has leading or trailing spaces in 5105478 rows.
-Sample row: 'U9820  '
-Sample row: 'U980   '
+# Apply conditions to create the 'tpia_rec' column
+    ed_record = ed_record.withColumn(
+        'tpia_rec',
+        F.when(
+            F.col('TIME_PHYSICAN_INIT_ASSESSMENT').isNull() | (F.trim(F.col('TIME_PHYSICAN_INIT_ASSESSMENT')) == ''), 'B'
+        ).when(
+            F.col('TIME_PHYSICAN_INIT_ASSESSMENT') == '9999', 'N'
+        ).otherwise('Y')
+    )
+    
+    # Filter out records where 'tpia_rec' is not 'B'
+    tpia_org_cnt = ed_record.filter(F.col('tpia_rec') != 'B')
+    
+    # Group by and aggregate data
+    tpia_org_rec = tpia_org_cnt.groupBy('SUBMISSION_FISCAL_YEAR', 'CORP_ID').agg(
+        F.count('AM_CARE_KEY').alias('Total_CASE'),
+        F.sum(F.when(F.col('tpia_rec') == 'Y', 1).otherwise(0)).alias('tpia_calc_cnt'),
+        F.sum(F.when(F.col('tpia_rec').isin(['Y', 'N']), 1).otherwise(0)).alias('tpia_elig_cnt')
+    ).withColumn(
+        'tpia_rec_pct',
+        F.col('tpia_calc_cnt') / F.col('Total_CASE')
+    )
+    
+    # Filter DataFrame based on specific conditions for suppression and reporting
+    tpia_supp_org = tpia_org_rec.filter(
+        (F.col('tpia_calc_cnt') < 50) | ((F.col('tpia_calc_cnt') > 50) & (F.col('tpia_rec_pct') < 0.75))
+    )
+    
+    tpia_rpt_org = tpia_org_rec.filter(
+        (F.col('tpia_calc_cnt') >= 50) | ((F.col('tpia_calc_cnt') < 50) & (F.col('tpia_rec_pct') >= 0.75))
+    )
+    
+    # Create 'tpia_rec' column
+    ed_record_with_ucc_22 = ed_record_with_ucc_22.withColumn('tpia_rec', 
+                                                            F.when(ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT']
+                                                                   == '9999', 'N')                                              .when(ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT'].isNotNull() & 
+    (ed_record_with_ucc_22['TIME_PHYSICAN_INIT_ASSESSMENT'] != '9999'), 'Y')
+                                                              .otherwise('B'))
+    
+    # Filter out rows with 'tpia_rec' equal to "B"
+    tpia_org_cnt_ucc_22 = ed_record_with_ucc_22.filter(ed_record_with_ucc_22['tpia_rec'] != 'B')
+    
+    # Aggregation
+    tpia_org_rec_ucc_22 = tpia_org_cnt_ucc_22.groupBy('SUBMISSION_FISCAL_YEAR', 'CORP_ID').agg(
+        F.count('AM_CARE_KEY').alias('Total_CASE'),
+        F.sum(F.when(col('tpia_rec') == 'Y', 1).otherwise(0)).alias('tpia_calc_cnt'),
+        F.sum(F.when(col('tpia_rec').isin(['Y', 'N']), 1).otherwise(0)).alias('tpia_elig_cnt')
+    ).withColumn('tpia_rec_pct', col('tpia_calc_cnt') / col('Total_CASE'))
+    
+    
+    
+    # Filter 'tpia_org_rec_ucc' based on conditions
+    tpia_supp_org_ucc_22 = tpia_org_rec_ucc_22.filter((col('tpia_calc_cnt') < 50) | ((col('tpia_calc_cnt') > 50) & (col('tpia_rec_pct') < 0.75)))
+    tpia_rpt_org_ucc_22 = tpia_org_rec_ucc_22.filter((col('tpia_calc_cnt') >= 50) | ((col('tpia_calc_cnt') < 50) & (col('tpia_rec_pct') >= 0.75)))
+
+     # Append the ucc df to make a list
+    tpia_supp_org_all.append(tpia_supp_org_ucc_22)
+    
+    # Stack all processed ucc using reduce and unionAll()
+    tpia_supp_corp_combined = reduce(lambda x, y: x.unionAll(y), tpia_supp_org_all)
