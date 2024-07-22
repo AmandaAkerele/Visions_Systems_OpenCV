@@ -1,4 +1,5 @@
 from pyspark.sql import functions as F
+from functools import reduce
 
 # Apply conditions to create the 'tpia_rec' column
 ed_record = ed_record.withColumn(
@@ -13,19 +14,19 @@ ed_record = ed_record.withColumn(
 # Filter out records where 'tpia_rec' is 'B'
 tpia_org_cnt = ed_record.filter(F.col('tpia_rec') != 'B')
 
-# Group by and aggregate data
+# Group by and aggregate data correctly
 tpia_org_rec = tpia_org_cnt.groupBy('SUBMISSION_FISCAL_YEAR', 'CORP_ID').agg(
     F.count('AM_CARE_KEY').alias('Total_CASE'),
     F.sum(F.when(F.col('tpia_rec') == 'Y', 1).otherwise(0)).alias('tpia_calc_cnt'),
     F.sum(F.when(F.col('tpia_rec').isin(['Y', 'N']), 1).otherwise(0)).alias('tpia_elig_cnt')
 ).withColumn(
     'tpia_rec_pct',
-    F.col('tpia_calc_cnt') / F.col('tpia_elig_cnt')
+    (F.col('tpia_calc_cnt') / F.col('tpia_elig_cnt')).cast('double')
 )
 
 # Filter DataFrame based on specific conditions for suppression and reporting
 tpia_supp_org = tpia_org_rec.filter(
-    (F.col('tpia_calc_cnt') < 50) | ((F.col('tpia_calc_cnt') > 50) & (F.col('tpia_rec_pct') < 0.75))
+    (F.col('tpia_calc_cnt') < 50) | ((F.col('tpia_calc_cnt') >= 50) & (F.col('tpia_rec_pct') < 0.75))
 )
 
 tpia_rpt_org = tpia_org_rec.filter(
@@ -48,10 +49,10 @@ tpia_org_rec_ucc_22 = tpia_org_cnt_ucc_22.groupBy('SUBMISSION_FISCAL_YEAR', 'COR
     F.count('AM_CARE_KEY').alias('Total_CASE'),
     F.sum(F.when(F.col('tpia_rec') == 'Y', 1).otherwise(0)).alias('tpia_calc_cnt'),
     F.sum(F.when(F.col('tpia_rec').isin(['Y', 'N']), 1).otherwise(0)).alias('tpia_elig_cnt')
-).withColumn('tpia_rec_pct', F.col('tpia_calc_cnt') / F.col('tpia_elig_cnt'))
+).withColumn('tpia_rec_pct', (F.col('tpia_calc_cnt') / F.col('tpia_elig_cnt')).cast('double'))
 
 # Filter 'tpia_org_rec_ucc' based on conditions
-tpia_supp_org_ucc_22 = tpia_org_rec_ucc_22.filter((F.col('tpia_calc_cnt') < 50) | ((F.col('tpia_calc_cnt') > 50) & (F.col('tpia_rec_pct') < 0.75)))
+tpia_supp_org_ucc_22 = tpia_org_rec_ucc_22.filter((F.col('tpia_calc_cnt') < 50) | ((F.col('tpia_calc_cnt') >= 50) & (F.col('tpia_rec_pct') < 0.75)))
 tpia_rpt_org_ucc_22 = tpia_org_rec_ucc_22.filter((F.col('tpia_calc_cnt') >= 50) | ((F.col('tpia_calc_cnt') < 50) & (F.col('tpia_rec_pct') >= 0.75)))
 
 # Append the ucc df to make a list
@@ -59,9 +60,3 @@ tpia_supp_org_all.append(tpia_supp_org_ucc_22)
 
 # Stack all processed ucc using reduce and unionAll()
 tpia_supp_corp_combined = reduce(lambda x, y: x.unionAll(y), tpia_supp_org_all)
-
-
-
-
-or
-
